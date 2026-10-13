@@ -54,7 +54,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 | DSP | 2,020 |
 | PS CPU | 2× ARM Cortex-A9 @ 766MHz |
 | PS 内存 | DDR3 @ 533MHz |
-| 工具链 | Vivado 2026.1 / PetaLinux 2023.2 |
+| 工具链 | Vivado 2026.1 / PetaLinux 2026.1 |
 | 时钟域 | FCLK0=100MHz (引擎) / FCLK1=200MHz (AXI HP) |
 
 ## 目录结构
