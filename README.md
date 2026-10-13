@@ -2,7 +2,7 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Xilinx%20Zynq--7000%20XC7Z100-blue)](#platform)
 [![RTL](https://img.shields.io/badge/RTL-Verilog%202001-green)](#rtl)
-[![Vivado](https://img.shields.io/badge/Vivado-2023.2-orange)](#quick-start)
+[![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
 FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段（Mark Phase）** 卸载到 FPGA 硬件，实现 CPU 零开销的并行标记。
@@ -54,7 +54,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 | DSP | 2,020 |
 | PS CPU | 2× ARM Cortex-A9 @ 766MHz |
 | PS 内存 | DDR3 @ 533MHz |
-| 工具链 | Vivado 2023.2 / PetaLinux 2023.2 |
+| 工具链 | Vivado 2026.1 / PetaLinux 2023.2 |
 | 时钟域 | FCLK0=100MHz (引擎) / FCLK1=200MHz (AXI HP) |
 
 ## 目录结构
