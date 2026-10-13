@@ -1,0 +1,23 @@
+# Vivado 工程生成目录
+vivado/fogccc_proj/
+
+# Vivado 日志
+vivado/nlviewcommon.logfile
+vivado/*.log
+vivado/*.jou
+
+# 编译产物
+*.o
+*.so
+*.bit
+*.dcp
+*.xsa
+*.ltx
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# OS 文件
+.DS_Store
+Thumbs.db
