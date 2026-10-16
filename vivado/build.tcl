@@ -48,10 +48,10 @@ set_property -dict [list \
     CONFIG.PCW_UIPARAM_DDR_PARTNO {MT41K256M16 RE-125} \
     CONFIG.PCW_PRESET_BANK0_VOLTAGE {LVCMOS 3.3V} \
     CONFIG.PCW_PRESET_BANK1_VOLTAGE {LVCMOS 1.8V} \
-    CONFIG.PCW_EN_UART0 {1} \
+    CONFIG.PCW_UART0_PERIPHERAL_ENABLE {1} \
     CONFIG.PCW_UART0_UART0_IO {MIO 14 .. 15} \
     CONFIG.PCW_UART0_BAUD_RATE {115200} \
-    CONFIG.PCW_EN_SDIO0 {1} \
+    CONFIG.PCW_SD0_PERIPHERAL_ENABLE {1} \
     CONFIG.PCW_SD0_SD0_IO {MIO 40 .. 45} \
     CONFIG.PCW_EN_DDR {1} \
     CONFIG.PCW_CRYSTAL_PERIPHERAL_FREQMHZ {33.333333} \
@@ -166,13 +166,21 @@ puts "INFO: AXI HP path connected (gc_top -> hp_ic -> HP0)"
 # 先自动分配所有地址段
 assign_bd_address
 
-# 找到gc_top的地址段并设置偏移
-set gc_seg [get_bd_addr_segs -quiet -of_objects \
-            [get_bd_intf_pins axi_lite_ic/M00_AXI]]
-if {[llength $gc_seg] > 0} {
-    set_property offset 0x43C00000 [lindex $gc_seg 0]
-    set_property range  64K        [lindex $gc_seg 0]
-    puts "INFO: gc_top @ 0x43C00000 (64KB)"
+# 找到gc_top在PS7地址空间中的映射段并设置偏移
+# 注意: 该段属于 /ps7_0/Data (主机地址空间), 形如 /ps7_0/Data/SEG_gc_top_0_reg0,
+#       既不能用 interconnect 引脚找, 也不能用 gc_top 单元找
+set gc_seg ""
+foreach s [get_bd_addr_segs -quiet] {
+    set p [get_property PATH $s]
+    if {[string match "*/ps7_0/Data*" $p] && [string match "*gc_top*" $p]} {
+        set gc_seg $s
+        break
+    }
+}
+if {$gc_seg ne ""} {
+    set_property offset 0x43C00000 $gc_seg
+    set_property range  64K        $gc_seg
+    puts "INFO: gc_top @ 0x43C00000 (64KB) seg=[get_property PATH $gc_seg]"
 } else {
     puts "WARNING: gc_top address segment not found!"
 }
