@@ -28,3 +28,6 @@ __pycache__/
 # OS 文件
 .DS_Store
 Thumbs.db
+
+# 本地排错笔记 (不推送)
+AGENT_NOTES_pitfalls.md
