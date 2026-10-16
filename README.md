@@ -48,7 +48,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 
 | 项目 | 规格 |
 |------|------|
-| FPGA | Xilinx Zynq-7000 **XC7Z100** |
+| FPGA | Xilinx Zynq-7000 XC7Z100FFG900-**2** |
 | 逻辑资源 | 277,400 LUT / 554,800 FF |
 | BRAM | 19.2Mb (545块 36Kb) |
 | DSP | 2,020 |
@@ -92,7 +92,7 @@ vivado -mode batch -source build.tcl
 
 产出: `fogccc_proj\fogccc_z7100.runs\impl_1\system_wrapper.bit`
 
-### 2. 烧录 FPGA (二选一)
+### 2. 烧录 FPGA
 
 **方式 A: Vivado Hardware Manager**
 ```
@@ -159,7 +159,7 @@ python3 python/benchmark.py
 ┌──────────────────────┐          ┌──────────────────────────┐
 │ +0:  uint32 obj_id   │          │ [ref0][ref1]...[0xFFFF]  │
 │ +4:  uint32 ref_count│          │                          │
-│ +8:  uint32 ref_addr │──────────┘                        │
+│ +8:  uint32 ref_addr │──────────┘                          │
 │ +12: uint32 reserved │          └──────────────────────────┘
 └──────────────────────┘
 ```
@@ -301,38 +301,12 @@ FPGA Offload GC Coprocessor for CPython/
 ## 上板流程
 
 ```
-① 双击 tools/fogccc.bat          (先开着; 它会等待串口出现)
-② 板子上电                        (开机阶段键盘锁定, 不会打断 autoboot)
-   出现 linux login:              (自动切换成仪表盘, 键盘解锁)
+① 双击 tools/fogccc.bat
+② 板子上电
+   出现 linux login:
 ③ root  + 回车                    (空密码)
 ④ mkdir -p /mnt/userdata && mount /dev/mmcblk0p2 /mnt/userdata
 ⑤ sh /mnt/userdata/run_gc.sh
 ```
 
 测试输出同时打印到窗口并写入 `USERDATA` 分区上的 `gc_run_<时间戳>.log`。
-
-## 测试判据 (为什么不会假 OK)
-
-`gc_test.py` 每轮随机取对象数 `N`，把活对象区构造成**从对象 0 出发的生成树**
-（因此**每个活对象都可达，期望标记数 = L 是事先已知的**），垃圾区只在自己内部连边
-（期望标记 = 0）。每轮同时用硬件和软件各自与已知真值 `L` 比对，并检查：
-
-- 引擎**真的跑过**（`CYCLES` 寄存器发生变化 —— 只轮询 `DONE` 无法区分"跑完"和"没跑"，
-  因为引擎只要 ~40µs 而 Python 轮询要 100µs+，会读到上一轮的旧值）
-- `DONE` 已置位、`cycles >= 4096`（清位图的最少耗时）
-- `hardware marked == L`、`software marked == L`、`garbage == 0`
-
-**只有全部不变式成立才打印 `OK`**，否则逐项列出失败原因（`NO-RUN` / `DONE-LOW` /
-`CYCLES<4096` / `HW!=(x vs L)` / `SW!=(x vs L)` / `GARBAGE=n`）。
-## `uEnv.txt`（很重要）
-
-BOOT 分区里必须放一个 `uEnv.txt`：
-
-```
-bootargs=console=ttyPS0,115200 earlyprintk
-```
-
-`boot.scr` 会自动 `fatload uEnv.txt` 并 `env import`，**U-Boot 环境里的 `bootargs`
-会覆盖设备树里的 `chosen/bootargs`**。这样即使设备树生成出了问题（本工程重组后
-发现新 `system.dtb` 的 `chosen/bootargs` 只剩 `earlycon`），内核控制台依然稳在
-`ttyPS0,115200`。改内核 cmdline 只需要改这个文本文件，不用重建镜像。
