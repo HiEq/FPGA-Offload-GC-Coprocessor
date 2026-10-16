@@ -273,18 +273,18 @@ FPGA Offload GC Coprocessor for CPython/
 │                     fogccc_proj/ 由 build.tcl 生成, 已 .gitignore
 ├─ csrc/              PS 端 C 驱动 (fpga_gc.h/.c, test_main.c)
 ├─ python/            CPython 侧 ctypes 绑定 + 软件基准
-├─ petalinux/         ★ PetaLinux 必须改的配置项 + 那个"system.bit 不更新"的大坑
+├─ petalinux/         PetaLinux 必须改的配置项
 ├─ tools/             PC 端串口控制台 + 板级测试脚本
-│    fogccc.bat         统一控制台 (开机 raw -> Linux 后自动切仪表盘)
-│    monitor_com5.ps1   后端: 顶部 TASK/CPU0/CPU1/MEM/TEMP + 固定窗口 + 键盘直通
-│    gc_test.py         板级 FPGA mark 测试 (多轮随机规模 + 严格不变式)
+│    fogccc.bat         统一控制台
+│    monitor_com5.ps1   后端
+│    gc_test.py         板级 FPGA mark 测试
 │    log.bat            查看 com5.log
 │    fallback/          备用: 串口推送 / 纯裸控制台
-├─ artifacts/         ★ 要拷到 TF 卡的构建产物
+├─ artifacts/         要拷到 TF 卡的构建产物
 │    BOOT.BIN  image.ub  boot.scr        -> BOOT 分区
 │    gc_test.py  run_gc.sh               -> USERDATA 分区
 │    mount_data.sh  test_fpga  system.dtb  zynq_fsbl.elf
-└─ BUILD_GUIDE.md     构建步骤 + 启动链上踩过的 7 个坑
+└─ BUILD_GUIDE.md     构建步骤
 ```
 
 ## TF 卡布局
