@@ -5,7 +5,7 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段（Mark Phase）** 卸载到 FPGA 硬件，实现 CPU 零开销的并行标记。
+FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段（Mark Phase）** 卸载到 FPGA 硬件，把标记阶段的指针追逐交给硬件，减轻 CPU 负担。
 
 ## 架构概览
 
@@ -40,7 +40,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 1. ARM PS 上的 CPython 运行程序，触发 GC
 2. C 驱动通过 `/dev/mem` 将对象图写入 DDR (`0x1E000000`)
 3. C 驱动写 AXI-Lite 寄存器启动 FPGA 标记引擎
-4. FPGA 引擎执行 BFS 标记（硬件并行遍历对象图）
+4. FPGA 引擎执行 BFS 标记
 5. ARM PS 轮询完成标志，读取标记结果和周期计数
 6. CPython 据此跳过/回收未标记对象
 
@@ -52,7 +52,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 | 逻辑资源 | 277,400 LUT / 554,800 FF |
 | BRAM | 19.2Mb (545块 36Kb) |
 | DSP | 2,020 |
-| PS CPU | 2× ARM Cortex-A9 @ 766MHz |
+| PS CPU | 2× ARM Cortex-A9 @ 666.67MHz |
 | PS 内存 | DDR3 @ 533MHz |
 | 工具链 | Vivado 2026.1 / PetaLinux 2026.1 |
 | 时钟域 | FCLK0=100MHz (引擎) / FCLK1=200MHz (AXI HP) |
@@ -60,24 +60,24 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 ## 目录结构
 
 ```
-fogccc/
+FOGCCC/
 ├── rtl/                    Verilog RTL 源码
-│   ├── gc_top.v            顶层模块 (AXI-Lite + AXI HP + CDC)
+│   ├── gc_top.v            顶层模块
 │   ├── gc_regs.v           AXI-Lite 寄存器接口
-│   ├── gc_mark_engine.v    BFS 标记状态机 (核心，21 状态)
-│   ├── gc_bitmap.v         标记位图 (双口 BRAM, 4096×32)
-│   ├── gc_queue.v          BFS 队列 (双口 BRAM, 4096×12)
+│   ├── gc_mark_engine.v    BFS 标记状态机 (核心, 24 状态)
+│   ├── gc_bitmap.v         标记位图 BRAM 4096×32
+│   ├── gc_queue.v          BFS 队列 BRAM 4096×12
 │   └── gc_axi_read.v       AXI HP 读主控
 ├── csrc/                   C 源码 (运行在 PS 端 Linux)
-│   ├── fpga_gc.h           驱动头文件 (寄存器映射 + 对象图格式)
-│   ├── fpga_gc.c           驱动实现 (mmap + 图构建 + 标记控制)
-│   └── test_main.c         测试主程序 (正确性/循环图/一致性)
+│   ├── fpga_gc.h           驱动头文件
+│   ├── fpga_gc.c           驱动实现
+│   └── test_main.c         测试主程序
 ├── python/                 Python 脚本
 │   ├── fogccc.py           ctypes 绑定 + 多规模测试
 │   └── benchmark.py        CPython 软件 GC 基准
 ├── vivado/
-│   ├── build.tcl           Vivado 工程自动创建脚本 (BD + 综合 + 实现)
-│   └── constraints.xdc     约束文件 (PS7 自动生成时钟约束)
+│   ├── build.tcl           Vivado 工程自动创建脚本
+│   └── constraints.xdc     约束文件
 └── README.md               本文件
 ```
 
@@ -86,7 +86,7 @@ fogccc/
 ### 1. 生成比特流 (PC 端)
 
 ```powershell
-cd C:\Users\wwwmt\Desktop\fogccc\vivado
+cd <repo>/vivado
 vivado -mode batch -source build.tcl
 ```
 
@@ -103,14 +103,14 @@ Open Hardware Manager → Auto Connect → Program Device → 选择 .bit
 ```bash
 sudo cp system_wrapper.bit /lib/firmware/fogccc.bit
 echo fogccc.bit > /sys/class/fpga_manager/fpga0/firmware
-cat /sys/class/fpga_manager/fpga0/state  # 应为 "operating"
+cat /sys/class/fpga_manager/fpga0/state
 ```
 
 ### 3. 编译并运行测试 (板卡上)
 
 ```bash
 # 传输 C 源码到板卡 (scp/U盘/串口)
-cd ~/fogccc/csrc
+cd <repo>/csrc
 
 # 编译测试程序
 gcc -O2 -o test_fpga fpga_gc.c test_main.c -lrt
@@ -123,7 +123,7 @@ sudo ./test_fpga
 
 ```bash
 # 编译共享库
-cd ~/fogccc/csrc
+cd <repo>/csrc
 gcc -O2 -shared -fPIC -o libfogccc.so fpga_gc.c
 cp libfogccc.so ../python/
 
@@ -146,10 +146,10 @@ python3 python/benchmark.py
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量 |
-| 0x10 | MARKED | R | 标记对象数 (只读) |
-| 0x14 | CYCLES | R | 硬件周期计数 (只读) |
-| 0x18 | Q_HEAD | R | 队列头指针 (只读) |
-| 0x1C | Q_TAIL | R | 队列尾指针 (只读) |
+| 0x10 | MARKED | R | 标记对象数 |
+| 0x14 | CYCLES | R | 硬件周期计数 |
+| 0x18 | Q_HEAD | R | 队列头指针 |
+| 0x1C | Q_TAIL | R | 队列尾指针 |
 | 0x40+ | ROOT_LIST | W | 根集对象 ID 数组 |
 
 ## Object Graph DDR Format
@@ -159,7 +159,7 @@ python3 python/benchmark.py
 ┌──────────────────────┐          ┌──────────────────────────┐
 │ +0:  uint32 obj_id   │          │ [ref0][ref1]...[0xFFFF]  │
 │ +4:  uint32 ref_count│          │                          │
-│ +8:  uint32 ref_addr │──────────┘  (引用数组物理地址)     │
+│ +8:  uint32 ref_addr │──────────┘                        │
 │ +12: uint32 reserved │          └──────────────────────────┘
 └──────────────────────┘
 ```
@@ -175,7 +175,7 @@ python3 python/benchmark.py
 
 | 测试 | 内容 | 通过标准 |
 |------|------|---------|
-| Test 1 | 多规模正确性 + 性能 | FPGA 标记数 == 软件标记数 |
+| Test 1 | 多轮随机规模正确性 + 性能 | 硬件/软件标记数都等于已知真值 L，且垃圾区为 0 |
 | Test 2 | 循环图 | 含环图正确标记所有可达对象 |
 | Test 3 | 重复一致性 | 100 次运行结果完全一致 |
 | 时序 | Vivado timing | WNS ≥ 0 |
@@ -227,8 +227,8 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 ila_0
 
 **Q: FPGA init failed?**
 ```bash
-cat /sys/class/fpga_manager/fpga0/state  # 检查 bitstream
-sudo ./test_fpga                          # 需要 root
+cat /sys/class/fpga_manager/fpga0/state
+sudo ./test_fpga
 ```
 
 **Q: Mark timeout?**
