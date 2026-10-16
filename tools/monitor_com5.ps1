@@ -131,6 +131,7 @@ $script:injectAt   = [datetime]::MinValue
 $script:phase      = 'raw'      # 'raw' while booting, 'dash' once Linux/login is up
 $script:lastLine   = ''
 $script:lastLineAt = [datetime]::MinValue
+$script:curSeen    = ''
 
 $STAT_CMD = (@'
 { head -3 /proc/stat; grep -E 'MemTotal|MemAvailable' /proc/meminfo; T=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null); [ -z "$T" ] && T=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null); [ -z "$T" ] && T=$(awk '{printf "%d",$1*503.975/4096*1000-273150}' /sys/bus/iio/devices/iio:device0/in_temp0_raw 2>/dev/null); [ -z "$T" ] && T=-1; echo TEMP $T; } | sed 's/^/@@S /'
@@ -145,15 +146,6 @@ function Note-Prompt([string]$line) {
     }
     # if we are at a login/password prompt, stop poking the board with newlines
     if ($line -match 'Password:' -or $line -match 'login:') { $script:nudges = 99 }
-    # raw -> dashboard ONLY when Linux has really come up (login: or a shell prompt).
-    # Deliberately NOT on the U-Boot prompt: no key must become live before login.
-    if ($script:phase -eq 'raw') {
-        if ($line -match 'login:' -or $script:promptOk) {
-            $script:phase = 'dash'
-            $script:prevFrame = @()
-            try { [Console]::Clear() } catch {}
-        }
-    }
 }
 
 function Parse-Stat([string]$line) {
@@ -380,15 +372,34 @@ try {
             $script:taskLab = 'idle'
         }
 
-        # --- safety unlock: if the board has been SITTING at a U-Boot prompt for 3s
-        #     (i.e. autoboot really is not coming), enable the keyboard so you can
-        #     type 'boot' by hand. ---
-        if ($script:phase -eq 'raw' -and
-            $script:lastLine -match '^\s*(Zynq>|=>)' -and
-            (($now - $script:lastLineAt).TotalSeconds -gt 3)) {
-            $script:phase = 'dash'
-            $script:prevFrame = @()
-            try { [Console]::Clear() } catch {}
+        # --- track the CURRENT (possibly still incomplete) line.  Prompts like
+        #     "linux login: " and "root@linux:~# " have no trailing newline, so
+        #     they never arrive as a completed line. ---
+        $cl = Get-CurLine
+        if ($cl -ne $script:curSeen) {
+            $script:curSeen    = $cl
+            $script:lastLineAt = $now
+            if ($cl.Length -gt 0) {
+                $script:lastLine = $cl
+                if ($cl -match '[#$]\s*$') { $script:promptOk = $true }
+            }
+        }
+
+        # --- raw -> dashboard, once Linux / the shell is really up.  No key must
+        #     become live before that, so autoboot can never be interrupted. ---
+        if ($script:phase -eq 'raw') {
+            if ($script:lastLine -match 'login:' -or $script:lastLine -match '[#$]\s*$') {
+                $script:phase = 'dash'
+                $script:prevFrame = @()
+                try { [Console]::Clear() } catch {}
+            }
+            elseif ($script:lastLine -match '^\s*(Zynq>|=>)' -and
+                    (($now - $script:lastLineAt).TotalSeconds -gt 3)) {
+                # board is sitting at a U-Boot prompt -> unlock so you can type 'boot'
+                $script:phase = 'dash'
+                $script:prevFrame = @()
+                try { [Console]::Clear() } catch {}
+            }
         }
 
         # --- render (dashboard only once Linux is up) ---
