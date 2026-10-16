@@ -288,6 +288,23 @@ FPGA Offload GC Coprocessor for CPython/
 └─ BUILD_GUIDE.md     构建步骤
 ```
 
+## 下载启动镜像（Release）
+
+`image.ub` 约 106MB，超过 GitHub 单文件 100MB 限制，因此**不入仓库**，只放在 Release 附件里。
+`BOOT.BIN` 虽然仓库里有，Release 里也一并提供，做到**开箱即用**。
+
+| Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
+| --- | --- | --- | --- |
+| [`v3-optimized`](../../releases/tag/v3-optimized) | 优化版（`main`：多笔未完成读 + 预取 + 竞态修复，AXI HP 100MHz 单时钟域） | `D62AC4EBACEF8F4C8B6C208E5088A563` | `1CEDF5898D3429AFCD390CEBD75192F5` |
+| [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `1CEDF5898D3429AFCD390CEBD75192F5` |
+
+> **两个版本的 `image.ub` 完全相同** —— 优化只动了 PL 侧（RTL + 比特流），
+> PS7 的 20 条 `CONFIG.PCW_*` 参数（`FCLK0=100MHz` / `FCLK1=200MHz` / `DDR 533.33MHz` …）
+> 一个字都没改，所以设备树和内核是同一份。
+>
+> 但 **`BOOT.BIN` 必须配对**：跑 Ver1 就用 Ver1 的那块，别拿 Ver3 的（那是新设计的比特流）。
+> 两块文件大小相同（18,582,708 B）但内容不同，用 md5 区分。
+
 ## TF 卡布局
 
 | 分区 | 类型 | 卷标 | 内容 |

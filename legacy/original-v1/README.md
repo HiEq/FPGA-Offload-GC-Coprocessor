@@ -21,3 +21,19 @@
 ```bash
 git checkout v1-original        # 或在 GitHub 的 Tags 页面直接下载 zip
 ```
+
+## 直接跑（不想自己构建）
+
+**启动镜像在 Release 里**，不需要碰 Vivado / PetaLinux：
+
+[`v1-original` Release](../../../releases/tag/v1-original) → `BOOT.BIN` + `image.ub`
+
+把这两个文件放到 TF 卡第一个分区（FAT32，BOOT 分区）根目录即可启动。
+
+| 文件 | 大小 | md5 |
+| --- | --- | --- |
+| `BOOT.BIN` | 18,582,708 B | `A33C0591E8455C798955DEB18493B0E6` |
+| `image.ub` | 106,233,171 B | `1CEDF5898D3429AFCD390CEBD75192F5` |
+
+> `image.ub` 两版**通用**（PS7 参数没改），但 `BOOT.BIN` **必须用 Ver1 这块** —— 
+> Ver3 版的是新设计的比特流（`D62AC4EB…`）。
