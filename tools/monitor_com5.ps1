@@ -30,7 +30,7 @@ if ($Color) {
         }
     } catch { $UseAnsi = $false }
 }
-$script:AnsiRe = [regex]("$([char]27)\[[0-9;?]*[ -/]*[@-~]")
+$script:AnsiRe = [regex]("\x1b\[[0-9;<=>?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[\x30-\x7e]")
 function VisLen([string]$s) { return $script:AnsiRe.Replace($s, '').Length }
 
 function MakeBar([double]$pct, [int]$w, [string]$rgb) {

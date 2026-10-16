@@ -28,7 +28,7 @@ if (-not $NoColor) {
         if ([FogCCC.Native]::GetConsoleMode($h, [ref]$m)) { $UseAnsi = [FogCCC.Native]::SetConsoleMode($h, ($m -bor 0x0004)) }
     } catch { $UseAnsi = $false }
 }
-$AnsiRe = [regex]("$([char]27)\[[0-9;?]*[ -/]*[@-~]")
+$AnsiRe = [regex]("\x1b\[[0-9;<=>?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[\x30-\x7e]")
 function VisLen([string]$s) { return $AnsiRe.Replace($s, '').Length }
 function MakeBar([double]$pct, [int]$w, [string]$rgb) {
     if ($w -lt 1) { $w = 1 }
