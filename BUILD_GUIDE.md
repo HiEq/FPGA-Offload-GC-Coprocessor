@@ -68,19 +68,23 @@ console=ttyPS0,115200 earlyprintk
 # 根文件系统类型
 initramfs
 
-# U-Boot 配置 (bsp.cfg)
+# U-Boot 配置 (project-spec/meta-user/recipes-bsp/u-boot/files/bsp.cfg)
 CONFIG_SYS_CONFIG_NAME="platform-top"
 CONFIG_BOOT_SCRIPT_OFFSET=0x9C0000
-CONFIG_OF_BOARD=y
-# CONFIG_OF_SEPARATE is not set
-CONFIG_SYS_FDT_BASE=0x03000000
+# 注意: 不要再设 CONFIG_OF_BOARD / CONFIG_SYS_FDT_BASE / CONFIG_OF_EMBED。
+# 设备树由 FSBL 从 BOOT.BIN 的第 4 分区加载到 0x00100000
+# (见 bootgen.bif 里的 [load=0x100000] system.dtb), U-Boot 默认流程即可拿到。
 ```
 
 ### 6. TF 卡分区
 ```
 分区1: FAT32, 512MB
-  → BOOT.BIN + image.ub
+  → BOOT.BIN + image.ub + boot.scr     (3 个文件缺一不可!)
 ```
+> ⚠️ **关键**: 必须包含 `boot.scr`（PetaLinux 生成的 U-Boot 启动脚本）。
+> U-Boot 的 distro boot 靠它执行 `fatload mmc 0 0x10000000 image.ub; bootm 0x10000000`。
+> 只放 `BOOT.BIN` + `image.ub` 会一直停在 `Zynq>` 提示符。
+> 文件位置: `images/linux/boot.scr`（由 `u-boot-xlnx-scr` recipe 生成）。
 
 ## 构建命令
 
@@ -99,8 +103,15 @@ petalinux-build
 
 ### 打包 BOOT.BIN
 ```bash
-cat images/linux/u-boot.bin images/linux/system.dtb > u-boot-dtb-fixed.bin
-bootgen -image boot.bif -arch zynq -o BOOT.BIN -w on
+# 推荐: 用 petalinux-package (自动生成 4 分区 + 写入 images/linux/bootgen.bif)
+petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
+                       --fpga images/linux/system.bit --u-boot --force
+
+# 生成的 bootgen.bif 分区布局:
+#   [bootloader] zynq_fsbl.elf
+#   system.bit
+#   u-boot.elf
+#   [load=0x100000] system.dtb     <- 设备树被 FSBL 载入 0x00100000
 ```
 
 ## 调试方法
