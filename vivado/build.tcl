@@ -17,10 +17,8 @@
 # ============ 配置 ============
 set PART      "xc7z100ffg900-2"
 set PROJ_NAME "fogccc_z7100"
-set PROJ_DIR  [file normalize "./fogccc_proj"]
-
-# 自动定位rtl目录 (相对于本tcl文件)
 set SCRIPT_DIR [file dirname [file normalize [info script]]]
+set PROJ_DIR  [file normalize [file join $SCRIPT_DIR "fogccc_proj"]]
 set RTL_DIR    [file normalize [file join $SCRIPT_DIR ".." "rtl"]]
 
 puts "INFO: RTL dir = $RTL_DIR"
@@ -43,21 +41,32 @@ puts "INFO: Added [llength $rtl_files] RTL files"
 create_bd_design "system"
 puts "INFO: Creating Block Design..."
 
-# ---- 1. PS7 ----
+# ---- 1. PS7 (开源骚客 OS-ZYNQ7100 Lite 板卡配置) ----
+# 参照厂商 design_1.bd: 只设必需参数, DDR延迟/时序由IP按型号自动计算
 create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps7_0
 set_property -dict [list \
+    CONFIG.PCW_UIPARAM_DDR_PARTNO {MT41K256M16 RE-125} \
+    CONFIG.PCW_PRESET_BANK0_VOLTAGE {LVCMOS 3.3V} \
+    CONFIG.PCW_PRESET_BANK1_VOLTAGE {LVCMOS 1.8V} \
+    CONFIG.PCW_EN_UART0 {1} \
+    CONFIG.PCW_UART0_UART0_IO {MIO 14 .. 15} \
+    CONFIG.PCW_UART0_BAUD_RATE {115200} \
+    CONFIG.PCW_EN_SDIO0 {1} \
+    CONFIG.PCW_SD0_SD0_IO {MIO 40 .. 45} \
+    CONFIG.PCW_EN_DDR {1} \
+    CONFIG.PCW_CRYSTAL_PERIPHERAL_FREQMHZ {33.333333} \
+    CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {666.666666} \
+    CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {533.333333} \
     CONFIG.PCW_USE_M_AXI_GP0 {1} \
     CONFIG.PCW_USE_S_AXI_HP0 {1} \
+    CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {64} \
     CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
     CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {200} \
+    CONFIG.PCW_EN_CLK0_PORT {1} \
     CONFIG.PCW_EN_CLK1_PORT {1} \
-    CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {533} \
-    CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {766} \
-    CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {64} \
-    CONFIG.PCW_M_AXI_GP0_ID_WIDTH {12} \
-    CONFIG.PCW_S_AXI_HP0_ID_WIDTH {6} \
+    CONFIG.PCW_EN_RST0_PORT {1} \
 ] [get_bd_cells ps7_0]
-puts "INFO: PS7 configured"
+puts "INFO: PS7 configured for OS-ZYNQ7100 Lite board (minimal, IP auto DDR)"
 
 # ---- 2. AXI Interconnect (AXI-Lite) ----
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_lite_ic
@@ -298,6 +307,9 @@ if {$wns < 0} {
 report_utilization -file [file join [file normalize $PROJ_DIR] utilization.rpt]
 report_timing_summary -file [file join [file normalize $PROJ_DIR] timing.rpt]
 puts "INFO: Reports saved to [file normalize $PROJ_DIR]"
+
+# 设置最大线程数 (加速综合/实现)
+set_param general.maxThreads 20
 
 # ============================================================
 # 18. 生成Bitstream

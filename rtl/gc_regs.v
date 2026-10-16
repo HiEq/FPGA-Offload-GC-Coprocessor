@@ -42,9 +42,9 @@ module gc_regs (
     output reg  [31:0] reg_obj_base,
     output reg  [31:0] reg_obj_count,
     output reg  [31:0] reg_root_count,
-    output reg         reg_start,       // 单周期脉冲
-    output reg         reg_clear_bm,    // 单周期脉冲
-    output reg         reg_clear_q,     // 单周期脉冲
+    output reg         reg_start = 1'b0,       // 单周期脉冲
+    output reg         reg_clear_bm = 1'b0,    // 单周期脉冲
+    output reg         reg_clear_q = 1'b0,     // 单周期脉冲
 
     // ---- 状态输入 (来自标记引擎) ----
     input  wire        reg_done,
@@ -54,13 +54,13 @@ module gc_regs (
     input  wire [11:0] q_tail,
 
     // ---- 根集写入端口 ----
-    output reg  [7:0]  root_wr_addr,
-    output reg  [31:0] root_wr_data,
-    output reg         root_we
+    output reg  [7:0]  root_wr_addr = 8'd0,
+    output reg  [31:0] root_wr_data = 32'd0,
+    output reg         root_we = 1'b0
 );
 
-    reg [7:0] awaddr_r;
-    reg [7:0] araddr_r;
+    reg [7:0] awaddr_r = 8'd0;
+    reg [7:0] araddr_r = 8'd0;
 
     // 消除未使用WSTRB的警告 (全32位写, 不用字节选通)
     wire _unused_wstrb = &{1'b0, WSTRB};

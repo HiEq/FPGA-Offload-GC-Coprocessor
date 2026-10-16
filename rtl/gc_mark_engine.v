@@ -21,35 +21,35 @@ module gc_mark_engine (
     input  wire        start,
 
     // 根集读取 (同步BRAM)
-    output reg  [7:0]  root_rd_addr,
+    output reg  [7:0]  root_rd_addr = 8'd0,
     input  wire [31:0] root_rd_data,
 
     // BFS队列
-    output reg         q_push,
-    output reg  [11:0] q_push_data,
-    output reg  [11:0] q_push_addr,
-    output reg         q_pop,
+    output reg         q_push = 1'b0,
+    output reg  [11:0] q_push_data = 12'd0,
+    output reg  [11:0] q_push_addr = 12'd0,
+    output reg         q_pop = 1'b0,
     input  wire        q_pop_ack,
     input  wire [11:0] q_pop_id,
     input  wire [11:0] q_tail,
     input  wire        q_empty,
 
     // 标记位图 (纯BRAM: 引擎通过写口清零)
-    output reg  [11:0] bm_addr,
-    output reg  [31:0] bm_wdata,
+    output reg  [11:0] bm_addr = 12'd0,
+    output reg  [31:0] bm_wdata = 32'd0,
     input  wire [31:0] bm_rdata,
-    output reg         bm_we,
+    output reg         bm_we = 1'b0,
 
     // DDR读接口
-    output reg  [31:0] rd_addr,
-    output reg         rd_start,
+    output reg  [31:0] rd_addr = 32'd0,
+    output reg         rd_start = 1'b0,
     input  wire        rd_done,
     input  wire [31:0] rd_data,
 
     // 状态输出
-    output reg         done,
-    output reg  [31:0] marked_count,
-    output reg  [31:0] cycles
+    output reg         done = 1'b0,
+    output reg  [31:0] marked_count = 32'd0,
+    output reg  [31:0] cycles = 32'd0
 );
 
     localparam [11:0] Q_MAX = 12'd4000;
@@ -81,13 +81,13 @@ module gc_mark_engine (
         S_NEXT_REF   = 5'd22,
         S_DONE       = 5'd23;
 
-    reg [4:0]  state;
-    reg [11:0] cur_obj;
-    reg [31:0] ref_count;
-    reg [31:0] ref_ptr;
-    reg [31:0] ref_addr;      // 引用数组物理地址 (从对象头+8读取)
-    reg [31:0] root_idx;
-    reg [11:0] pending_obj;
+    reg [4:0]  state = 5'd0;
+    reg [11:0] cur_obj = 12'd0;
+    reg [31:0] ref_count = 32'd0;
+    reg [31:0] ref_ptr = 32'd0;
+    reg [31:0] ref_addr = 32'd0;      // 引用数组物理地址 (从对象头+8读取)
+    reg [31:0] root_idx = 32'd0;
+    reg [11:0] pending_obj = 12'd0;
     reg [31:0] cycles_r;
     reg [31:0] marked_r;
     reg [11:0] clr_ptr;       // 位图清零指针

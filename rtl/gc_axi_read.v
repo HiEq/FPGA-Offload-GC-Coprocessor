@@ -24,7 +24,7 @@ module gc_axi_read (
     // AXI 读地址通道
     output reg  [31:0] ARADDR,
     output wire [2:0]  ARPROT,
-    output reg         ARVALID,
+    output reg         ARVALID = 1'b0,
     input  wire        ARREADY,
 
     // AXI 读数据通道
@@ -41,7 +41,7 @@ module gc_axi_read (
                S_REQ  = 2'd1,   // 发送读地址
                S_DATA = 2'd2;   // 等待读数据
 
-    reg [1:0] state;
+    reg [1:0] state = S_IDLE;
 
     assign ARPROT = 3'b000;    // 非安全, 非特权
     assign RREADY = 1'b1;      // 始终准备好接收
