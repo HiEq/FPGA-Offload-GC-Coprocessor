@@ -5,7 +5,11 @@
 // 连接: PL的AXI HP从机端口 → PS的S_AXI_HP0 → DDR控制器
 //
 // 协议: AXI4 读事务 (单次, 无突发)
-// 数据: 64位数据总线, 取低32位
+// 数据: 64位数据总线. 关键: HP端口是64位宽, 只接受8字节对齐地址,
+//       低32位是偶字, 高32位是奇字. 因此必须:
+//         ARADDR = addr & ~7      (8字节对齐)
+//         用 addr[2] 选择 RDATA[63:32] 还是 RDATA[31:0]
+//       否则读 头+4 (ref_count) 会拿到 头+0 (obj_id) 的低半字!
 //
 // 时序:
 //   start=1 → 状态IDLE→REQ→DATA → done=1, rdata=有效
@@ -35,13 +39,14 @@ module gc_axi_read (
 );
 
     // 消除未使用位的警告
-    wire _unused_axi = &{1'b0, RDATA[63:32]};
+    wire _unused_axi = &{1'b0, RRESP};
 
     localparam S_IDLE = 2'd0,   // 等待启动
                S_REQ  = 2'd1,   // 发送读地址
                S_DATA = 2'd2;   // 等待读数据
 
     reg [1:0] state = S_IDLE;
+    reg       hi_sel = 1'b0;    // 1 = 取64位字的高半 (addr[2]==1)
 
     assign ARPROT = 3'b000;    // 非安全, 非特权
     assign RREADY = 1'b1;      // 始终准备好接收
@@ -59,7 +64,8 @@ module gc_axi_read (
                     done <= 1'b1;
                     if (start) begin
                         done    <= 1'b0;
-                        ARADDR  <= addr;
+                        ARADDR  <= {addr[31:3], 3'b000};   // 8字节对齐
+                        hi_sel  <= addr[2];                // 奇字/偶字选择
                         ARVALID <= 1'b1;
                         state   <= S_REQ;
                     end
@@ -75,7 +81,7 @@ module gc_axi_read (
                 S_DATA: begin
                     if (RVALID) begin
                         if (RRESP == 2'b00) begin
-                            rdata <= RDATA[31:0];  // 取64位总线的低32位
+                            rdata <= hi_sel ? RDATA[63:32] : RDATA[31:0];
                         end else begin
                             rdata <= 32'hFFFFFFFF;  // 错误 → 全1 (引擎跳过)
                         end
