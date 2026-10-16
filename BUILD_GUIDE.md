@@ -74,6 +74,15 @@ CONFIG_BOOT_SCRIPT_OFFSET=0x9C0000
 # 注意: 不要再设 CONFIG_OF_BOARD / CONFIG_SYS_FDT_BASE / CONFIG_OF_EMBED。
 # 设备树由 FSBL 从 BOOT.BIN 的第 4 分区加载到 0x00100000
 # (见 bootgen.bif 里的 [load=0x100000] system.dtb), U-Boot 默认流程即可拿到。
+#
+# PetaLinux initramfs 的 image.ub 里内核子镜像高达 ~101MiB
+# (initramfs 被链接进内核 Image), 而 Xilinx 默认
+# CONFIG_SYS_BOOTM_LEN=0x3c00000(60MiB) 装不下, bootm 会报
+#   "Image too large: increase CONFIG_SYS_BOOTM_LEN"
+# 必须放大到 256MiB:
+CONFIG_SYS_BOOTM_LEN=0x10000000
+# 同时在 platform-top.h 的 CONFIG_ARCH_ZYNQ 段里定义了
+# CONFIG_SYS_BOOTM_LEN / CFG_SYS_BOOTM_LEN 两份作为兜底。
 ```
 
 ### 6. TF 卡分区
