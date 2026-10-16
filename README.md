@@ -27,7 +27,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 │  │  Linux (PetaLinux)   │     │  │  └── gc_axi_read   │  │  │
 │  └──────────────────────┘     │  └────────────────────┘  │  │
 │                               └──────────┬───────────────┘  │
-│                                          │ AXI HP (200MHz)  │
+│                                          │ AXI HP (100MHz)  │
 │                               ┌──────────▼───────────────┐  │
 │                               │  DDR3 @ 533MHz           │  │
 │                               │  0x1E000000: Object Graph│  │
@@ -55,7 +55,10 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 | PS CPU | 2× ARM Cortex-A9 @ 666.67MHz |
 | PS 内存 | DDR3 @ 533MHz |
 | 工具链 | Vivado 2026.1 / PetaLinux 2026.1 |
-| 时钟域 | FCLK0=100MHz (引擎) / FCLK1=200MHz (AXI HP) |
+| 时钟域 | **单一时钟域 FCLK0 = 100MHz** —— 引擎 / AXI-Lite / AXI HP 全在同一域，**无 CDC** |
+| 实测资源占用 | LUT 3,982 (1.44%) ／ FF 9,410 (1.70%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
+| 时序 | WNS **+3.217 ns** ／ WHS +0.063 ns（100MHz，约束全部满足） |
+| AXI HP 位宽 | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择） |
 
 ## 目录结构
 
@@ -316,7 +319,11 @@ sudo ./test_fpga
 - BFS 队列固定 4096 项，引擎在 `q_tail >= 4000` 时**静默丢弃入队**：若某一刻
   标记前沿宽度超过上限，经由被丢弃对象才能到达的对象会**漏标**（`MARKED` 也偏小）。
   测试图的前沿远小于该上限；真实堆需要加大队列或做溢写
-- `rd_start`/`rd_addr` 跨时钟域无同步器（200MHz 快域 → 100MHz 慢域，原型可接受）
+- **单一时钟域**：引擎与 AXI HP 同在 FCLK0=100MHz，因此**没有 CDC 同步器**。
+  代价是 HP 带宽减半 —— 本设计**延迟受限**而非带宽受限，实测无影响
+- 读命令队列深度 80 条、最大未完成 AR 16 笔（`gc_axi_read` 的 `QD`/`MAXO`）。
+  队列满时引擎自动转为"边压边收"，所以**单个对象的引用数不再有上限**
+  （旧版 `REF_MAX=64` 的**静默截断**已移除）
 - 中断为电平触发，需在 PS7 中配置为边沿触发
 
 ## License
@@ -334,13 +341,13 @@ MIT License
 ```
 FPGA Offload GC Coprocessor for CPython/
 ├─ rtl/               Verilog RTL 源码
-│    gc_top.v          顶层 (AXI-Lite + AXI HP + 跨时钟域同步)
+│    gc_top.v          顶层 (AXI-Lite + AXI HP, 单一时钟域无 CDC)
 │    gc_regs.v         AXI-Lite 寄存器文件
 │    gc_mark_engine.v  BFS 标记状态机 (核心)
-│    gc_bitmap.v       标记位图 4096x32 BRAM
+│    gc_bitmap.v       标记位图 4096x32 BRAM (读/写地址独立, 简单双口)
 │    gc_queue.v        BFS 队列 4096x12 BRAM
-│    gc_axi_read.v     AXI HP 读主控 (64 位对齐 + 半字选择)
-├─ vivado/            build.tcl 一键建工程+综合+实现+导出 XSA ; constraints.xdc
+│    gc_axi_read.v     AXI HP 读命令队列 (多笔未完成读, 64 位对齐 + 半字选择)
+├─ vivado/            build.tcl 首次建工程+综合+实现+导出 XSA ; build_rtl_only.tcl 只改 RTL 时快速重编
 │                     fogccc_proj/ 由 build.tcl 生成, 已 .gitignore
 ├─ csrc/              PS 端 C 驱动 (fpga_gc.h/.c, test_main.c)
 ├─ python/            CPython 侧 ctypes 绑定 + 软件基准
