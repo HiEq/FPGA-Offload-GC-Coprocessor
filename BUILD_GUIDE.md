@@ -152,3 +152,53 @@ while ($true) {
 | FSBL 卡死 | U-Boot 加载失败 | 检查 BIF 分区格式 |
 | U-Boot hang() | 设备树位置不对 | 拼接到 `_end` 精确位置 |
 | DDR 报错 | PS7 DDR 参数不匹配 | 对齐厂商 MT41K256M16 配置 |
+
+## 深度调试总结: 启动链上的坑 (2026-10 实战)
+
+按"从下到上"排列, 任一环错整条链就断:
+
+1. **PS7 外设使能属性名写错** (build.tcl)
+   `PCW_EN_UART0` / `PCW_EN_SDIO0` 不是有效的使能属性. 正确写法:
+   `PCW_UART0_PERIPHERAL_ENABLE` / `PCW_SD0_PERIPHERAL_ENABLE`.
+   写错的后果: XSA 里 UART0/SDIO0 实际未使能 -> ps7_init.c 中
+   `UART0_CPU_1XCLKACT=0`, `UART REGISTERS` 段为空, 没有 MIO14/15 配置
+   -> FSBL 无串口; U-Boot 写 TX FIFO 卡死.
+
+2. **gc_top 地址映射**: `get_bd_addr_segs` 必须用 PS7 地址空间下的段
+   (`/ps7_0/Data/SEG_gc_top_0_reg0`), 用 interconnect 引脚查不到.
+
+3. **TF 卡必须有 boot.scr** (images/linux/boot.scr)
+   只放 BOOT.BIN + image.ub 会停在 `Zynq>`. boot.scr 里的 mmc0 分支负责
+   `fatload mmc 0 0x10000000 image.ub; bootm 0x10000000`.
+
+4. **U-Boot CONFIG_SYS_BOOTM_LEN**: initramfs 被链接进内核后, image.ub
+   的 kernel 子镜像约 101MiB, Xilinx 默认 0x3c00000 (60MiB) 不够 ->
+   `Image too large`. 改 bsp.cfg + platform-top.h 提到 0x10000000.
+
+5. **!! images/linux/system.bit 是一次性解压的 !!**
+   它只在 `petalinux-config --get-hw-description` 时从 XSA 解出来.
+   之后换 XSA / 反复 petalinux-build **都不会更新它** ->
+   BOOT.BIN 里装的一直是旧位流 (所有 RTL 改动全部白做!).
+   修法:
+   ```bash
+   unzip -o project-spec/hw-description/system.xsa system.bit -d /tmp/x
+   cp /tmp/x/system.bit project-spec/hw-description/system.bit
+   cp /tmp/x/system.bit images/linux/system.bit
+   petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
+                          --fpga images/linux/system.bit --u-boot --force
+   ```
+
+6. **RTL: AXI HP 是 64 位宽, 32 位读必须做 8 字节对齐 + 半字选择**
+   ```verilog
+   ARADDR <= {addr[31:3], 3'b000 };   // 8 字节对齐
+   hi_sel <= addr[2];                 // 奇/偶半字
+   rdata  <= hi_sel ? RDATA[63:32] : RDATA[31:0];
+   ```
+   否则读 对象头+4 (ref_count) 会拿到 头+0 (obj_id) -> 遍历立刻结束.
+
+7. **对象图布局: 引用数组必须排在所有对象头之后**
+   头区 = n*16 字节; `REF_BASE` 硬编码 0x1000 在 n>256 时会覆盖对象头.
+
+### 登录
+`/etc/shadow` 里 root 是 `*` (锁定). 用 `petalinux` 用户 + 空密码登录
+(首次强制改密), 然后 `sudo -i`.
