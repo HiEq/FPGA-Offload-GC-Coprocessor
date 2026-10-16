@@ -248,3 +248,76 @@ sudo ./test_fpga                          # 需要 root
 ## License
 
 MIT License
+
+---
+
+# 交付包 / 上板验证包
+
+本仓库根目录即为**完整工程**；`artifacts/` + `tools/` 是上板验证所需的一站式内容。
+
+## 目录
+
+```
+FPGA Offload GC Coprocessor for CPython/
+├─ rtl/               Verilog RTL 源码
+│    gc_top.v          顶层 (AXI-Lite + AXI HP + 跨时钟域同步)
+│    gc_regs.v         AXI-Lite 寄存器文件
+│    gc_mark_engine.v  BFS 标记状态机 (核心)
+│    gc_bitmap.v       标记位图 4096x32 BRAM
+│    gc_queue.v        BFS 队列 4096x12 BRAM
+│    gc_axi_read.v     AXI HP 读主控 (64 位对齐 + 半字选择)
+├─ vivado/            build.tcl 一键建工程+综合+实现+导出 XSA ; constraints.xdc
+│                     fogccc_proj/ 由 build.tcl 生成, 已 .gitignore
+├─ csrc/              PS 端 C 驱动 (fpga_gc.h/.c, test_main.c)
+├─ python/            CPython 侧 ctypes 绑定 + 软件基准
+├─ petalinux/         ★ PetaLinux 必须改的配置项 + 那个"system.bit 不更新"的大坑
+├─ tools/             PC 端串口控制台 + 板级测试脚本
+│    fogccc.bat         统一控制台 (开机 raw -> Linux 后自动切仪表盘)
+│    monitor_com5.ps1   后端: 顶部 TASK/CPU0/CPU1/MEM/TEMP + 固定窗口 + 键盘直通
+│    gc_test.py         板级 FPGA mark 测试 (多轮随机规模 + 严格不变式)
+│    log.bat            查看 com5.log
+│    fallback/          备用: 串口推送 / 纯裸控制台
+├─ artifacts/         ★ 要拷到 TF 卡的构建产物
+│    BOOT.BIN  image.ub  boot.scr        -> BOOT 分区
+│    gc_test.py  run_gc.sh               -> USERDATA 分区
+│    mount_data.sh  test_fpga  system.dtb  zynq_fsbl.elf
+└─ BUILD_GUIDE.md     构建步骤 + 启动链上踩过的 7 个坑
+```
+
+## TF 卡布局
+
+| 分区 | 类型 | 卷标 | 内容 |
+|---|---|---|---|
+| p1 | FAT32 | (BOOT) | `BOOT.BIN` / `image.ub` / `boot.scr` / `mount_data.sh` |
+| p2 | FAT32 | **USERDATA** | `gc_test.py` / `run_gc.sh` / 工程文件 / 日志 `gc_run_*.log` |
+
+> ⚠️ `USERDATA` 必须是 **FAT32**：板子内核没有编 exFAT (`# CONFIG_EXFAT_FS is not set`)。
+> Windows 图形界面无法创建 >32GB 的 FAT32，用板子自己格式化：
+> `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`
+
+## 上板流程
+
+```
+① 双击 tools/fogccc.bat          (先开着; 它会等待串口出现)
+② 板子上电                        (开机阶段键盘锁定, 不会打断 autoboot)
+   出现 linux login:              (自动切换成仪表盘, 键盘解锁)
+③ root  + 回车                    (空密码)
+④ mkdir -p /mnt/userdata && mount /dev/mmcblk0p2 /mnt/userdata
+⑤ sh /mnt/userdata/run_gc.sh
+```
+
+测试输出同时打印到窗口并写入 `USERDATA` 分区上的 `gc_run_<时间戳>.log`。
+
+## 测试判据 (为什么不会假 OK)
+
+`gc_test.py` 每轮随机取对象数 `N`，把活对象区构造成**从对象 0 出发的生成树**
+（因此**每个活对象都可达，期望标记数 = L 是事先已知的**），垃圾区只在自己内部连边
+（期望标记 = 0）。每轮同时用硬件和软件各自与已知真值 `L` 比对，并检查：
+
+- 引擎**真的跑过**（`CYCLES` 寄存器发生变化 —— 只轮询 `DONE` 无法区分"跑完"和"没跑"，
+  因为引擎只要 ~40µs 而 Python 轮询要 100µs+，会读到上一轮的旧值）
+- `DONE` 已置位、`cycles >= 4096`（清位图的最少耗时）
+- `hardware marked == L`、`software marked == L`、`garbage == 0`
+
+**只有全部不变式成立才打印 `OK`**，否则逐项列出失败原因（`NO-RUN` / `DONE-LOW` /
+`CYCLES<4096` / `HW!=(x vs L)` / `SW!=(x vs L)` / `GARBAGE=n`）。

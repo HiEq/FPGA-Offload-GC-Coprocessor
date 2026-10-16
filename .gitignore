@@ -1,7 +1,7 @@
-# Vivado 工程生成目录
+# Vivado 工程生成目录 (由 vivado/build.tcl 重新生成)
 vivado/fogccc_proj/
 
-# Vivado 日志
+# Vivado 日志/临时
 vivado/nlviewcommon.logfile
 vivado/*.log
 vivado/*.jou
@@ -11,8 +11,15 @@ vivado/*.jou
 *.so
 *.bit
 *.dcp
-*.xsa
 *.ltx
+
+# 构建产物: image.ub 有 106MB, 超过 GitHub 单文件 100MB 限制, 不入库
+# (可由 PetaLinux 重新生成; BOOT.BIN 等小件仍然入库)
+artifacts/image.ub
+
+# 运行日志
+artifacts/gc_run_*.log
+tools/com5.log
 
 # Python 缓存
 __pycache__/

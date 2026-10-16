@@ -1,10 +1,10 @@
 param(
     [string]$Port = "COM5",
     [int]$Baud = 115200,
-    [string]$File = "C:\Users\wwwmt\Desktop\fogccc_build\gc_test.py",
+    [string]$File = "$PSScriptRoot\gc_test.py",
     [string]$Remote = "/tmp/gc.py",
     [string]$RunArgs = "4096 8 2",
-    [string]$Log = "C:\Users\wwwmt\Desktop\fogccc_build\com5.log",
+    [string]$Log = "$PSScriptRoot\com5.log",
     [int]$LineDelayMs = 18,
     [switch]$Color,
     [switch]$PushOnly,

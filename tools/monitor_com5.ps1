@@ -1,10 +1,12 @@
 param(
     [string]$Port     = "COM5",
     [int]   $Baud     = 115200,
-    [string]$Log      = "C:\Users\wwwmt\Desktop\fogccc_build\com5.log",
+    [string]$Log      = "$PSScriptRoot\com5.log",
     [switch]$NoInput,
     [switch]$Color,
     [switch]$NoBoardStats,
+    [switch]$AlwaysKeys,        # forward keys during boot too (a keypress aborts U-Boot autoboot!)
+    [int]   $WaitPortSec = 300, # wait this long for the serial port to appear
     [int]   $RefreshMs = 250,
     [int]   $StatMs    = 2000
 )
@@ -45,8 +47,8 @@ function MakeBar([double]$pct, [int]$w, [string]$rgb) {
     }
     return (('|' * $f) + ('.' * $e))
 }
-function Gauge([string]$label, [double]$pct, [int]$barW, [string]$rgb) {
-    return (" {0,-4} [" -f $label) + (MakeBar $pct $barW $rgb) + ("] {0,5:N1}%" -f $pct)
+function Gauge([string]$label, [double]$pct, [int]$barW, [string]$rgb, [string]$unit = '%') {
+    return (" {0,-4} [" -f $label) + (MakeBar $pct $barW $rgb) + ("] {0,5:N1}{1}" -f $pct, $unit)
 }
 function PadTo([string]$s, [int]$W) {
     $d = $W - (VisLen $s)
@@ -55,12 +57,50 @@ function PadTo([string]$s, [int]$W) {
 }
 
 # ================================================================ serial
-$sp = New-Object -TypeName System.IO.Ports.SerialPort -ArgumentList @($Port, $Baud, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)
+# ================================================================ port resolve + wait
+function Resolve-Port([string]$want) {
+    $names = [System.IO.Ports.SerialPort]::GetPortNames()
+    if ($want -and $want -ne 'auto' -and ($names -contains $want)) { return $want }
+    # look for a CH340 / USB-serial adapter
+    try {
+        $d = Get-CimInstance Win32_PnPEntity -ErrorAction Stop |
+             Where-Object { $_.Name -match '\(COM\d+\)' -and
+                            $_.Name -match 'CH340|USB-SERIAL|USB Serial|CP210|FT232|Silicon Labs' } |
+             Select-Object -First 1
+        if ($d -and $d.Name -match '\((COM\d+)\)') { return $Matches[1] }
+    } catch {}
+    if ($want -and $want -ne 'auto' -and ($names -contains $want)) { return $want }
+    return $null
+}
+
+$sp = New-Object -TypeName System.IO.Ports.SerialPort -ArgumentList @('COM1', $Baud, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)
 $sp.ReadBufferSize  = 65536
 $sp.WriteBufferSize = 65536
 $sp.ReadTimeout  = 50
 $sp.WriteTimeout = 1000
-try { $sp.Open() } catch { Write-Host "Failed to open $Port : $_"; exit 1 }
+
+Write-Host ("waiting for a serial port (looking for $Port / CH340), up to $WaitPortSec s ...")
+$deadline = (Get-Date).AddSeconds($WaitPortSec)
+$opened = $false
+while ((Get-Date) -lt $deadline) {
+    $use = Resolve-Port $Port
+    if ($use) {
+        try {
+            $sp.PortName = $use
+            $sp.Open()
+            $opened = $true
+            $Port = $use
+            Write-Host ("connected to $use")
+            break
+        } catch { }
+    }
+    Start-Sleep -Milliseconds 500
+}
+if (-not $opened) {
+    Write-Host "timed out waiting for the serial port.  Plug/power the board and re-run."
+    Write-Host "If it is not COM5, pass the right one:  -Port COM7   (or -Port auto)"
+    exit 1
+}
 
 $sw = New-Object System.IO.StreamWriter($Log, $true)
 $sw.AutoFlush = $true
@@ -74,6 +114,7 @@ $script:rxBytes = 0
 # ---- board metrics ----
 $script:cpuPct  = @(0.0, 0.0)          # core0, core1
 $script:memPct  = 0.0
+$script:tempC   = -1.0
 $script:taskPct = 0.0
 $script:taskLab = 'idle'
 $script:prevCpu = @{}                  # name -> @(total, idle)
@@ -87,8 +128,13 @@ $script:lastTask  = [datetime]::MinValue
 $script:lastPrompt = ''
 $script:injecting  = $false
 $script:injectAt   = [datetime]::MinValue
+$script:phase      = 'raw'      # 'raw' while booting, 'dash' once Linux/login is up
+$script:lastLine   = ''
+$script:lastLineAt = [datetime]::MinValue
 
-$STAT_CMD = "{ head -3 /proc/stat; grep -E 'MemTotal|MemAvailable' /proc/meminfo; } | sed 's/^/@@S /'"
+$STAT_CMD = (@'
+{ head -3 /proc/stat; grep -E 'MemTotal|MemAvailable' /proc/meminfo; T=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null); [ -z "$T" ] && T=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null); [ -z "$T" ] && T=$(awk '{printf "%d",$1*503.975/4096*1000-273150}' /sys/bus/iio/devices/iio:device0/in_temp0_raw 2>/dev/null); [ -z "$T" ] && T=-1; echo TEMP $T; } | sed 's/^/@@S /'
+'@).Trim()
 
 function Note-Prompt([string]$line) {
     $t = $line.TrimEnd()
@@ -99,6 +145,15 @@ function Note-Prompt([string]$line) {
     }
     # if we are at a login/password prompt, stop poking the board with newlines
     if ($line -match 'Password:' -or $line -match 'login:') { $script:nudges = 99 }
+    # raw -> dashboard ONLY when Linux has really come up (login: or a shell prompt).
+    # Deliberately NOT on the U-Boot prompt: no key must become live before login.
+    if ($script:phase -eq 'raw') {
+        if ($line -match 'login:' -or $script:promptOk) {
+            $script:phase = 'dash'
+            $script:prevFrame = @()
+            try { [Console]::Clear() } catch {}
+        }
+    }
 }
 
 function Parse-Stat([string]$line) {
@@ -128,6 +183,10 @@ function Parse-Stat([string]$line) {
         $av = [double]$Matches[1]
         if ($script:memTot -gt 0) { $script:memPct = (1.0 - $av / $script:memTot) * 100.0 }
     }
+    elseif ($line -match '^@@S\s+TEMP\s+(-?\d+)') {
+        $m = [double]$Matches[1]
+        $script:tempC = if ($m -lt 0) { -1.0 } else { $m / 1000.0 }
+    }
     elseif ($line -match '^@@TASK\s+(\d+)\s*(.*)$') {
         $script:taskPct = [double]$Matches[1]
         $script:taskLab = $Matches[2].Trim()
@@ -149,6 +208,7 @@ function Add-Serial([string]$chunk) {
         if ($c -eq "`n") {
             $line = Get-CurLine
             $script:lcol = 0; $script:llen = 0
+            if ($line.Length -gt 0) { $script:lastLine = $line; $script:lastLineAt = [datetime]::Now }
             if ($line -like '*@@S*' -or $line -like '*@@TASK*') {
                 Parse-Stat $line          # control line: parse, do NOT show in io pane
             } elseif ($line.Length -gt 0) {
@@ -192,12 +252,15 @@ function Render {
     if ($tbw -lt 6) { $tbw = 6 }
     $line0 = PadTo (((Gauge 'TASK' $script:taskPct $tbw '93') + ' ' + $lab)) $W
 
-    # CPU0 CPU1 MEM
-    $bw = [int](($W - 51) / 3)
+    # CPU0 CPU1 MEM TEMP
+    $bw = [int](($W - 66) / 4)
     if ($bw -lt 6) { $bw = 6 }
-    $line1 = PadTo (((Gauge 'CPU0' $script:cpuPct[0] $bw '96') + '   ' +
-                     (Gauge 'CPU1' $script:cpuPct[1] $bw '96') + '   ' +
-                     (Gauge 'MEM'  $script:memPct  $bw '92'))) $W
+    $tp = $script:tempC
+    if ($tp -lt 0) { $tp = 0 }
+    $line1 = PadTo (((Gauge 'CPU0' $script:cpuPct[0] $bw '96') + '  ' +
+                     (Gauge 'CPU1' $script:cpuPct[1] $bw '96') + '  ' +
+                     (Gauge 'MEM'  $script:memPct  $bw '92') + '  ' +
+                     (Gauge 'TEMP' $tp $bw '91' 'C'))) $W
 
     # divider
     $info = " PetaLinux  $Port @ $Baud  ${W}x${H}  RX=$($script:rxBytes)B  $([datetime]::Now.ToString('HH:mm:ss')) "
@@ -255,16 +318,31 @@ function Render {
 try { [Console]::CursorVisible = $false } catch {}
 try { [Console]::Clear() } catch {}
 
+Write-Host "======================================================================"
+Write-Host " FOGCCC console   $Port @ $Baud   ->  $Log"
+Write-Host " boot phase: keystrokes are NOT forwarded yet"
+Write-Host "             (this prevents a stray key aborting U-Boot autoboot)"
+Write-Host "             keys start working once Linux reaches 'login:'"
+Write-Host "             override with -AlwaysKeys if you must talk to U-Boot"
+Write-Host "======================================================================"
+
 $lastRender = [datetime]::MinValue
 try {
     while ($true) {
         $now = [datetime]::Now
 
         # --- serial in ---
-        try { if ($sp.BytesToRead -gt 0) { Add-Serial ($sp.ReadExisting()) } } catch {}
+        try {
+            if ($sp.BytesToRead -gt 0) {
+                $chunk = $sp.ReadExisting()
+                if ($script:phase -eq 'raw') { Write-Host $chunk -NoNewline }   # boot: plain scroll
+                Add-Serial $chunk
+            }
+        } catch {}
 
-        # --- keyboard out ---
-        if (-not $NoInput) {
+        # --- keyboard out (suppressed during boot unless -AlwaysKeys, so a stray
+        #     keypress cannot abort U-Boot autoboot) ---
+        if (-not $NoInput -and ($AlwaysKeys -or $script:phase -eq 'dash')) {
             try {
                 while ([Console]::KeyAvailable) {
                     $k  = [Console]::ReadKey($true)
@@ -282,18 +360,14 @@ try {
         if (-not $NoBoardStats) {
             $idleKey  = ($now - $script:lastKey).TotalMilliseconds
             $idleStat = ($now - $script:lastStat).TotalMilliseconds
-            if ($idleKey -gt 2000 -and $idleStat -gt $StatMs) {
-                if ($script:promptOk) {
-                    $script:lastStat = $now
-                    $script:injecting = $true
-                    $script:injectAt  = $now
-                    $sp.Write($STAT_CMD + "`n")
-                } elseif ($script:nudges -lt 6) {
-                    # nothing seen yet -> poke the board so it prints a shell prompt
-                    $script:nudges++
-                    $script:lastStat = $now
-                    $sp.Write("`n")
-                }
+            # NEVER poke the board while we are unsure: a stray newline interrupts
+            # U-Boot autoboot.  Only inject once we have REALLY seen a shell prompt.
+            if ($script:promptOk -and $script:phase -eq 'dash' -and
+                $idleKey -gt 2000 -and $idleStat -gt $StatMs) {
+                $script:lastStat  = $now
+                $script:injecting = $true
+                $script:injectAt  = $now
+                $sp.Write($STAT_CMD + "`n")
             }
         }
 
@@ -306,8 +380,19 @@ try {
             $script:taskLab = 'idle'
         }
 
-        # --- render ---
-        if (($now - $lastRender).TotalMilliseconds -ge $RefreshMs) {
+        # --- safety unlock: if the board has been SITTING at a U-Boot prompt for 3s
+        #     (i.e. autoboot really is not coming), enable the keyboard so you can
+        #     type 'boot' by hand. ---
+        if ($script:phase -eq 'raw' -and
+            $script:lastLine -match '^\s*(Zynq>|=>)' -and
+            (($now - $script:lastLineAt).TotalSeconds -gt 3)) {
+            $script:phase = 'dash'
+            $script:prevFrame = @()
+            try { [Console]::Clear() } catch {}
+        }
+
+        # --- render (dashboard only once Linux is up) ---
+        if ($script:phase -eq 'dash' -and (($now - $lastRender).TotalMilliseconds -ge $RefreshMs)) {
             $lastRender = $now
             Render
         }
