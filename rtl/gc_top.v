@@ -6,12 +6,16 @@
 //   S_AXI_*    : AXI-Lite从机, 连接PS的M_AXI_GP0 (寄存器控制)
 //   S_AXI_HP_* : AXI HP从机, 连接PS的S_AXI_HP0  (读DDR对象图)
 //
+// 时钟: 单一时钟域. S_AXI_HP_ACLK 与 S_AXI_ACLK 都接 FCLK_CLK0 (100MHz).
+//       (旧版 HP 跑 FCLK_CLK1=200MHz, 需要 2FF CDC 同步 rd_done/rd_data;
+//        现在读主控带命令/数据 FIFO, 流式数据无法简单 2FF 跨域, 故统一时钟域.)
+//
 // 内部结构:
 //   gc_regs        AXI-Lite寄存器接口
 //   gc_mark_engine BFS标记状态机 (核心)
-//   gc_bitmap      标记位图 (双口BRAM)
+//   gc_bitmap      标记位图 (简单双口BRAM, 读/写地址独立)
 //   gc_queue       BFS队列 (双口BRAM)
-//   gc_axi_read    AXI HP读主控
+//   gc_axi_read    AXI HP读命令队列主控 (多笔未完成读)
 //   root_mem[]     根集存储 (分布式RAM)
 // ============================================================
 module gc_top (
@@ -37,7 +41,7 @@ module gc_top (
     input  wire        S_AXI_RREADY,
 
     // ---- AXI HP 从机 (PL读DDR中的对象图) ----
-    // 无ID信号 — 只做单次读, 不需要ID匹配
+    // 无ID信号 — 所有读同ID, 保证按序返回
     input  wire        S_AXI_HP_ACLK,
     input  wire        S_AXI_HP_ARESETN,
     output wire [31:0] S_AXI_HP_ARADDR,
@@ -50,7 +54,6 @@ module gc_top (
     output wire        S_AXI_HP_RREADY,
 
     // ---- AXI HP 写通道 (桩: 只应答, 不实际写DDR) ----
-    // 必须存在, 否则Vivado将S_AXI_HP识别为AXI4-Lite而非AXI4
     output wire [31:0] S_AXI_HP_AWADDR,
     output wire [2:0]  S_AXI_HP_AWPROT,
     output wire        S_AXI_HP_AWVALID,
@@ -72,13 +75,6 @@ module gc_top (
     wire        w_start, w_clear_bm, w_clear_q;
     wire        w_done;
     wire [31:0] w_marked_count, w_cycles;
-
-    // 消除未使用端口的警告
-    wire _unused = &{1'b0,
-                     S_AXI_WSTRB,                          // AXI-Lite字节选通(不用)
-                     S_AXI_HP_RDATA[63:32],                // 64位只用低32位
-                     S_AXI_HP_AWREADY, S_AXI_HP_WREADY,    // 写通道桩(从不写)
-                     S_AXI_HP_BRESP, S_AXI_HP_BVALID};     // 写响应(从不写)
 
     // ===== AXI HP 写通道桩 =====
     // 本设计只读DDR, 从不发起写。
@@ -120,35 +116,25 @@ module gc_top (
     wire [11:0] w_q_head, w_q_tail;
     wire        w_q_empty = (w_q_head == w_q_tail);
 
-    // 位图引擎端口
-    wire [11:0] w_bm_addr;
+    // 位图引擎端口 (读口/写口地址独立)
+    wire [11:0] w_bm_raddr, w_bm_waddr;
     wire [31:0] w_bm_wdata;
     wire [31:0] w_bm_rdata;
     wire        w_bm_we;
 
-    // DDR读接口 (跨时钟域: AXI-Lite域 → AXI HP域)
-    wire [31:0] w_rd_addr;
-    wire        w_rd_start, w_rd_done;
+    // DDR读命令队列接口 (同一时钟域, 无CDC)
+    wire [31:0] w_rd_cmd_addr;
+    wire        w_rd_cmd_valid, w_rd_cmd_ready;
     wire [31:0] w_rd_data;
+    wire        w_rd_data_valid, w_rd_data_ready;
+    wire        w_rd_err;
 
-    // ===== CDC同步器: AXI HP域 → AXI-Lite域 =====
-    // rd_done 跨回AXI-Lite域时需要2FF同步
-    reg        rd_done_sync1, rd_done_sync2;
-    reg [31:0] rd_data_sync1, rd_data_sync2;
-
-    always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
-        if (!S_AXI_ARESETN) begin
-            rd_done_sync1 <= 1'b1;
-            rd_done_sync2 <= 1'b1;
-            rd_data_sync1 <= 32'h0;
-            rd_data_sync2 <= 32'h0;
-        end else begin
-            rd_done_sync1 <= w_rd_done;
-            rd_done_sync2 <= rd_done_sync1;
-            rd_data_sync1 <= w_rd_data;
-            rd_data_sync2 <= rd_data_sync1;
-        end
-    end
+    // 消除未使用端口/信号的警告
+    wire _unused = &{1'b0,
+                     S_AXI_WSTRB,                          // AXI-Lite字节选通(不用)
+                     S_AXI_HP_AWREADY, S_AXI_HP_WREADY,    // 写通道桩(从不写)
+                     S_AXI_HP_BRESP, S_AXI_HP_BVALID,      // 写响应(从不写)
+                     w_rd_err};                            // 读错误标志(仅诊断)
 
     // ==================== AXI-Lite 寄存器 ====================
     gc_regs u_regs (
@@ -189,42 +175,46 @@ module gc_top (
 
     // ==================== 标记引擎 ====================
     gc_mark_engine u_engine (
-        .clk           (S_AXI_ACLK),
-        .rst_n         (S_AXI_ARESETN),
-        .obj_base      (w_obj_base),
-        .obj_count     (w_obj_count),
-        .root_count    (w_root_count),
-        .start         (w_start),
-        .root_rd_addr  (root_rd_addr),
-        .root_rd_data  (root_rd_data),
-        .q_push        (w_q_push),
-        .q_push_data   (w_q_push_data),
-        .q_push_addr   (w_q_push_addr),
-        .q_pop         (w_q_pop),
-        .q_pop_ack     (w_q_pop_ack),
-        .q_pop_id      (w_q_pop_id),
-        .q_tail        (w_q_tail),
-        .q_empty       (w_q_empty),
-        .bm_addr       (w_bm_addr),
-        .bm_wdata      (w_bm_wdata),
-        .bm_rdata      (w_bm_rdata),
-        .bm_we         (w_bm_we),
-        .rd_addr       (w_rd_addr),
-        .rd_start      (w_rd_start),
-        .rd_done       (rd_done_sync2),   // 同步后的done
-        .rd_data       (rd_data_sync2),   // 同步后的data
-        .done          (w_done),
-        .marked_count  (w_marked_count),
-        .cycles        (w_cycles)
+        .clk            (S_AXI_ACLK),
+        .rst_n          (S_AXI_ARESETN),
+        .obj_base       (w_obj_base),
+        .obj_count      (w_obj_count),
+        .root_count     (w_root_count),
+        .start          (w_start),
+        .root_rd_addr   (root_rd_addr),
+        .root_rd_data   (root_rd_data),
+        .q_push         (w_q_push),
+        .q_push_data    (w_q_push_data),
+        .q_push_addr    (w_q_push_addr),
+        .q_pop          (w_q_pop),
+        .q_pop_ack      (w_q_pop_ack),
+        .q_pop_id       (w_q_pop_id),
+        .q_tail         (w_q_tail),
+        .q_empty        (w_q_empty),
+        .bm_raddr       (w_bm_raddr),
+        .bm_rdata       (w_bm_rdata),
+        .bm_waddr       (w_bm_waddr),
+        .bm_wdata       (w_bm_wdata),
+        .bm_we          (w_bm_we),
+        .rd_cmd_addr    (w_rd_cmd_addr),
+        .rd_cmd_valid   (w_rd_cmd_valid),
+        .rd_cmd_ready   (w_rd_cmd_ready),
+        .rd_data        (w_rd_data),
+        .rd_data_valid  (w_rd_data_valid),
+        .rd_data_ready  (w_rd_data_ready),
+        .done           (w_done),
+        .marked_count   (w_marked_count),
+        .cycles         (w_cycles)
     );
 
-    // ==================== 标记位图 (纯BRAM, 无清零逻辑) ====================
+    // ==================== 标记位图 (简单双口BRAM, 读写地址独立) ====================
     gc_bitmap u_bitmap (
         .clk   (S_AXI_ACLK),
-        .addra (w_bm_addr),
-        .dina  (w_bm_wdata),
-        .wea   (w_bm_we),
-        .douta (w_bm_rdata)
+        .waddr (w_bm_waddr),
+        .din   (w_bm_wdata),
+        .we    (w_bm_we),
+        .raddr (w_bm_raddr),
+        .dout  (w_bm_rdata)
     );
 
     // ==================== BFS队列 ====================
@@ -242,22 +232,25 @@ module gc_top (
         .tail   (w_q_tail)
     );
 
-    // ==================== AXI HP 读主控 ====================
+    // ==================== AXI HP 读命令队列主控 ====================
     gc_axi_read u_axi_rd (
-        .ACLK    (S_AXI_HP_ACLK),
-        .ARESETN (S_AXI_HP_ARESETN),
-        .start   (w_rd_start),
-        .addr    (w_rd_addr),
-        .rdata   (w_rd_data),
-        .done    (w_rd_done),
-        .ARADDR  (S_AXI_HP_ARADDR),
-        .ARPROT  (S_AXI_HP_ARPROT),
-        .ARVALID (S_AXI_HP_ARVALID),
-        .ARREADY (S_AXI_HP_ARREADY),
-        .RDATA   (S_AXI_HP_RDATA),
-        .RRESP   (S_AXI_HP_RRESP),
-        .RVALID  (S_AXI_HP_RVALID),
-        .RREADY  (S_AXI_HP_RREADY)
+        .ACLK        (S_AXI_HP_ACLK),
+        .ARESETN     (S_AXI_HP_ARESETN),
+        .cmd_valid   (w_rd_cmd_valid),
+        .cmd_addr    (w_rd_cmd_addr),
+        .cmd_ready   (w_rd_cmd_ready),
+        .data_out    (w_rd_data),
+        .data_valid  (w_rd_data_valid),
+        .data_ready  (w_rd_data_ready),
+        .err         (w_rd_err),
+        .ARADDR      (S_AXI_HP_ARADDR),
+        .ARPROT      (S_AXI_HP_ARPROT),
+        .ARVALID     (S_AXI_HP_ARVALID),
+        .ARREADY     (S_AXI_HP_ARREADY),
+        .RDATA       (S_AXI_HP_RDATA),
+        .RRESP       (S_AXI_HP_RRESP),
+        .RVALID      (S_AXI_HP_RVALID),
+        .RREADY      (S_AXI_HP_RREADY)
     );
 
     assign irq_o = w_done;

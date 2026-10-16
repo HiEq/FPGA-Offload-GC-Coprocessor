@@ -1,11 +1,12 @@
 param(
     [string]$Port     = "COM5",
     [int]   $Baud     = 115200,
-    [string]$Log      = "$PSScriptRoot\com5.log",
+    [string]$Log      = "$PSScriptRoot\serial.log",
     [switch]$NoInput,
     [switch]$Color,
     [switch]$NoBoardStats,
     [switch]$AlwaysKeys,        # forward keys during boot too (a keypress aborts U-Boot autoboot!)
+    [switch]$Plain,             # no dashboard, serial passes straight through (fast typing)
     [int]   $WaitPortSec = 300, # wait this long for the serial port to appear
     [int]   $RefreshMs = 250,
     [int]   $StatMs    = 2000
@@ -103,7 +104,9 @@ if (-not $opened) {
 }
 
 $sw = New-Object System.IO.StreamWriter($Log, $true)
-$sw.AutoFlush = $true
+# AutoFlush=true 会让每一小段串口数据都触发一次磁盘 flush, 输入/粘贴时明显卡顿.
+# 改成按渲染节奏统一 flush (见主循环), 退出时也 flush.
+$sw.AutoFlush = $false
 
 $script:lines   = New-Object System.Collections.Generic.List[string]
 $script:lbuf    = New-Object 'char[]' 1024      # terminal-style line buffer
@@ -132,6 +135,8 @@ $script:phase      = 'raw'      # 'raw' while booting, 'dash' once Linux/login i
 $script:lastLine   = ''
 $script:lastLineAt = [datetime]::MinValue
 $script:curSeen    = ''
+$script:lastRxAt   = [datetime]::Now
+$script:kbErrShown = $false
 
 $STAT_CMD = (@'
 { head -3 /proc/stat; grep -E 'MemTotal|MemAvailable' /proc/meminfo; T=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null); [ -z "$T" ] && T=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null); [ -z "$T" ] && T=$(awk '{printf "%d",$1*503.975/4096*1000-273150}' /sys/bus/iio/devices/iio:device0/in_temp0_raw 2>/dev/null); [ -z "$T" ] && T=-1; echo TEMP $T; } | sed 's/^/@@S /'
@@ -264,18 +269,20 @@ function Render {
     # io pane
     $ioH = $H - 3
     if ($ioH -lt 1) { $ioH = 1 }
-    $io = New-Object System.Collections.Generic.List[string]
-    foreach ($x in $script:lines) { $io.Add($x) }
+    # 不要每帧复制整份 3000 行历史 (那样每 250ms 就是几千次分配, 输入会发卡),
+    # 直接按下标取末尾几行即可
     $cl = Get-CurLine
     if ($script:injecting) { $cl = $script:lastPrompt }   # keep the prompt steady while our stats command echoes
-    if ($cl.Length -gt 0) { $io.Add($cl) }
-    $start = [Math]::Max(0, $io.Count - $ioH)
+    $histN = $script:lines.Count
+    $total = $histN
+    if ($cl.Length -gt 0) { $total++ }
+    $start = [Math]::Max(0, $total - $ioH)
 
     $out = New-Object System.Collections.Generic.List[string]
     $out.Add($line0); $out.Add($line1); $out.Add($div)
     $lastLen = 0
-    for ($i = $start; $i -lt $io.Count; $i++) {
-        $s = [string]$io[$i]
+    for ($i = $start; $i -lt $total; $i++) {
+        $s = if ($i -lt $histN) { [string]$script:lines[$i] } else { $cl }
         if ($s.Length -gt $W) { $s = $s.Substring(0, $W) }
         $out.Add($s.PadRight($W))
         $lastLen = $s.Length
@@ -308,6 +315,9 @@ function Render {
 
 # ================================================================ main loop
 try { [Console]::CursorVisible = $false } catch {}
+# 让 Ctrl+C 作为普通按键被读取: 否则 PowerShell 会直接中断脚本, 而且没法用它
+# 把板子 shell 从 '>' 续行态(PS2)里救出来
+try { [Console]::TreatControlCAsInput = $true } catch {}
 try { [Console]::Clear() } catch {}
 
 Write-Host "======================================================================"
@@ -316,19 +326,29 @@ Write-Host " boot phase: keystrokes are NOT forwarded yet"
 Write-Host "             (this prevents a stray key aborting U-Boot autoboot)"
 Write-Host "             keys start working once Linux reaches 'login:'"
 Write-Host "             override with -AlwaysKeys if you must talk to U-Boot"
+Write-Host " TIP: if typing does nothing -> set the input method to EN (US).  A"
+Write-Host "      Chinese IME swallows keystrokes before the console sees them."
+if ($Plain) { Write-Host " PLAIN mode: no dashboard, serial passes straight through (fast typing)" }
 Write-Host "======================================================================"
 
 $lastRender = [datetime]::MinValue
+$lastFlush  = [datetime]::MinValue
 try {
     while ($true) {
-        $now = [datetime]::Now
+        $now     = [datetime]::Now
+        $gotData = $false
+        $typed   = $false
 
         # --- serial in ---
         try {
             if ($sp.BytesToRead -gt 0) {
                 $chunk = $sp.ReadExisting()
-                if ($script:phase -eq 'raw') { Write-Host $chunk -NoNewline }   # boot: plain scroll
+                # 必须用 Write-Host: [Console]::Out.Write 在这个 PowerShell 宿主里
+                # 不会显示到屏幕 (日志里却有数据) —— 见笔记 F18
+                if ($script:phase -eq 'raw' -or $Plain) { Write-Host $chunk -NoNewline }
                 Add-Serial $chunk
+                $gotData = $true
+                $script:lastRxAt = [datetime]::Now
             }
         } catch {}
 
@@ -336,16 +356,34 @@ try {
         #     keypress cannot abort U-Boot autoboot) ---
         if (-not $NoInput -and ($AlwaysKeys -or $script:phase -eq 'dash')) {
             try {
+                # 把一次循环里所有待发按键攒成一个字符串再写一次:
+                #   - 粘贴长命令不再逐字符发起系统调用 (那是卡顿的主因)
+                #   - Enter/退格/Tab 与普通字符按原顺序拼在一起, 顺序也更稳
+                
+                $kb = New-Object System.Text.StringBuilder
                 while ([Console]::KeyAvailable) {
                     $k  = [Console]::ReadKey($true)
-                    $ch = $k.KeyChar
                     $script:lastKey = [datetime]::Now
-                    if     ($k.Key -eq [ConsoleKey]::Enter)     { $sp.Write("`n") }
-                    elseif ($k.Key -eq [ConsoleKey]::Backspace) { $sp.Write([char]8) }
-                    elseif ($k.Key -eq [ConsoleKey]::Tab)       { $sp.Write("`t") }
-                    elseif ($ch -ne [char]0)                    { $sp.Write([string]$ch) }
+                    if     ($k.Key -eq [ConsoleKey]::Enter)     { [void]$kb.Append("`n") }
+                    elseif ($k.Key -eq [ConsoleKey]::Backspace) { [void]$kb.Append([char]8) }
+                    elseif ($k.Key -eq [ConsoleKey]::Tab)       { [void]$kb.Append("`t") }
+                    elseif ($k.KeyChar -ne [char]0)             { [void]$kb.Append($k.KeyChar) }
                 }
-            } catch {}
+                if ($kb.Length -gt 0) {
+                    $typed = $true
+                    $sp.Write($kb.ToString())
+                }
+            } catch {
+                # 原来这里是空的 catch{}, 键盘读失败时完全无声 —— 加一次可见的报错
+                if (-not $script:kbErrShown) {
+                    $script:kbErrShown = $true
+                    Write-Host ""
+                    Write-Host "[monitor] KEYBOARD READ FAILED -> typing cannot work"
+                    Write-Host "          $($_.Exception.Message)"
+                    Write-Host "          try: run fogccc.bat from a plain console, and keep the"
+                    Write-Host "          input method on EN (US)"
+                }
+            }
         }
 
         # --- inject board stats (only when idle at a shell prompt) ---
@@ -382,11 +420,22 @@ try {
             if ($cl.Length -gt 0) {
                 $script:lastLine = $cl
                 if ($cl -match '[#$]\s*$') { $script:promptOk = $true }
+                # 看到 '>' 说明板子进了 PS2 续行态(命令没写完) —— 此时绝不能再注入,
+                # 否则会在坏的输入上继续叠加, 越弄越乱
+                elseif ($cl -match '^\s*>\s*$') { $script:promptOk = $false }
             }
         }
 
         # --- raw -> dashboard, once Linux / the shell is really up.  No key must
         #     become live before that, so autoboot can never be interrupted. ---
+        if ($script:phase -eq 'raw' -and ($now - $script:lastRxAt).TotalSeconds -gt 10) {
+            # 10 s of serial silence => the board is already booted (or off), so it
+            # cannot still be inside the ~3 s U-Boot autoboot window.  Unlock keys,
+            # otherwise a console started after boot can never be typed into.
+            $script:phase = 'dash'
+            $script:prevFrame = @()
+            Write-Host ("`n[monitor] no serial data for 10s -> keyboard unlocked (board is probably already booted)")
+        }
         if ($script:phase -eq 'raw') {
             if ($script:lastLine -match 'login:' -or $script:lastLine -match '[#$]\s*$') {
                 $script:phase = 'dash'
@@ -403,11 +452,19 @@ try {
         }
 
         # --- render (dashboard only once Linux is up) ---
-        if ($script:phase -eq 'dash' -and (($now - $lastRender).TotalMilliseconds -ge $RefreshMs)) {
+        # 有串口数据或有按键时立刻重绘 (最快 40ms 一帧), 空闲时才按 RefreshMs;
+        # 这样打字/粘贴的回显不再最多滞后 250ms.
+        $gap = if ($gotData -or $typed) { 40 } else { $RefreshMs }
+        if (-not $Plain -and $script:phase -eq 'dash' -and (($now - $lastRender).TotalMilliseconds -ge $gap)) {
             $lastRender = $now
             Render
         }
-        Start-Sleep -Milliseconds 10
+        # 日志按秒刷盘 (AutoFlush 已关)
+        if (($now - $lastFlush).TotalMilliseconds -ge 1000) {
+            $lastFlush = $now
+            try { $sw.Flush() } catch {}
+        }
+        Start-Sleep -Milliseconds 3
     }
 }
 finally {

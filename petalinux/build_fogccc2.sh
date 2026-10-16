@@ -1,0 +1,80 @@
+#!/bin/bash
+# ============================================================
+# FOGCCC2 — PetaLinux 重建 (在独立工程 fogccc2_linux 里用新 XSA 重跑)
+#
+# 前置:
+#   - Vivado 已产出  C:\Users\wwwmt\Desktop\FOGCCC2\vivado\system.xsa
+#   - fogccc2_linux 是从 fogccc_linux 复制来的, 保留了全部手工配置:
+#       kernel cmdline = console=ttyPS0,115200 earlyprintk
+#       rootfs = initramfs, hostname = linux, empty-root-password
+#       device-tree 里 reserved-memory pl_graph@1e000000
+#
+# 用法:  wsl -e bash /mnt/c/Users/wwwmt/Desktop/FOGCCC2/petalinux/build_fogccc2.sh
+# ============================================================
+set -e
+set -o pipefail     # 关键: 否则 petalinux-build 失败会被 tee 吞掉, 后面步骤会照着跑
+
+PLNX_ROOT="$HOME/xilinx"
+PROJ="$PLNX_ROOT/fogccc2_linux"
+XSA="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/vivado/fogccc_proj/system.xsa"
+BIT="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
+FSBL="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/artifacts/zynq_fsbl.elf"
+OUT="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/artifacts"
+
+echo "=== Step 0: 检查输入文件 ==="
+ls -la "$XSA" "$BIT" "$FSBL"
+
+echo "=== Step 1: 载入 PetaLinux 2026.1 环境 ==="
+source "$PLNX_ROOT/petalinux/settings.sh"
+echo "PETALINUX_VER=$PETALINUX_VER"
+
+cd "$PROJ"
+
+echo "=== Step 2: 用新硬件描述刷新 (这一步才会更新比特流源) ==="
+petalinux-config --get-hw-description="$XSA" --silentconfig
+
+echo "=== Step 2.5: 校验手工配置是否被 get-hw-description 冲掉 ==="
+fail=0
+grep -q 'CONFIG_SUBSYSTEM_ROOTFS_INITRAMFS=y' project-spec/configs/config \
+    || { echo "!!! 丢失: ROOTFS_INITRAMFS"; fail=1; }
+grep -q 'earlyprintk' project-spec/configs/config \
+    || { echo "!!! 丢失: kernel cmdline (earlyprintk)"; fail=1; }
+grep -q 'CONFIG_imagefeature-empty-root-password=y' project-spec/configs/rootfs_config \
+    || { echo "!!! 丢失: empty-root-password (上板会登不进去)"; fail=1; }
+grep -q 'CONFIG_python3=y' project-spec/configs/rootfs_config \
+    || { echo "!!! 丢失: python3 (板子上跑不了测试脚本)"; fail=1; }
+grep -q 'pl_graph' project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi \
+    || { echo "!!! 丢失: device-tree reserved-memory pl_graph"; fail=1; }
+if [ "$fail" != "0" ]; then
+    echo "!!! 手工配置被冲掉了 —— 停下, 从 fogccc_linux 重新复制一份再来"
+    exit 1
+fi
+echo "手工配置完好"
+
+echo "=== Step 3: 构建 ==="
+# 复制来的工程带着旧路径的 build/tmp, Yocto 会拒绝 (TMPDIR has changed location).
+# 删掉让 BitBake 重建; sstate 缓存仍在, 不会真从零编.
+rm -rf build/tmp
+date
+petalinux-build 2>&1 | tee "$PLNX_ROOT/fogccc2_build.log"
+date
+echo "=== 构建产物时间戳 ==="
+ls -la images/linux/image.ub images/linux/system.dtb images/linux/BOOT.BIN
+
+echo "=== Step 4: 打包 BOOT.BIN (显式带新比特流) ==="
+petalinux-package boot --fsbl "$FSBL" --fpga "$BIT" --u-boot --force
+
+echo "=== Step 5: 拷贝启动文件到 FOGCCC2/artifacts ==="
+cp -v images/linux/BOOT.BIN "$OUT/BOOT.BIN"
+cp -v images/linux/image.ub "$OUT/image.ub"
+cp -v images/linux/boot.scr "$OUT/boot.scr"
+cp -v images/linux/system.dtb "$OUT/system.dtb"
+
+echo "=== Step 6: 校验 DT 里的 reserved-memory / cmdline ==="
+dtc -I dtb -O dts images/linux/system.dtb 2>/dev/null | grep -A3 "pl_graph" || \
+    echo "(跳过: 没有 dtc)"
+strings images/linux/image.ub | grep -m1 "earlyprintk" || true
+
+echo ""
+echo "=== DONE ==="
+ls -la "$OUT/BOOT.BIN" "$OUT/image.ub"

@@ -21,6 +21,10 @@ set SCRIPT_DIR [file dirname [file normalize [info script]]]
 set PROJ_DIR  [file normalize [file join $SCRIPT_DIR "fogccc_proj"]]
 set RTL_DIR    [file normalize [file join $SCRIPT_DIR ".." "rtl"]]
 
+# 综合/实现并行线程数 —— 必须放在**最前面**才会生效!
+# (原来这行写在综合之后, 等于没设, 白白慢了好几倍)
+set_param general.maxThreads 20
+
 puts "INFO: RTL dir = $RTL_DIR"
 puts "INFO: Part    = $PART"
 
@@ -79,9 +83,10 @@ puts "INFO: AXI Interconnect created"
 # ---- 3. Reset Generator (100MHz域) ----
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_gen
 
-# ---- 3.1 Reset Generator (200MHz域, AXI HP专用) ----
-create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_gen_hp
-puts "INFO: Two reset generators created (100MHz + 200MHz)"
+# 单一时钟域: 100MHz (FCLK_CLK0) 同时驱动 AXI-Lite 和 AXI HP.
+# 旧版 HP 跑 FCLK_CLK1=200MHz, 需要独立复位; 现在读主控用命令/数据 FIFO,
+# 流式数据无法简单 2FF 跨域, 故统一时钟域并去掉 rst_gen_hp.
+puts "INFO: Single clock domain (100MHz), no HP reset generator"
 
 # ---- 4. GC Coprocessor ----
 create_bd_cell -type module -reference gc_top gc_top_0
@@ -106,18 +111,17 @@ connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins rst_gen/slowest_sync_c
 
 # PS7 AXI接口时钟 (必须单独连接!)
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins ps7_0/M_AXI_GP0_ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK1] [get_bd_pins ps7_0/S_AXI_HP0_ACLK]
+connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins ps7_0/S_AXI_HP0_ACLK]
 
 # AXI互联每通道时钟
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins axi_lite_ic/S00_ACLK]
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins axi_lite_ic/M00_ACLK]
 
-# FCLK_CLK1 (200MHz) -> AXI HP + HP Interconnect + rst_gen_hp
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK1] [get_bd_pins gc_top_0/S_AXI_HP_ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK1] [get_bd_pins hp_ic/ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK1] [get_bd_pins hp_ic/S00_ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK1] [get_bd_pins hp_ic/M00_ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK1] [get_bd_pins rst_gen_hp/slowest_sync_clk]
+# FCLK_CLK0 (100MHz) -> AXI HP + HP Interconnect (单一时钟域)
+connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins gc_top_0/S_AXI_HP_ACLK]
+connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins hp_ic/ACLK]
+connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins hp_ic/S00_ACLK]
+connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins hp_ic/M00_ACLK]
 
 puts "INFO: Clocks connected"
 
@@ -131,14 +135,13 @@ connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins axi_lite_ic
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins axi_lite_ic/M00_ARESETN]
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins gc_top_0/S_AXI_ARESETN]
 
-# 200MHz域 (AXI HP) — 必须用独立的rst_gen_hp, 保证复位同步到FCLK_CLK1
-connect_bd_net [get_bd_pins ps7_0/FCLK_RESET0_N] [get_bd_pins rst_gen_hp/ext_reset_in]
-connect_bd_net [get_bd_pins rst_gen_hp/peripheral_aresetn] [get_bd_pins gc_top_0/S_AXI_HP_ARESETN]
-connect_bd_net [get_bd_pins rst_gen_hp/peripheral_aresetn] [get_bd_pins hp_ic/ARESETN]
-connect_bd_net [get_bd_pins rst_gen_hp/peripheral_aresetn] [get_bd_pins hp_ic/S00_ARESETN]
-connect_bd_net [get_bd_pins rst_gen_hp/peripheral_aresetn] [get_bd_pins hp_ic/M00_ARESETN]
+# 100MHz域 (AXI HP 与 AXI-Lite 同一域) — 复用 rst_gen
+connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins gc_top_0/S_AXI_HP_ARESETN]
+connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins hp_ic/ARESETN]
+connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins hp_ic/S00_ARESETN]
+connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins hp_ic/M00_ARESETN]
 
-puts "INFO: Resets connected (100MHz + 200MHz domains)"
+puts "INFO: Resets connected (single 100MHz domain)"
 
 # ============================================================
 # 7. AXI-Lite 数据通路 (PS7 -> gc_top 控制寄存器)
@@ -316,8 +319,7 @@ report_utilization -file [file join [file normalize $PROJ_DIR] utilization.rpt]
 report_timing_summary -file [file join [file normalize $PROJ_DIR] timing.rpt]
 puts "INFO: Reports saved to [file normalize $PROJ_DIR]"
 
-# 设置最大线程数 (加速综合/实现)
-set_param general.maxThreads 20
+# (maxThreads 已在文件开头设置)
 
 # ============================================================
 # 18. 生成Bitstream
