@@ -56,7 +56,8 @@ the_ROM_image:
 ### 4. Vivado 工程配置
 - **Part**: xc7z100ffg900-2
 - **PS7**: UART0 (MIO 14-15), SDIO0 (MIO 40-45), M_AXI_GP0, S_AXI_HP0
-- **FCLK**: CLK0=100MHz (AXI-Lite), CLK1=200MHz (AXI HP)
+- **FCLK**: CLK0=100MHz —— AXI-Lite **和 AXI HP 都用它**（单一时钟域，无 CDC 同步器）；
+  CLK1 未使用（旧版 HP 走 200MHz，已合并到 CLK0，因为读主控是流式 FIFO、无法简单跨域）
 - **DDR**: MT41K256M16 RE-125, 32-bit, 533MHz
 - **AXI HP0**: 64-bit, 连接 GC 引擎读 DDR
 
