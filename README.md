@@ -288,7 +288,7 @@ FPGA Offload GC Coprocessor for CPython/
 
 | 分区 | 类型 | 卷标 | 内容 |
 |---|---|---|---|
-| p1 | FAT32 | (BOOT) | `BOOT.BIN` / `image.ub` / `boot.scr` / `mount_data.sh` |
+| p1 | FAT32 | (BOOT) | `BOOT.BIN` / `image.ub` / `boot.scr` / **`uEnv.txt`** / `mount_data.sh` |
 | p2 | FAT32 | **USERDATA** | `gc_test.py` / `run_gc.sh` / 工程文件 / 日志 `gc_run_*.log` |
 
 > ⚠️ `USERDATA` 必须是 **FAT32**：板子内核没有编 exFAT (`# CONFIG_EXFAT_FS is not set`)。
@@ -321,3 +321,15 @@ FPGA Offload GC Coprocessor for CPython/
 
 **只有全部不变式成立才打印 `OK`**，否则逐项列出失败原因（`NO-RUN` / `DONE-LOW` /
 `CYCLES<4096` / `HW!=(x vs L)` / `SW!=(x vs L)` / `GARBAGE=n`）。
+## `uEnv.txt`（很重要）
+
+BOOT 分区里必须放一个 `uEnv.txt`：
+
+```
+bootargs=console=ttyPS0,115200 earlyprintk
+```
+
+`boot.scr` 会自动 `fatload uEnv.txt` 并 `env import`，**U-Boot 环境里的 `bootargs`
+会覆盖设备树里的 `chosen/bootargs`**。这样即使设备树生成出了问题（本工程重组后
+发现新 `system.dtb` 的 `chosen/bootargs` 只剩 `earlycon`），内核控制台依然稳在
+`ttyPS0,115200`。改内核 cmdline 只需要改这个文本文件，不用重建镜像。
