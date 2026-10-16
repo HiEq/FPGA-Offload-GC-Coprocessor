@@ -97,6 +97,8 @@ function Note-Prompt([string]$line) {
         $script:promptOk = ($c -eq '#' -or $c -eq '$')
         if ($script:promptOk) { $script:lastPrompt = $line; $script:injecting = $false }
     }
+    # if we are at a login/password prompt, stop poking the board with newlines
+    if ($line -match 'Password:' -or $line -match 'login:') { $script:nudges = 99 }
 }
 
 function Parse-Stat([string]$line) {

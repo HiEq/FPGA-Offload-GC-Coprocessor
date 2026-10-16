@@ -3,7 +3,7 @@ param(
     [int]$Baud = 115200,
     [string]$File = "C:\Users\wwwmt\Desktop\fogccc_build\gc_test.py",
     [string]$Remote = "/tmp/gc.py",
-    [string]$RunArgs = "4096 3",
+    [string]$RunArgs = "4096 8 2",
     [string]$Log = "C:\Users\wwwmt\Desktop\fogccc_build\com5.log",
     [int]$LineDelayMs = 18,
     [switch]$Color,
@@ -236,6 +236,28 @@ function Tx([string]$s) { $sp.Write($s) }
 # ================================================================ main
 try { [Console]::CursorVisible = $false } catch {}
 try { [Console]::Clear() } catch {}
+
+# --- guard: refuse to run if the board is still sitting at the login prompt ---
+$script:taskPct = 0; $script:taskLab = "checking board prompt"
+Tx("`n"); Pump 1200
+$tail = ($script:lines | Select-Object -Last 15) -join " | "
+if ($tail -match 'Password:' -or $tail -match 'login:') {
+    try { [Console]::CursorVisible = $true } catch {}
+    Write-Host ""
+    Write-Host "================================================================"
+    Write-Host " ABORT: the board is still at the LOGIN prompt, not a shell."
+    Write-Host ""
+    Write-Host " Please log in FIRST in the serial window:"
+    Write-Host "     linux login: petalinux"
+    Write-Host "     Password:    <press Enter, it is empty, then set a new one>"
+    Write-Host "     petalinux@linux:~$ sudo -i"
+    Write-Host "     password:    <your new password>"
+    Write-Host " and only then re-run this script."
+    Write-Host "================================================================"
+    try { $sw.Flush(); $sw.Close() } catch {}
+    try { $sp.Close() } catch {}
+    exit 2
+}
 
 if (-not (Test-Path $File)) { Write-Host "no such file: $File"; exit 1 }
 $bytes = [System.IO.File]::ReadAllBytes($File)
