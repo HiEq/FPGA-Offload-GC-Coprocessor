@@ -70,6 +70,8 @@ CONFIG_SYS_BOOTM_LEN=0x10000000
 ## 5. `project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`
 
 ```dts
+/include/ "system-conf.dtsi"        /* ← 这一行绝对不能删！ */
+
 / {
     reserved-memory {
         #address-cells = <1>;
@@ -80,10 +82,21 @@ CONFIG_SYS_BOOTM_LEN=0x10000000
         };
     };
 };
+
+/* 修复 U-Boot 串口时钟配置 */
+&uart0 { clock-frequency = <100000000>; status = "okay"; };
+&uart1 { status = "disabled"; };
 ```
 
-把 PL 用的 `0x1E000000` 那段从内核分配器里挖出来（AXI HP 与 PS 不缓存一致，
-这段内存绝不能被内核当成普通内存用）。这样 Linux 仍然拿到 ~1GB。
+- 第一行 `/include/ "system-conf.dtsi"` **把 PetaLinux 生成的配置（`chosen/bootargs`、
+  `memory`、`aliases` …）带进来**。删掉它，内核 cmdline 会静默丢失 —— 生成的
+  `system.dtb` 里 `chosen/bootargs` 就只剩 `earlycon`，Linux 没有串口控制台。
+- `reserved-memory` 把 PL 用的 `0x1E000000` 从内核分配器里挖出来（AXI HP 与 PS 不
+  缓存一致，这段内存绝不能被内核当普通内存用）。Linux 仍然拿到 ~1GB。
+
+> 兜底：BOOT 分区放一个 `uEnv.txt`（`bootargs=console=ttyPS0,115200 earlyprintk`），
+> `boot.scr` 会 `env import` 它，U-Boot 环境里的 `bootargs` 覆盖设备树，改内核
+> cmdline 就不用重建镜像。
 
 ## 6. 构建与打包
 
