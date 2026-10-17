@@ -53,7 +53,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 | LUT / FF     | 277,400 CLB LUT ／ 554,800 CLB FF（AMD DS190）                     |
 | BRAM         | 26.5 Mb（755 × 36Kb）（AMD DS190）                                 |
 | DSP          | 2,020 Slices（AMD DS190）                                          |
-| PS CPU       | 2× ARM Cortex-A9；**本板配置 666.67MHz**（AMD Z-7100 家族上限 1GHz 需 -3 速度等级，本板为 -2） |
+| PS CPU       | 2× ARM Cortex-A9@666.67MHz |
 | PS 内存      | DDR3 @ 533.33MHz（本板 PS7 配置）                                  |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
