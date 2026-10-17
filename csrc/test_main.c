@@ -218,7 +218,7 @@ static int test_cycle(fpga_gc_t *dev) {
     int pass = (fpga_count == (uint32_t)expected) &&
                (sw_count == (uint32_t)expected);
 
-    printf("  Graph: 0→1→2→0 (cycle), 3→1, 4 (isolated)\n");
+    printf("  Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)\n");
     printf("  Roots: {0, 3}\n");
     printf("  Expected: %d  SW: %u  FPGA: %u  => %s\n",
            expected, sw_count, fpga_count,
@@ -304,11 +304,10 @@ static int test_dup_roots(fpga_gc_t *dev) {
     return pass;
 }
 int main(int argc, char **argv) {
-    printf("╔════════════════════════════════════════════╗\n");
-    printf("║  FOGCCC GC Coprocessor Test Suite          ║\n");
-    printf("║  Platform: Xilinx Zynq-7000 XC7Z100        ║\n");
-    printf("╚════════════════════════════════════════════╝\n");
-
+    printf("+--------------------------------------------+\n");
+    printf("|  FOGCCC GC Coprocessor Test Suite          |\n");
+    printf("|  Platform: Xilinx Zynq-7000 XC7Z100        |\n");
+    printf("+--------------------------------------------+\n");
     (void)argc;
     // 可选参数: CPython 基准脚本路径
     const char *py_path = (argc > 1) ? argv[1] : PY_MARK_DEFAULT;
