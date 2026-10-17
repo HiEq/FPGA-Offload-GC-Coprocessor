@@ -50,14 +50,14 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 | ------------ | ----------------------------------------------------------------- |
 | FPGA         | Xilinx Zynq-7000 XC7Z100FFG900-**2**                              |
 | 逻辑资源     | 277,400 LUT / 554,800 FF                                          |
-| BRAM         | 19.2Mb (545块 36Kb)                                               |
+| BRAM         | 26.5Mb (755 块 36Kb)                                              |
 | DSP          | 2,020                                                             |
 | PS CPU       | 2× ARM Cortex-A9 @ 666.67MHz                                      |
 | PS 内存      | DDR3 @ 533MHz                                                     |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
-| 实测资源占用 | LUT 7,481 (2.70%) ／ FF 18,298 (3.30%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
-| 时序         | WNS +2.016 ns ／ WHS +0.042 ns                                    |
+| 实测资源占用 | LUT 7,444 (2.68%) ／ FF 18,181 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
+| 时序         | WNS +1.854 ns ／ WHS +0.052 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
 ## 目录结构
@@ -74,18 +74,21 @@ FOGCCC/
 ├── sim/                    xsim 自检仿真
 │   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + STATUS)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
-│   ├── run_sim.bat         一键仿真 (PASS = 250/250、孤岛 0)
+│   ├── run_sim.bat         一键仿真 (主用例 + T1..T8，全过才 PASS)
+│   ├── tb_axi_read.v       #6 在飞上限的定向测试 (+ run_axi_tb.bat)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32 (量"延迟敏感度"/斜率)
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
-│   ├── test_main.c         测试主程序
+│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
+│   ├── py_mark.py          CPython 基准 (被 test_main 经 popen 调用)
+│   ├── cmark.c / cmark     C 基准源码 + 卡上二进制
 │   └── build_cmark.sh      cmark 交叉编译 (工具链从脚本位置推导)
 ├── python/                 ctypes 绑定 + 基准
 ├── vivado/
 │   ├── build.tcl           首次建工程 (BD + 综合 + 实现 + XSA)
 │   ├── build_rtl_only.tcl  只改 RTL 的快速重编 (复用 BD)
 │   └── constraints.xdc
-├── tools/                  串口控制台 / 板上自动化 / JTAG 烧写
+├── tools/                  宿主脚本: serial_run_gc.ps1(基准) / tests/(功能) / debug/(调试)
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 一条命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物
@@ -154,17 +157,20 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
 小图（<100 对象）FPGA 反而慢，因为固定启动开销约 4400 拍；`marked < Objects` 是随机图里
 从根 0 不可达的对象，三个实现标记的是同一张图，所以比较是公平的。
 
-### 4. Python 测试 (板卡上)
+### 4. Python 测试
+
+板上没有 gcc，共享库也在 PC 上交叉编译（`artifacts/userdata/py/` 已经带了一份）：
 
 ```bash
-# 编译共享库
-cd <repo>/csrc
-gcc -O2 -shared -fPIC -o libfogccc.so fpga_gc.c
-cp libfogccc.so ../python/
+# PC
+source ~/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi
+$CC -O2 -shared -fPIC -o libfogccc.so csrc/fpga_gc.c
+```
 
-# 运行多规模测试
-cd ../python
-sudo python3 fogccc.py
+```bash
+# 板上（把 libfogccc.so + fogccc.py 放到卡上 py/ 目录后）
+cd /run/media/USERDATA-mmcblk0p2/py
+python3 fogccc.py        # 三方对账：FPGA / C / 位图读回 + STATUS
 ```
 
 ### 5. 软件基准 (任意 Linux)
@@ -245,6 +251,8 @@ python3 python/benchmark.py
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
 > 只有 **每对象周期** 是可比的。
+> 2026-10-17 用当前比特流复测（`run_gc.sh` 默认参数）：279,504 拍 / 16,061 个活跃对象
+> = **17.4 拍/对象**（扣清位图后 15.4），加速比 **209~272x**。
 
 ### 仿真回归
 
@@ -299,8 +307,8 @@ SPI 编号 = ID − 32）。
 
 **数据出处**（2026-10-17 实测）：
 - 命令：`run_gc.sh`（maxN=4096 trials=8 avg_refs=2）、`run_cmark.sh` 4 组共 72 次
-- 比特流：`632ECC915C81C7C29AA8F22D60460973`
-- BOOT.BIN：`B9E5DC1DA5D7430334387E889CA2D45C`
+- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）
+- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）
 - 板卡：XC7Z100-FFG900-2，AXI HP 与引擎同在 FCLK0 = 100MHz，DDR3 @ 533MHz
 
 
@@ -318,7 +326,7 @@ SPI 编号 = ID − 32）。
 
 ### 对优化 C 的参考对比
 
-板上带一个独立的 C 基准 `cmark`（静态 ARM 二进制，`run_cmark.sh` 一键跑）：
+板上带一个独立的 C 基准 `cmark`（交叉编译的 ARM 动态链接二进制，`run_cmark.sh` 一键跑）：
 在**同一张图**上同时跑硬件和 C 两遍，三个实现的标记数必须都等于已知真值 L。
 
 **实测（72 次；4 组参数）**：每对象 HW 17.5~20.6 拍，72 次全部 OK。
@@ -331,6 +339,9 @@ SPI 编号 = ID − 32）。
 | 4  | 2048 / 16 / 2            | 20.6       | 533 ns     | 122 ns   | **2.6x**       | **0.6x**       |
 
 72 次全部 OK —— 三个实现（HW / C 非缓存 / C 缓存）的标记数都等于已知真值 L。
+
+> ⚠️ 这 72 次的 C 时间是在**旧的静态 cmark** 上测的；当前 `cmark` 是重新交叉编译的动态
+> 链接版本（23,200 B）。`run_cmark.sh` 逻辑没变，但严格说这组 C 数值应重跑一次再引用。
 
 **结论**：
 
@@ -387,24 +398,25 @@ FPGA Offload GC Coprocessor for CPython/
 ├─ csrc/              PS 端 C 驱动 (fpga_gc.h/.c, test_main.c)
 ├─ python/            CPython 侧 ctypes 绑定 + 软件基准
 ├─ petalinux/         PetaLinux 必须改的配置项
-├─ tools/             PC 端串口控制台 + 板级测试脚本
-│    fogccc.bat         统一控制台
-│    monitor_com5.ps1   后端
-│    gc_test.py         板级 FPGA mark 测试 (--seed 可复现)
-│    log.bat            查看 com5.log
+├─ tools/             宿主脚本：基准在外，测试/调试各一层
+│    serial_run_gc.ps1  性能基准（唯一入口，串口跑 gc_test 并解析）
+│    fogccc.bat         统一控制台 ; monitor_com5.ps1 后端 ; log.bat 看日志
+│    tests/             功能测试 (gc_test.py, irq_drv_test.sh, run_cmark_sweep.ps1)
+│    debug/             调试工具 (hw_program.tcl, hw_probe.tcl, gic_dump.py ...)
 ├─ artifacts/         要拷到 TF 卡的构建产物 (按分区摆放, 详见 artifacts/README.md)
 │    BOOT.BIN  image.ub  boot.scr  system.dtb
 │    zynq_fsbl.elf  mount_data.sh          -> BOOT 分区
 │    userdata/                             -> USERDATA 分区
 │        run_gc.sh  run_cmark.sh  run_repeat.sh  gc_test.py  cmark
 │        bin/test_main   tests/(irq_drv_test.sh, py_mark.py)
-│        ko/(板上构建产出, 不入库)   logs/(板上运行时生成)
+│        py/(fogccc.py, libfogccc.so)   ko/(内核模块, 不入库)   logs/(板上生成)
 └─ petalinux/BUILD_GUIDE.md     构建步骤
 ```
 
 ## 下载启动镜像（Release）
 
-`image.ub` 约 106MB，超过 GitHub 单文件 100MB 限制，因此**不入仓库**，只放在 Release 附件里。
+`image.ub` 现在 **43.2 MB**（精简 rootfs 之后）。仍然不入仓库：二进制镜像随 Release 发布，
+仓库只保留可复现的构建配置。
 `BOOT.BIN` 虽然仓库里有，Release 里也一并提供，做到**开箱即用**。
 
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
@@ -420,14 +432,14 @@ FPGA Offload GC Coprocessor for CPython/
 > 一个字都没改，所以设备树和内核是同一份。
 >
 > 但 **`BOOT.BIN` 必须配对**：跑 Ver1 就用 Ver1 的那块，别拿 Ver3 的（那是新设计的比特流）。
-> 两块文件大小相同（18,582,708 B）但内容不同，用 md5 区分。
+> v1/v3 两块都是 18,582,708 B，v4 是 18,582,704 B；大小相近但内容不同，一律用 md5 区分。
 
 ## TF 卡布局
 
 | 分区 | 类型 | 卷标 | 内容 |
 |---|---|---|---|
 | p1 | FAT32 | (BOOT) | `BOOT.BIN` / `image.ub` / `boot.scr` / **`uEnv.txt`** / `mount_data.sh` |
-| p2 | FAT32 | **USERDATA** | `gc_test.py` / `run_gc.sh` / 工程文件 / 日志 `gc_run_*.log` |
+| p2 | FAT32 | **USERDATA** | `run_gc.sh` / `run_cmark.sh` / `run_repeat.sh` / `gc_test.py` / `cmark` + `bin/` `tests/` `py/` `ko/` `logs/` |
 
 > ⚠️ `USERDATA` 必须是 **FAT32**：板子内核没有编 exFAT (`# CONFIG_EXFAT_FS is not set`)。
 > Windows 图形界面无法创建 >32GB 的 FAT32，用板子自己格式化：
@@ -440,7 +452,7 @@ FPGA Offload GC Coprocessor for CPython/
 ② 板子上电
    出现 linux login:
 ③ root  + 回车                    (空密码)
-④ mkdir -p /mnt/userdata && mount /dev/mmcblk0p2 /mnt/userdata
+④ 板子会自动挂到 /run/media/USERDATA-mmcblk0p2；要用 /mnt/userdata 就先 mkdir -p 再 mount
 ⑤ sh /mnt/userdata/run_gc.sh
 ```
 
