@@ -72,7 +72,7 @@ FOGCCC/
 │   ├── gc_queue.v          BFS 队列 BRAM 4096×12 (带 count, 可安全用满)
 │   └── gc_axi_read.v       AXI3 读主控: 双流 (ID=0 引用 / ID=1 对象头)
 ├── sim/                    xsim 自检仿真
-│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T5 + STATUS)
+│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + STATUS)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真 (PASS = 250/250、孤岛 0)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32 (量"延迟敏感度"/斜率)
@@ -186,6 +186,8 @@ python3 python/benchmark.py
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
 | 0x20 | STATUS | R | [0]=队列溢出 [1]=AXI 读错误 [2]=引用流失步 [3]=对象头非法（`ref_count>4096`）（每次 start 清零） |
+| 0x24 | BM_ADDR | R/W | 位图探针地址（0~4095，只在引擎空闲时有效） |
+| 0x28 | BM_DATA | R | 位图探针数据 = `mem[BM_ADDR]`，1 拍后更新；软件用它逐对象读回标记 |
 | 0x40+ | ROOT_LIST | W | 根集对象 ID 数组（0x40~0x43F，最多 256 个） |
 
 ## 关键设计参数
@@ -257,12 +259,19 @@ python3 python/benchmark.py
 | **T3** | **流水 AW**（AW/W 双线程背靠背两笔写）：两笔都必须落到正确寄存器 |
 | **T4** | **非法对象头**（`ref_count=0xFFFFFFFF`）：必须被拒、`STATUS[3]=1`、`marked` 仍是活跃区 |
 | **T5** | **12 位寄存器地址**：`root[60]` 在 `0x130`，写地址截断到 8 位会标记 0 个对象 |
+| **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
+| **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
+| **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
 | **#6** | 在飞 AR 数任何时刻 ≤ `MAXO`(8) |
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
 
 > 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
 > T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 `2` 会报 1588 条 `[AXI][FAIL]`
 > （而功能用例**照样通过**，因为存储模型不检查 ARSIZE）。
+> T6/T7/T8 的反向验证：把 `0x28` 读回改成常量 → T6 报 2 处 FAIL；把 `err_ovf`
+> 赋 0 → T7 `STATUS[0]=0`；把读主控的 `err` 去掉 → T8 `STATUS[1]=0`。
+> 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
+> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
 
 ### 中断链路
 
