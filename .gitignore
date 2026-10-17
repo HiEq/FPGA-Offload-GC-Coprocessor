@@ -10,6 +10,7 @@ vivado/*.jou
 *.o
 *.so
 *.bit
+*.ko
 *.dcp
 *.ltx
 
@@ -39,6 +40,6 @@ sim/*.jou
 sim/*.pb
 sim/*.wdb
 sim/xsim_*.backup.*
-# 板上运行日志
-tools/*.log
 
+# board / serial transcripts
+tools/*.log
