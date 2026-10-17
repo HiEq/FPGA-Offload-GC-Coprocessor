@@ -32,9 +32,9 @@ FOGCCC 串口控制台  ——  使用说明
   p2 (USERDATA):
         gc_test.py
         run_gc.sh
-        test_fpga             (可选)
+        bin/test_main         (可选)
         <工程文件>
-        <日志 gc_run_*.log>
+        logs/gc_run_*.log
 
   USERDATA 必须是 FAT32(不是 exFAT! 板子内核没编 exFAT).
   Windows 图形界面无法创建 >32GB 的 FAT32, 用板子自己格式化:

@@ -105,7 +105,7 @@ def compare_with_fpga():
        python3 benchmark.py
 
   2. Run FPGA test on the board:
-       sudo ./test_fpga
+       sudo ./bin/test_main
 
   3. Compare:
        ┌──────────┬──────────────┬──────────────┐

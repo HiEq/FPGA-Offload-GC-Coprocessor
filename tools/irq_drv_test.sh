@@ -11,7 +11,7 @@
 #   line is auto-disabled by the handler (level-triggered, would storm)
 # ============================================================
 D=${D:-/run/media/USERDATA-mmcblk0p2}
-KO=${1:-$D/fogccc-irq.ko}
+KO=${1:-$D/ko/fogccc-irq.ko}
 DEV=/dev/fogccc_irq
 
 echo "== insmod $KO =="

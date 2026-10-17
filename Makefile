@@ -21,7 +21,7 @@ CSRC    := csrc/fpga_gc.c csrc/test_main.c
 HDR     := csrc/fpga_gc.h
 
 # 目标
-TEST_BIN := test_fpga
+TEST_BIN := test_main
 SO_LIB   := csrc/libfogccc.so
 
 .PHONY: all test lib python clean help

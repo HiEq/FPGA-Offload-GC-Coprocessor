@@ -48,3 +48,6 @@ tools/*.log
 tools/logs/*
 !tools/logs/.gitkeep
 tools/__pycache__/
+
+# 本地存档: 改造前的 XSA/bitstream (17 MB, 不入库)
+vivado/artifacts_before_axi_fix/

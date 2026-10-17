@@ -120,18 +120,39 @@ echo fogccc.bit > /sys/class/fpga_manager/fpga0/firmware
 cat /sys/class/fpga_manager/fpga0/state
 ```
 
-### 3. 编译并运行测试 (板卡上)
+### 3. 编译并运行测试 (板上没有 gcc，在 PC 上交叉编译)
 
 ```bash
-# 传输 C 源码到板卡 (scp/U盘/串口)
-cd <repo>/csrc
+# PC: 用 PetaLinux SDK 交叉编译（SDK 只需装一次，之后 source 环境脚本）
+source ~/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi
+$CC -O2 -o test_main csrc/fpga_gc.c csrc/test_main.c
 
-# 编译测试程序
-gcc -O2 -o test_fpga fpga_gc.c test_main.c -lrt
-
-# 运行 (需要 root)
-sudo ./test_fpga
+# 拷到 USERDATA 分区后，在板上运行（需要 root）
+cd /run/media/USERDATA-mmcblk0p2
+sudo ./bin/test_main
 ```
+
+`test_main` 会用 `popen` 调用 `tests/py_mark.py` 测 CPython 基准；默认路径就是上面卡上的位置，
+也可以 `./test_main /path/to/py_mark.py` 显式指定。表里三个时间都是实测：
+
+| 列 | 来源 |
+| --- | --- |
+| `FPGA us` | `CYCLES` 寄存器 / 100 MHz（引擎耗时，不含驱动里的 `usleep`） |
+| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
+| `CPython ms` | `py_mark.py` 独立进程、独立实现的 Python BFS |
+
+2026-10-17 实测（XC7Z100，PL 100 MHz）：
+
+```
+Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
+10       9        44.2      13.7      0.464         0.3x    11x
+100      96       57.1      60.1      4.205         1.1x    74x
+1000     945      184.7     517.1     43.033        2.8x    233x
+4000     3766     646.1     2148.3    169.802       3.3x    263x
+```
+
+小图（<100 对象）FPGA 反而慢，因为固定启动开销约 4400 拍；`marked < Objects` 是随机图里
+从根 0 不可达的对象，三个实现标记的是同一张图，所以比较是公平的。
 
 ### 4. Python 测试 (板卡上)
 
@@ -359,14 +380,16 @@ FPGA Offload GC Coprocessor for CPython/
 ├─ tools/             PC 端串口控制台 + 板级测试脚本
 │    fogccc.bat         统一控制台
 │    monitor_com5.ps1   后端
-│    gc_test.py         板级 FPGA mark 测试
+│    gc_test.py         板级 FPGA mark 测试 (--seed 可复现)
 │    log.bat            查看 com5.log
-│    fallback/          备用: 串口推送 / 纯裸控制台
-├─ artifacts/         要拷到 TF 卡的构建产物
-│    BOOT.BIN  image.ub  boot.scr        -> BOOT 分区
-│    gc_test.py  run_gc.sh               -> USERDATA 分区
-│    mount_data.sh  test_fpga  system.dtb  zynq_fsbl.elf
-└─ BUILD_GUIDE.md     构建步骤
+├─ artifacts/         要拷到 TF 卡的构建产物 (按分区摆放, 详见 artifacts/README.md)
+│    BOOT.BIN  image.ub  boot.scr  system.dtb
+│    zynq_fsbl.elf  mount_data.sh          -> BOOT 分区
+│    userdata/                             -> USERDATA 分区
+│        run_gc.sh  run_cmark.sh  run_repeat.sh  gc_test.py  cmark
+│        bin/test_main   tests/(irq_drv_test.sh, py_mark.py)
+│        ko/(板上构建产出, 不入库)   logs/(板上运行时生成)
+└─ petalinux/BUILD_GUIDE.md     构建步骤
 ```
 
 ## 下载启动镜像（Release）
