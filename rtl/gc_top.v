@@ -129,7 +129,7 @@ module gc_top (
 
     // ==================== 内部连线 ====================
     wire [31:0] w_obj_base, w_obj_count, w_root_count;
-    wire        w_start, w_clear_bm, w_clear_q;
+    wire        w_start, w_clear_q;
     wire        w_done;
     wire [31:0] w_marked_count, w_cycles;
 
@@ -181,7 +181,7 @@ module gc_top (
     wire        w_q_empty;
     wire        w_q_full;
     wire [12:0] w_q_count;
-    wire        w_err_ovf, w_err_ref;
+    wire        w_err_ovf, w_err_ref, w_err_hdr;
 
     // 位图引擎端口 (读口/写口地址独立)
     wire [11:0] w_bm_raddr, w_bm_waddr;
@@ -228,7 +228,6 @@ module gc_top (
         .reg_obj_count     (w_obj_count),
         .reg_root_count    (w_root_count),
         .reg_start         (w_start),
-        .reg_clear_bm      (w_clear_bm),
         .reg_clear_q       (w_clear_q),
         .reg_done          (w_done),
         .reg_marked_count  (w_marked_count),
@@ -238,6 +237,7 @@ module gc_top (
         .err_ovf           (w_err_ovf),
         .err_rd            (w_rd_err),
         .err_ref           (w_err_ref),
+        .err_hdr           (w_err_hdr),
         .root_wr_addr      (root_wr_addr),
         .root_wr_data      (root_wr_data),
         .root_we           (root_we)
@@ -291,7 +291,8 @@ module gc_top (
         .marked_count   (w_marked_count),
         .cycles         (w_cycles),
         .err_ovf        (w_err_ovf),
-        .err_ref        (w_err_ref)
+        .err_ref        (w_err_ref),
+        .err_hdr        (w_err_hdr)
     );
 
     // ==================== 标记位图 (简单双口BRAM, 读写地址独立) ====================

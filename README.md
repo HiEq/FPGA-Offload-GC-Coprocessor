@@ -153,7 +153,7 @@ python3 python/benchmark.py
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0]=start [1]=clear_bm [2]=clear_q [31]=done |
+| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [31]=done |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量 |
@@ -161,7 +161,7 @@ python3 python/benchmark.py
 | 0x14 | CYCLES | R | 硬件周期计数 |
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
-| 0x20 | STATUS | R | [0]=队列溢出 [1]=AXI 读错误 [2]=引用流失步（每次 start 清零） |
+| 0x20 | STATUS | R | [0]=队列溢出 [1]=AXI 读错误 [2]=引用流失步 [3]=对象头非法（`ref_count>4096`）（每次 start 清零） |
 | 0x40+ | ROOT_LIST | W | 根集对象 ID 数组（0x40~0x43F，最多 256 个） |
 
 ## 关键设计参数

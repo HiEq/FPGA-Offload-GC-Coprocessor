@@ -69,6 +69,8 @@ set_property -dict [list \
     CONFIG.PCW_EN_CLK0_PORT {1} \
     CONFIG.PCW_EN_CLK1_PORT {1} \
     CONFIG.PCW_EN_RST0_PORT {1} \
+    CONFIG.PCW_USE_FABRIC_INTERRUPT {1} \
+    CONFIG.PCW_IRQ_F2P_INTR {1} \
 ] [get_bd_cells ps7_0]
 puts "INFO: PS7 configured for OS-ZYNQ7100 Lite board (minimal, IP auto DDR)"
 
@@ -143,6 +145,12 @@ connect_bd_intf_net [get_bd_intf_pins axi_lite_ic/M00_AXI] \
                     [get_bd_intf_pins gc_top_0/S_AXI]
 
 puts "INFO: AXI-Lite path connected (GP0 -> interconnect -> gc_top)"
+
+# gc_top 的 done 输出接到 PS7 的 fabric 中断 (IRQ_F2P)
+# 驱动目前是轮询 DONE, 中断是给将来的事件驱动留的; 不接的话综合会告警
+# "port irq_o is unconnected", 而且真要改成中断驱动时会静默收不到.
+connect_bd_net [get_bd_pins gc_top_0/irq_o] [get_bd_pins ps7_0/IRQ_F2P]
+puts "INFO: irq_o connected to ps7_0/IRQ_F2P"
 
 # ============================================================
 # 8. AXI HP 数据通路 (gc_top 直连 PS7 HP0, 无 Interconnect)

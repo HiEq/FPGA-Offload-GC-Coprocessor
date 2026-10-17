@@ -187,7 +187,7 @@ module tb_gc_top;
     end
 
     // ================= AXI-Lite 任务 =================
-    task axil_wr(input [7:0] a, input [31:0] d);
+    task axil_wr(input [11:0] a, input [31:0] d);
         begin
             @(negedge clk);
             m_awaddr = a; m_awvalid = 1'b1;
@@ -207,7 +207,7 @@ module tb_gc_top;
         end
     endtask
 
-    task axil_rd(input [7:0] a, output [31:0] d);
+    task axil_rd(input [11:0] a, output [31:0] d);
         begin
             @(negedge clk);
             m_araddr = a; m_arvalid = 1'b1; m_rready = 1'b0;
@@ -224,15 +224,15 @@ module tb_gc_top;
     endtask
 
     // ================= 寄存器偏移 =================
-    localparam [7:0] R_CTRL   = 8'h00;
-    localparam [7:0] R_BASE   = 8'h04;
-    localparam [7:0] R_COUNT  = 8'h08;
-    localparam [7:0] R_ROOTS  = 8'h0C;
-    localparam [7:0] R_MARKED = 8'h10;
-    localparam [7:0] R_CYCLES = 8'h14;
-    localparam [7:0] R_QHEAD  = 8'h18;
-    localparam [7:0] R_QTAIL  = 8'h1C;
-    localparam [7:0] R_RLIST  = 8'h40;
+    localparam [11:0] R_CTRL   = 12'h00;
+    localparam [11:0] R_BASE   = 12'h04;
+    localparam [11:0] R_COUNT  = 12'h08;
+    localparam [11:0] R_ROOTS  = 12'h0C;
+    localparam [11:0] R_MARKED = 12'h10;
+    localparam [11:0] R_CYCLES = 12'h14;
+    localparam [11:0] R_QHEAD  = 12'h18;
+    localparam [11:0] R_QTAIL  = 12'h1C;
+    localparam [11:0] R_RLIST  = 12'h40;
 
     // ================= TB 数据结构 =================
     integer     i, j, k;
@@ -551,6 +551,65 @@ module tb_gc_top;
                 errors = errors + 1;
             end
             if (errors == e0) $display("[TB] T3 pipelined-AW OK");
+        end
+
+        // ============================================================
+        // T4: 非法对象头 —— ref_count = 0xFFFFFFFF 必须被拒, 不能挂死
+        // ============================================================
+        $display("[TB] ===== T4: corrupt ref_count guard =====");
+        mem[(0*16)/4 + 1] = 32'hFFFFFFFF;        // obj0 的 ref_count 写坏 (+4)
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd2);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T4 marked=%0d (expect 1)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T4 marked=%0d != 1 (非法头未被拒)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(8'h20, rd_val);
+        if (rd_val[3] !== 1'b1) begin
+            $display("[TB][FAIL] T4 STATUS[3]=%b, 应为 1 (err_hdr 没置)", rd_val[3]);
+            errors = errors + 1;
+        end else begin
+            $display("[TB] T4 err_hdr=1 OK (非法头被拒并上报)");
+        end
+
+        // ============================================================
+        // T5: 12 位寄存器地址 —— 写 root[60] (地址 0x40+60*4 = 0x130 > 0xFF)
+        //   构造: obj_count=61, root[0..59] 全填 200 (>= obj_count, 会被跳过),
+        //         root[60]=60。root_count=61 保证引擎确实会读到 root[60]。
+        //   修复后: marked=1 (只有 obj60);
+        //   若地址被截断(8 位): root[60] 写不进去 -> 全是无效根 -> marked=0.
+        // ============================================================
+        $display("[TB] ===== T5: 12-bit register address =====");
+        mem[(60*16)/4 + 1] = 32'd0;              // obj60 ref_count = 0
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd61);                // id >= 61 视为越界 -> 跳过
+        for (rr = 0; rr < 60; rr = rr + 1)
+            axil_wr(R_RLIST + rr * 4, 32'd200);  // root[0..59] 全无效
+        axil_wr(R_RLIST + 12'd60 * 12'd4, 32'd60); // root[60] = obj60 (地址 0x130)
+        axil_wr(R_ROOTS, 32'd61);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T5 root60: marked=%0d (expect 1)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T5 marked=%0d != 1 (root[60] 地址被截断?)", rd_val);
+            errors = errors + 1;
         end
 
         // ---- #6 汇总 ----

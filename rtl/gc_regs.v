@@ -49,8 +49,7 @@ module gc_regs (
     output reg  [31:0] reg_obj_count,
     output reg  [31:0] reg_root_count,
     output reg         reg_start = 1'b0,       // 单周期脉冲
-    output reg         reg_clear_bm = 1'b0,    // 单周期脉冲
-    output reg         reg_clear_q = 1'b0,     // 单周期脉冲
+    output reg         reg_clear_q = 1'b0,     // 单周期脉冲 (位图由引擎每轮自动清)
 
     // ---- 状态输入 (来自标记引擎) ----
     input  wire        reg_done,
@@ -63,6 +62,7 @@ module gc_regs (
     input  wire        err_ovf,       // 队列溢出
     input  wire        err_rd,        // AXI 读响应错误
     input  wire        err_ref,       // 引用流失步
+    input  wire        err_hdr,       // 对象头非法 (ref_count > 4096)
 
     // ---- 根集写入端口 ----
     output reg  [7:0]  root_wr_addr = 8'd0,
@@ -95,7 +95,6 @@ module gc_regs (
             reg_obj_count  <= 32'h0;
             reg_root_count <= 32'h0;
             reg_start      <= 1'b0;
-            reg_clear_bm   <= 1'b0;
             reg_clear_q    <= 1'b0;
             root_wr_addr   <= 8'h0;
             root_wr_data   <= 32'h0;
@@ -104,7 +103,6 @@ module gc_regs (
         end else begin
             // 单周期脉冲默认清零
             reg_start    <= 1'b0;
-            reg_clear_bm <= 1'b0;
             reg_clear_q  <= 1'b0;
             root_we      <= 1'b0;
 
@@ -120,7 +118,7 @@ module gc_regs (
                 case (awaddr_r)
                     12'h000: begin
                         reg_start    <= WDATA[0];
-                        reg_clear_bm <= WDATA[1];
+                        // WDATA[1] 保留 (旧 clear_bm, 引擎每轮 S_CLR_BM 自动清, 此位无效)
                         reg_clear_q  <= WDATA[2];
                     end
                     12'h004: reg_obj_base   <= WDATA;
@@ -166,7 +164,7 @@ module gc_regs (
 
             if (ARREADY && !RVALID) begin
                 case (araddr_r)
-                    12'h000: RDATA <= {reg_done, 28'h0, reg_clear_q, reg_clear_bm, reg_start};
+                    12'h000: RDATA <= {reg_done, 28'h0, reg_clear_q, 1'b0, reg_start};
                     12'h004: RDATA <= reg_obj_base;
                     12'h008: RDATA <= reg_obj_count;
                     12'h00C: RDATA <= reg_root_count;
@@ -174,7 +172,7 @@ module gc_regs (
                     12'h014: RDATA <= reg_cycles;
                     12'h018: RDATA <= {20'h0, q_head};
                     12'h01C: RDATA <= {20'h0, q_tail};
-                    12'h020: RDATA <= {29'h0, err_ref, err_rd, err_ovf};
+                    12'h020: RDATA <= {28'h0, err_hdr, err_ref, err_rd, err_ovf};
                     default: RDATA <= 32'hDEADBEEF;
                 endcase
                 RVALID  <= 1'b1;

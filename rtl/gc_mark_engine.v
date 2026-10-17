@@ -84,7 +84,8 @@ module gc_mark_engine (
 
     // 错误标志 (粘滞, 每次 start 清零)
     output reg         err_ovf = 1'b0,     // 队列写满, 对象没能入队 (#1)
-    output reg         err_ref = 1'b0      // 引用流失步: 消费数 > 发出数 (#4)
+    output reg         err_ref = 1'b0,     // 引用流失步: 消费数 > 发出数 (#4)
+    output reg         err_hdr = 1'b0      // 对象头非法: ref_count > 4096
 );
 
     localparam [11:0] Q_MAX = 12'd4000;
@@ -193,6 +194,13 @@ module gc_mark_engine (
     wire       take_ok    = pf_take && (pf_cnt != 3'd0);
     wire [2:0] pf_cnt_nxt = pf_cnt + (fill_done ? 3'd1 : 3'd0) - (take_ok ? 3'd1 : 3'd0);
 
+    // 对象头合法性: ref_count 不可能超过对象上限 4096 (超过 = 头被写坏).
+    // 守卫放在"填头"这一拍, 拒绝这个头并把 err_hdr 置起来 —— 避免引擎按一个
+    // 垃圾 ref_count 发出上亿笔读命令而卡死.
+    wire [31:0] hdr_rc_raw = pf_rc[pf_fill_slot];
+    wire        hdr_rc_bad = (hdr_rc_raw > 32'd4096);
+    wire [31:0] hdr_rc_ok  = hdr_rc_bad ? 32'd0 : hdr_rc_raw;
+
     // 出队事件: 最后一笔已握手, 或该描述符本来就没有引用
     wire iss_hs   = (dq_cnt != 4'd0) && (iss_idx < dq_rc[dq_head]) && rd_cmd_valid && rd_cmd_ready;
     wire iss_last = iss_hs && (iss_idx + 32'd1 >= dq_rc[dq_head]);
@@ -262,7 +270,11 @@ module gc_mark_engine (
                     hdr_second <= 1'b0;
                     // 头填好 → 立刻把 {ref_addr, ref_count} 塞进引用描述符队列
                     dq_ra[dq_tail] <= hdr_data;
-                    dq_rc[dq_tail] <= pf_rc[pf_fill_slot];
+                    dq_rc[dq_tail] <= hdr_rc_ok;
+                    if (hdr_rc_bad) begin
+                        pf_rc[pf_fill_slot] <= 32'd0;   // 拒绝这个头 (0 个引用)
+                        err_hdr <= 1'b1;                // 上报, 不静默
+                    end
                 end
             end
 
@@ -296,7 +308,10 @@ module gc_mark_engine (
 
             // #3: iss_cnt 必须和 con_cnt 一起在 start 时清零 (否则流失步检测跨运行失效).
             //     它在本块里递增, 所以清零也必须留在本块 —— 放到主状态机会造成多驱动.
-            if (start) iss_cnt <= 32'd0;
+            if (start) begin
+                iss_cnt <= 32'd0;
+                err_hdr <= 1'b0;      // 同理: err_hdr 只在本块驱动, 清零也放这里
+            end
         end
     end
 
