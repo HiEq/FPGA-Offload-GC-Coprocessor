@@ -14,7 +14,7 @@
 #   ASCII-only strings on purpose (see notes F17).
 # ============================================================
 param(
-    [string]$Port = "COM5",
+    [string]$Port = "COM3",
     [int]   $Baud = 115200,
     [string]$Src  = "$PSScriptRoot\..\csrc\cmark.c"
 )

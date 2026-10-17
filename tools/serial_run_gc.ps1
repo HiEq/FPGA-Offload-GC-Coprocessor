@@ -1,14 +1,16 @@
+param([string]$Port = "COM3")
+
 $ErrorActionPreference = 'Stop'
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $outFile = "$PSScriptRoot\board_verify_$stamp.log"
 
-$sp = New-Object System.IO.Ports.SerialPort 'COM3',115200,'None',8,'One'
+$sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
 $sp.ReadBufferSize  = 65536
 $sp.WriteBufferSize = 65536
 $sp.ReadTimeout     = 200
 $sp.WriteTimeout    = 3000
 $sp.Open()
-Write-Host "opened COM3 @ 115200"
+Write-Host "opened $Port @ 115200"
 
 $sb = New-Object System.Text.StringBuilder
 

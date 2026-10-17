@@ -9,7 +9,7 @@
 #   Usage: powershell -ExecutionPolicy Bypass -File fix_cmark_onboard.ps1
 #   ASCII-only strings on purpose (notes F17).
 # ============================================================
-param([string]$Port = "COM5", [int]$Baud = 115200)
+param([string]$Port = "COM3", [int]$Baud = 115200)
 
 $sp = New-Object System.IO.Ports.SerialPort $Port,$Baud,'None',8,'One'
 $sp.ReadBufferSize  = 131072

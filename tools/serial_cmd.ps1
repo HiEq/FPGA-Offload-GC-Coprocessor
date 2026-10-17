@@ -1,9 +1,10 @@
 param(
     [Parameter(Mandatory=$true)][string]$Cmd,
-    [int]$WaitMs = 8000
+    [int]$WaitMs = 8000,
+    [string]$Port = "COM3"
 )
 $ErrorActionPreference = 'Stop'
-$sp = New-Object System.IO.Ports.SerialPort 'COM3',115200,'None',8,'One'
+$sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
 $sp.ReadBufferSize = 65536; $sp.ReadTimeout = 200
 $sp.Open()
 $sb = New-Object System.Text.StringBuilder

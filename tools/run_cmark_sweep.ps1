@@ -9,7 +9,7 @@
 #   ASCII-ONLY, including comments: a UTF-8 .ps1 mis-decoded as GBK can break
 #   the PARSER, not just runtime strings (see notes F17).
 # ============================================================
-param([string]$Port = "COM5", [int]$Baud = 115200)
+param([string]$Port = "COM3", [int]$Baud = 115200)
 
 $sweeps = @(
     ,@(4096, 24, 2)

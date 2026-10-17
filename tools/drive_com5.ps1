@@ -11,7 +11,7 @@
 #         gets partly eaten by the login shell's input flush right after login.
 # ============================================================
 param(
-    [string]$Port = "COM5",
+    [string]$Port = "COM3",
     [int]   $Baud = 115200,
     [string]$Out  = "$PSScriptRoot\board_run.log"
 )
