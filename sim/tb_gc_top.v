@@ -23,7 +23,7 @@ module tb_gc_top;
     // ---------------- 参数 ----------------
     localparam integer CLKP   = 10;             // 100MHz
     localparam integer N      = 300;            // 对象总数
-    localparam integer LAT    = 8;              // AXI 读固定延迟(拍)
+    parameter integer LAT    = 8;              // AXI 读固定延迟(拍); 可用 xelab -generic_top "LAT=n" 扫参
     localparam integer MEMW   = 1 << 18;        // 1MB / 4
     localparam [31:0]  BASE   = 32'h1E000000;   // 对象图物理基地址
     localparam integer ISLAND = 50;             // 末尾 50 个对象 = 不可达孤岛
@@ -34,7 +34,7 @@ module tb_gc_top;
     reg rstn = 1'b0;
 
     // ---------------- AXI-Lite 主机 ----------------
-    reg  [7:0]  m_awaddr  = 8'h0;
+    reg  [11:0] m_awaddr  = 12'h0;
     reg         m_awvalid = 1'b0;
     wire        m_awready;
     reg  [31:0] m_wdata   = 32'h0;
@@ -44,7 +44,7 @@ module tb_gc_top;
     wire [1:0]  m_bresp;
     wire        m_bvalid;
     reg         m_bready  = 1'b0;
-    reg  [7:0]  m_araddr  = 8'h0;
+    reg  [11:0] m_araddr  = 12'h0;
     reg         m_arvalid = 1'b0;
     wire        m_arready;
     wire [31:0] m_rdata;
@@ -54,21 +54,36 @@ module tb_gc_top;
 
     // ---------------- AXI HP ----------------
     wire [31:0] hp_araddr;
+    wire [5:0]  hp_arid;
+    wire [3:0]  hp_arlen;
+    wire [2:0]  hp_arsize;
+    wire [1:0]  hp_arburst;
+    wire [3:0]  hp_arcache;
     wire [2:0]  hp_arprot;
     wire        hp_arvalid;
     wire        hp_arready;
     wire [63:0] hp_rdata;
+    wire [5:0]  hp_rid;
     wire [1:0]  hp_rresp;
+    wire        hp_rlast;
     wire        hp_rvalid;
     wire        hp_rready;
     wire [31:0] hp_awaddr;
+    wire [5:0]  hp_awid;
+    wire [3:0]  hp_awlen;
+    wire [2:0]  hp_awsize;
+    wire [1:0]  hp_awburst;
+    wire [3:0]  hp_awcache;
     wire [2:0]  hp_awprot;
     wire        hp_awvalid;
     wire        hp_awready;
     wire [63:0] hp_wdata;
+    wire [5:0]  hp_wid;
     wire [7:0]  hp_wstrb;
+    wire        hp_wlast;
     wire        hp_wvalid;
     wire        hp_wready;
+    wire [5:0]  hp_bid;
     wire [1:0]  hp_bresp;
     wire        hp_bvalid;
     wire        hp_bready;
@@ -98,21 +113,36 @@ module tb_gc_top;
         .S_AXI_HP_ACLK    (clk),
         .S_AXI_HP_ARESETN (rstn),
         .S_AXI_HP_ARADDR  (hp_araddr),
+        .S_AXI_HP_ARID    (hp_arid),
+        .S_AXI_HP_ARLEN   (hp_arlen),
+        .S_AXI_HP_ARSIZE  (hp_arsize),
+        .S_AXI_HP_ARBURST (hp_arburst),
+        .S_AXI_HP_ARCACHE (hp_arcache),
         .S_AXI_HP_ARPROT  (hp_arprot),
         .S_AXI_HP_ARVALID (hp_arvalid),
         .S_AXI_HP_ARREADY (hp_arready),
         .S_AXI_HP_RDATA   (hp_rdata),
+        .S_AXI_HP_RID     (hp_rid),
         .S_AXI_HP_RRESP   (hp_rresp),
+        .S_AXI_HP_RLAST   (hp_rlast),
         .S_AXI_HP_RVALID  (hp_rvalid),
         .S_AXI_HP_RREADY  (hp_rready),
         .S_AXI_HP_AWADDR  (hp_awaddr),
+        .S_AXI_HP_AWID    (hp_awid),
+        .S_AXI_HP_AWLEN   (hp_awlen),
+        .S_AXI_HP_AWSIZE  (hp_awsize),
+        .S_AXI_HP_AWBURST (hp_awburst),
+        .S_AXI_HP_AWCACHE (hp_awcache),
         .S_AXI_HP_AWPROT  (hp_awprot),
         .S_AXI_HP_AWVALID (hp_awvalid),
         .S_AXI_HP_AWREADY (hp_awready),
         .S_AXI_HP_WDATA   (hp_wdata),
+        .S_AXI_HP_WID     (hp_wid),
         .S_AXI_HP_WSTRB   (hp_wstrb),
+        .S_AXI_HP_WLAST   (hp_wlast),
         .S_AXI_HP_WVALID  (hp_wvalid),
         .S_AXI_HP_WREADY  (hp_wready),
+        .S_AXI_HP_BID     (hp_bid),
         .S_AXI_HP_BRESP   (hp_bresp),
         .S_AXI_HP_BVALID  (hp_bvalid),
         .S_AXI_HP_BREADY  (hp_bready),
@@ -125,17 +155,22 @@ module tb_gc_top;
     // ================= AXI HP 从机 (流水线读模型) =================
     assign hp_awready = 1'b1;
     assign hp_wready  = 1'b1;
+    assign hp_bid     = 6'h00;
     assign hp_bresp   = 2'b00;
     assign hp_bvalid  = 1'b0;
+    assign hp_rlast   = 1'b1;          // 每笔 AR 只有 1 拍
 
-    reg  [32:0] shr [0:LAT-1];          // {valid, addr}
+    // {valid, id[5:0], addr[31:0]} —— ID 必须跟着请求走, 返回时回显成 RID
+    reg  [38:0] shr [0:LAT-1];
     integer     si;
-    wire        hp_rvalid_i = shr[0][32];
+    wire        hp_rvalid_i = shr[0][38];
+    wire [5:0]  hp_rid_o    = shr[0][37:32];
     wire [31:0] hp_raddr    = shr[0][31:0];
     wire        hp_can_shift = !(hp_rvalid_i && !hp_rready);
 
     assign hp_arready = hp_can_shift;   // 输出被阻塞时不再收地址
     assign hp_rvalid  = hp_rvalid_i;
+    assign hp_rid     = hp_rid_o;       // 回显请求的 ID
     assign hp_rresp   = 2'b00;
 
     wire [31:0] hp_widx = hp_raddr[31:2] - BASE[31:2];
@@ -143,11 +178,11 @@ module tb_gc_top;
 
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
-            for (si = 0; si < LAT; si = si + 1) shr[si] <= 33'd0;
+            for (si = 0; si < LAT; si = si + 1) shr[si] <= 39'd0;
         end else if (hp_can_shift) begin
             for (si = 0; si < LAT-1; si = si + 1)
                 shr[si] <= shr[si+1];
-            shr[LAT-1] <= (hp_arvalid && hp_arready) ? {1'b1, hp_araddr} : 33'd0;
+            shr[LAT-1] <= (hp_arvalid && hp_arready) ? {1'b1, hp_arid, hp_araddr} : 39'd0;
         end
     end
 
@@ -158,15 +193,16 @@ module tb_gc_top;
             m_awaddr = a; m_awvalid = 1'b1;
             m_wdata  = d; m_wstrb = 4'hF; m_wvalid = 1'b1;
             m_bready = 1'b0;
-            @(negedge clk);
-            while (!m_awready) @(negedge clk);
-            m_awvalid = 1'b0;
-            while (!m_wready)  @(negedge clk);
-            m_wvalid  = 1'b0;
-            while (!m_bvalid)  @(negedge clk);
-            m_bready  = 1'b1;
-            @(negedge clk);
-            m_bready  = 1'b0;
+            // 注意: 必须在 posedge 采样握手 —— ready 可能是组合信号,
+            //       在 negedge 采样会错过已经发生的握手 (旧 RTL 的"高两拍"掩盖了这个问题)
+            @(posedge clk);
+            while (!(m_awvalid && m_awready)) @(posedge clk);
+            @(negedge clk); m_awvalid = 1'b0;
+            while (!(m_wvalid && m_wready)) @(posedge clk);
+            @(negedge clk); m_wvalid = 1'b0;
+            while (!m_bvalid) @(posedge clk);
+            @(negedge clk); m_bready = 1'b1;
+            @(negedge clk); m_bready = 1'b0;
             @(negedge clk);
         end
     endtask
@@ -203,6 +239,7 @@ module tb_gc_top;
     integer     rc, cur_off, ref_base;
     integer     tgt, node, head, tail, cnt_exp;
     integer     errors, got, bitv, qtail_dut, marked_dut;
+    integer     rr;
     reg [31:0]  rcs [0:N-1];
     reg [31:0]  roff [0:N-1];
     reg [31:0]  expb [0:N-1];      // 期望位图 (1=活跃)
@@ -218,6 +255,15 @@ module tb_gc_top;
         repeat (20) @(negedge clk);
         rstn = 1'b1;
         repeat (5)  @(negedge clk);
+
+        // #4: 复位后 DONE 必须为 0 —— 否则软件轮询会立刻读到 marked=0 的假结果
+        axil_rd(R_CTRL, rd_val);
+        if (rd_val[31] !== 1'b0) begin
+            $display("[TB][FAIL] 复位后 DONE=%0d, 应为 0 (#4)", rd_val[31]);
+            errors = errors + 1;
+        end else begin
+            $display("[TB] 复位后 DONE=0 OK (#4)");
+        end
 
         // ---- 构造对象图 ----
         for (i = 0; i < MEMW; i = i + 1) mem[i] = 32'h0;
@@ -316,16 +362,43 @@ module tb_gc_top;
                      dut.u_queue.head, dut.u_queue.tail);
             $display("      axi: ARVALID=%0d ARADDR=%h hcnt=%0d cw=%0d cr=%0d dw=%0d dr=%0d hw=%0d hr=%0d",
                      dut.u_axi_rd.ARVALID, dut.u_axi_rd.ARADDR,
-                     dut.u_axi_rd.hcnt, dut.u_axi_rd.cw, dut.u_axi_rd.cr,
-                     dut.u_axi_rd.dw, dut.u_axi_rd.dr,
-                     dut.u_axi_rd.hw, dut.u_axi_rd.hr);
+                     dut.u_axi_rd.h0cnt, dut.u_axi_rd.c0w, dut.u_axi_rd.c0r,
+                     dut.u_axi_rd.d0w, dut.u_axi_rd.d0r,
+                     dut.u_axi_rd.h0w, dut.u_axi_rd.h0r);
             $display("      engine: rd_cmd_valid=%0d rd_cmd_ready=%0d rd_data_valid=%0d rd_data_ready=%0d",
                      dut.u_engine.rd_cmd_valid, dut.u_engine.rd_cmd_ready,
                      dut.u_engine.rd_data_valid, dut.u_engine.rd_data_ready);
+            $display("      scout : st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d iss_idx=%0d hdr_sec=%0d",
+                     dut.u_engine.sc_state, dut.u_engine.pf_cnt, dut.u_engine.pf_iss,
+                     dut.u_engine.pf_head, dut.u_engine.dq_cnt, dut.u_engine.dq_head,
+                     dut.u_engine.iss_idx, dut.u_engine.hdr_second);
+            $display("      dq_rc[0..3]=%0d %0d %0d %0d   dq_ra[0]=%h   ref_count=%0d ref_got=%0d cur=%0d",
+                     dut.u_engine.dq_rc[0], dut.u_engine.dq_rc[1],
+                     dut.u_engine.dq_rc[2], dut.u_engine.dq_rc[3],
+                     dut.u_engine.dq_ra[0], dut.u_engine.ref_count,
+                     dut.u_engine.ref_got, dut.u_engine.cur_obj);
             errors = errors + 1;
         end
 
         // ---- 读统计 ----
+        $display("[TB] DONE @cycles=%0d | scout st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d iss_idx=%0d qh=%0d qt=%0d",
+                 dut.u_engine.cycles_r, dut.u_engine.sc_state, dut.u_engine.pf_cnt,
+                 dut.u_engine.pf_iss, dut.u_engine.pf_head, dut.u_engine.dq_cnt,
+                 dut.u_engine.dq_head, dut.u_engine.iss_idx,
+                 dut.u_queue.head, dut.u_queue.tail);
+        $display("[TB] DONE detail | cur=%0d ref_count=%0d ref_got=%0d pf_rc=%0d,%0d,%0d,%0d pf_id=%0d,%0d,%0d,%0d dq_rc=%0d,%0d,%0d,%0d",
+                 dut.u_engine.cur_obj, dut.u_engine.ref_count, dut.u_engine.ref_got,
+                 dut.u_engine.pf_rc[0], dut.u_engine.pf_rc[1], dut.u_engine.pf_rc[2], dut.u_engine.pf_rc[3],
+                 dut.u_engine.pf_id[0], dut.u_engine.pf_id[1], dut.u_engine.pf_id[2], dut.u_engine.pf_id[3],
+                 dut.u_engine.dq_rc[0], dut.u_engine.dq_rc[1], dut.u_engine.dq_rc[2], dut.u_engine.dq_rc[3]);
+        // 新增: STATUS 寄存器必须为 0 (无溢出/无总线错误/无流失步)
+        axil_rd(8'h20, rd_val);
+        if (rd_val !== 32'h0) begin
+            $display("[TB][FAIL] STATUS=%h (err_ovf/err_rd/err_ref 应全为 0)", rd_val);
+            errors = errors + 1;
+        end else begin
+            $display("[TB] STATUS=0 OK (无溢出/总线错误/流失步)");
+        end
         axil_rd(R_MARKED, rd_val); marked_dut = rd_val;
         axil_rd(R_QTAIL,  rd_val); qtail_dut  = rd_val & 32'hFFF;
         axil_rd(R_CYCLES, rd_val);
@@ -367,6 +440,72 @@ module tb_gc_top;
             end
         end
 
+        // ============================================================
+        // T1: 连续两次运行 —— 回归 #1 prev_ref / #3 iss_cnt 跨运行残留
+        //   小图: 0 -> [1];  1 -> 无引用;  其余不可达
+        //   两次运行 marked 必须都是 2。
+        //   若 prev_ref 未在 start 时清零: run2 的第一个引用(1) == run1 最后
+        //   标记的引用(1) → 被"相邻重复"保护分支跳过 → marked=1 (静默漏标记)。
+        // ============================================================
+        $display("[TB] ===== T1: two consecutive runs =====");
+        mem[(0*16)/4 + 1] = 32'd1;                 // obj0 ref_count = 1
+        mem[(0*16)/4 + 2] = BASE + ref_base;       // obj0 ref_addr
+        mem[ref_base/4 + 0] = 32'd1;               // ref[0] = obj1
+        mem[ref_base/4 + 1] = 32'hFFFFFFFF;        // 终止符
+        mem[(1*16)/4 + 1] = 32'd0;                 // obj1 ref_count = 0
+        mem[(1*16)/4 + 2] = BASE + ref_base + 32'd8;
+
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd2);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+
+        for (rr = 0; rr < 2; rr = rr + 1) begin
+            axil_wr(R_CTRL, 32'h6);                // clear_bm | clear_q
+            repeat (200) @(negedge clk);
+            axil_wr(R_CTRL, 32'h1);                // start
+
+            // 先等 DONE 落低 (确认 start 被接收), 再等它抬高
+            guard = 0; rd_val = 32'hFFFFFFFF;
+            while (rd_val[31] && guard < 500) begin
+                axil_rd(R_CTRL, rd_val); guard = guard + 1;
+            end
+            guard = 0; rd_val = 32'h0;
+            while (!rd_val[31] && guard < 20000) begin
+                axil_rd(R_CTRL, rd_val); guard = guard + 1;
+            end
+
+            axil_rd(R_MARKED, rd_val);
+            $display("[TB] T1 run%0d: marked=%0d (expect 2)", rr+1, rd_val);
+            if (rd_val !== 32'd2) begin
+                $display("[TB][FAIL] T1 run%0d marked=%0d != 2 (prev_ref 跨运行残留?)", rr+1, rd_val);
+                errors = errors + 1;
+            end
+        end
+
+        // ============================================================
+        // T2: 重复根 —— 同一个 root 写两次, 必须只计一次 (#5)
+        // ============================================================
+        $display("[TB] ===== T2: duplicate root =====");
+        axil_wr(R_RLIST,     32'd0);
+        axil_wr(R_RLIST + 4, 32'd0);        // 同一个根再写一次
+        axil_wr(R_COUNT, 32'd2);
+        axil_wr(R_ROOTS, 32'd2);            // root_count = 2
+
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T2 duplicate-root: marked=%0d (expect 2)", rd_val);
+        if (rd_val !== 32'd2) begin
+            $display("[TB][FAIL] T2 marked=%0d != 2 (重复根被重复计数?)", rd_val);
+            errors = errors + 1;
+        end
+
         // ---- 结论 ----
         if (errors == 0)
             $display("\n[TB] ==================== PASS ====================");
@@ -399,14 +538,14 @@ module tb_gc_top;
         tr_rc  [trp] <= dut.u_engine.ref_count;
         tr_rpi [trp] <= dut.u_engine.ref_push_idx;
         tr_rgot[trp] <= dut.u_engine.ref_got;
-        tr_cw  [trp] <= dut.u_axi_rd.cw;
-        tr_cr  [trp] <= dut.u_axi_rd.cr;
-        tr_dw  [trp] <= dut.u_axi_rd.dw;
-        tr_dr  [trp] <= dut.u_axi_rd.dr;
-        tr_hw  [trp] <= dut.u_axi_rd.hw;
-        tr_hr  [trp] <= dut.u_axi_rd.hr;
+        tr_cw  [trp] <= dut.u_axi_rd.c0w;
+        tr_cr  [trp] <= dut.u_axi_rd.c0r;
+        tr_dw  [trp] <= dut.u_axi_rd.d0w;
+        tr_dr  [trp] <= dut.u_axi_rd.d0r;
+        tr_hw  [trp] <= dut.u_axi_rd.h0w;
+        tr_hr  [trp] <= dut.u_axi_rd.h0r;
         tr_fl  [trp] <= {dut.u_engine.rd_cmd_valid, dut.u_engine.rd_cmd_ready,
-                         dut.u_axi_rd.data_valid,   dut.u_engine.rd_data_ready,
+                         dut.u_axi_rd.data0_valid,   dut.u_engine.rd_data_ready,
                          hp_rvalid};
         tr_ara [trp] <= dut.u_axi_rd.ARADDR;
         trp = trp + 1;
@@ -423,9 +562,9 @@ module tb_gc_top;
                     $time, dut.u_engine.state, dut.u_engine.cur_obj,
                     dut.u_queue.head, dut.u_queue.tail,
                     dut.u_axi_rd.ARVALID, dut.u_axi_rd.ARADDR,
-                    dut.u_axi_rd.cw, dut.u_axi_rd.cr,
-                    dut.u_axi_rd.dw, dut.u_axi_rd.dr,
-                    dut.u_axi_rd.hw, dut.u_axi_rd.hr,
+                    dut.u_axi_rd.c0w, dut.u_axi_rd.c0r,
+                    dut.u_axi_rd.d0w, dut.u_axi_rd.d0r,
+                    dut.u_axi_rd.h0w, dut.u_axi_rd.h0r,
                     dut.u_engine.rd_data_ready, dut.u_engine.rd_data_valid);
                 mon_cnt = mon_cnt + 1;
             end
@@ -454,30 +593,30 @@ module tb_gc_top;
             if (dut.u_axi_rd.ARVALID && hp_arready) begin
                 $display("[EV%0d] AR addr=%h hi=%0d hw=%0d hr=%0d",
                          evc, dut.u_axi_rd.ARADDR, dut.u_axi_rd.ar_hi,
-                         dut.u_axi_rd.hw, dut.u_axi_rd.hr);
+                         dut.u_axi_rd.h0w, dut.u_axi_rd.h0r);
                 evc = evc + 1;
             end
             if (hp_rvalid && hp_rready) begin
                 $display("[EV%0d] R  data=%h hfifo[%0d]=%b dw=%0d dr=%0d",
-                         evc, hp_rdata, dut.u_axi_rd.hr,
-                         dut.u_axi_rd.hfifo[dut.u_axi_rd.hr],
-                         dut.u_axi_rd.dw, dut.u_axi_rd.dr);
+                         evc, hp_rdata, dut.u_axi_rd.h0r,
+                         dut.u_axi_rd.h0f[dut.u_axi_rd.h0r],
+                         dut.u_axi_rd.d0w, dut.u_axi_rd.d0r);
                 evc = evc + 1;
             end
             if (dut.u_engine.state == 5'd12 && dut.u_engine.rd_data_valid) begin
                 $display("[EV%0d] G1 data=%h dr=%0d dw=%0d",
-                         evc, dut.u_engine.rd_data, dut.u_axi_rd.dr, dut.u_axi_rd.dw);
+                         evc, dut.u_engine.rd_data, dut.u_axi_rd.d0r, dut.u_axi_rd.d0w);
                 evc = evc + 1;
             end
             if (dut.u_engine.state == 5'd13 && dut.u_engine.rd_data_valid) begin
                 $display("[EV%0d] G2 data=%h dr=%0d dw=%0d",
-                         evc, dut.u_engine.rd_data, dut.u_axi_rd.dr, dut.u_axi_rd.dw);
+                         evc, dut.u_engine.rd_data, dut.u_axi_rd.d0r, dut.u_axi_rd.d0w);
                 evc = evc + 1;
             end
             if (dut.u_engine.state == 5'd16 && dut.u_engine.rd_data_valid) begin
                 $display("[EV%0d] GET data=%h obj=%0d dr=%0d dw=%0d",
                          evc, dut.u_engine.rd_data, dut.u_engine.cur_obj,
-                         dut.u_axi_rd.dr, dut.u_axi_rd.dw);
+                         dut.u_axi_rd.d0r, dut.u_axi_rd.d0w);
                 evc = evc + 1;
             end
         end

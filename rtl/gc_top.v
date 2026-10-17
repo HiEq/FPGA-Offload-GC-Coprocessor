@@ -22,7 +22,7 @@ module gc_top (
     // ---- AXI-Lite 从机 (PS → PL 寄存器控制) ----
     input  wire        S_AXI_ACLK,
     input  wire        S_AXI_ARESETN,
-    input  wire [7:0]  S_AXI_AWADDR,
+    input  wire [11:0] S_AXI_AWADDR,
     input  wire        S_AXI_AWVALID,
     output wire        S_AXI_AWREADY,
     input  wire [31:0] S_AXI_WDATA,
@@ -32,7 +32,7 @@ module gc_top (
     output wire [1:0]  S_AXI_BRESP,
     output wire        S_AXI_BVALID,
     input  wire        S_AXI_BREADY,
-    input  wire [7:0]  S_AXI_ARADDR,
+    input  wire [11:0] S_AXI_ARADDR,
     input  wire        S_AXI_ARVALID,
     output wire        S_AXI_ARREADY,
     output wire [31:0] S_AXI_RDATA,
@@ -40,30 +40,87 @@ module gc_top (
     output wire        S_AXI_RVALID,
     input  wire        S_AXI_RREADY,
 
-    // ---- AXI HP 从机 (PL读DDR中的对象图) ----
-    // 无ID信号 — 所有读同ID, 保证按序返回
+    // ---- AXI HP 主机口 (PL 读 DDR 中的对象图) ----
+    // 显式声明成 AXI4 主机 (PROTOCOL=AXI4, HAS_BURST=1, ID_WIDTH=4):
+    // 不加这些属性时 Vivado 只能从信号子集推断, 会得到 AXI4-Lite
+    // (HAS_BURST=0 / ID_WIDTH=0), 此时"多笔未完成读"不在协议契约内.
+    // 全部读用同一个 ARID=0 —— AXI 规定同 ID 必须按序返回, 数据 FIFO 因此仍然正确.
+    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXI_HP_ACLK, ASSOCIATED_BUSIF S_AXI_HP, ASSOCIATED_RESET S_AXI_HP_ARESETN" *)
+    (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 S_AXI_HP_ACLK CLK" *)
     input  wire        S_AXI_HP_ACLK,
+    (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 S_AXI_HP_ARESETN RST" *)
     input  wire        S_AXI_HP_ARESETN,
+
+    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXI_HP, PROTOCOL AXI3, ADDR_WIDTH 32, DATA_WIDTH 64, ID_WIDTH 6, HAS_BURST 1, NUM_READ_OUTSTANDING 8, NUM_WRITE_OUTSTANDING 1, READ_WRITE_MODE READ_WRITE, SUPPORTS_NARROW_BURST 0" *)
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARADDR" *)
     output wire [31:0] S_AXI_HP_ARADDR,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARID" *)
+    output wire [5:0]  S_AXI_HP_ARID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARLEN" *)
+    output wire [3:0]  S_AXI_HP_ARLEN,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARSIZE" *)
+    output wire [2:0]  S_AXI_HP_ARSIZE,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARBURST" *)
+    output wire [1:0]  S_AXI_HP_ARBURST,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARCACHE" *)
+    output wire [3:0]  S_AXI_HP_ARCACHE,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARPROT" *)
     output wire [2:0]  S_AXI_HP_ARPROT,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARVALID" *)
     output wire        S_AXI_HP_ARVALID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP ARREADY" *)
     input  wire        S_AXI_HP_ARREADY,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RDATA" *)
     input  wire [63:0] S_AXI_HP_RDATA,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RID" *)
+    input  wire [5:0]  S_AXI_HP_RID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RRESP" *)
     input  wire [1:0]  S_AXI_HP_RRESP,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RLAST" *)
+    input  wire        S_AXI_HP_RLAST,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RVALID" *)
     input  wire        S_AXI_HP_RVALID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RREADY" *)
     output wire        S_AXI_HP_RREADY,
 
-    // ---- AXI HP 写通道 (桩: 只应答, 不实际写DDR) ----
+    // ---- AXI HP 写通道 (桩: 从不发起写, 只把必需信号绑常量) ----
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWADDR" *)
     output wire [31:0] S_AXI_HP_AWADDR,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWID" *)
+    output wire [5:0]  S_AXI_HP_AWID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWLEN" *)
+    output wire [3:0]  S_AXI_HP_AWLEN,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWSIZE" *)
+    output wire [2:0]  S_AXI_HP_AWSIZE,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWBURST" *)
+    output wire [1:0]  S_AXI_HP_AWBURST,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWCACHE" *)
+    output wire [3:0]  S_AXI_HP_AWCACHE,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWPROT" *)
     output wire [2:0]  S_AXI_HP_AWPROT,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWVALID" *)
     output wire        S_AXI_HP_AWVALID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWREADY" *)
     input  wire        S_AXI_HP_AWREADY,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP WDATA" *)
     output wire [63:0] S_AXI_HP_WDATA,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP WID" *)
+    output wire [5:0]  S_AXI_HP_WID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP WSTRB" *)
     output wire [7:0]  S_AXI_HP_WSTRB,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP WLAST" *)
+    output wire        S_AXI_HP_WLAST,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP WVALID" *)
     output wire        S_AXI_HP_WVALID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP WREADY" *)
     input  wire        S_AXI_HP_WREADY,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP BID" *)
+    input  wire [5:0]  S_AXI_HP_BID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP BRESP" *)
     input  wire [1:0]  S_AXI_HP_BRESP,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP BVALID" *)
     input  wire        S_AXI_HP_BVALID,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP BREADY" *)
     output wire        S_AXI_HP_BREADY,
 
     // ---- 中断输出 ----
@@ -77,13 +134,20 @@ module gc_top (
     wire [31:0] w_marked_count, w_cycles;
 
     // ===== AXI HP 写通道桩 =====
-    // 本设计只读DDR, 从不发起写。
+    // 本设计只读DDR, 从不发起写; 但接口声明成完整 AXI4, 必需信号都要有确定值。
     assign S_AXI_HP_AWADDR  = 32'h0;
+    assign S_AXI_HP_AWID    = 6'h0;
+    assign S_AXI_HP_AWLEN   = 4'h0;
+    assign S_AXI_HP_AWSIZE  = 3'b011;
+    assign S_AXI_HP_AWBURST = 2'b01;
+    assign S_AXI_HP_AWCACHE = 4'b0011;
     assign S_AXI_HP_AWPROT  = 3'b000;
     assign S_AXI_HP_AWVALID = 1'b0;
 
     assign S_AXI_HP_WDATA   = 64'h0;
+    assign S_AXI_HP_WID     = 6'h0;
     assign S_AXI_HP_WSTRB   = 8'h0;
+    assign S_AXI_HP_WLAST   = 1'b1;
     assign S_AXI_HP_WVALID  = 1'b0;
 
     assign S_AXI_HP_BREADY  = 1'b1;
@@ -114,7 +178,10 @@ module gc_top (
     wire        w_q_pop_ack;
     wire [11:0] w_q_pop_id;
     wire [11:0] w_q_head, w_q_tail;
-    wire        w_q_empty = (w_q_head == w_q_tail);
+    wire        w_q_empty;
+    wire        w_q_full;
+    wire [12:0] w_q_count;
+    wire        w_err_ovf, w_err_ref;
 
     // 位图引擎端口 (读口/写口地址独立)
     wire [11:0] w_bm_raddr, w_bm_waddr;
@@ -168,10 +235,21 @@ module gc_top (
         .reg_cycles        (w_cycles),
         .q_head            (w_q_head),
         .q_tail            (w_q_tail),
+        .err_ovf           (w_err_ovf),
+        .err_rd            (w_rd_err),
+        .err_ref           (w_err_ref),
         .root_wr_addr      (root_wr_addr),
         .root_wr_data      (root_wr_data),
         .root_we           (root_we)
     );
+
+    // 对象头预取流 (gc_axi_read 的流 1)
+    wire [31:0] w_hdr_cmd_addr;
+    wire        w_hdr_cmd_valid;
+    wire        w_hdr_cmd_ready;
+    wire [31:0] w_hdr_data;
+    wire        w_hdr_data_valid;
+    wire        w_hdr_data_ready;
 
     // ==================== 标记引擎 ====================
     gc_mark_engine u_engine (
@@ -191,6 +269,7 @@ module gc_top (
         .q_pop_id       (w_q_pop_id),
         .q_tail         (w_q_tail),
         .q_empty        (w_q_empty),
+        .q_full         (w_q_full),
         .bm_raddr       (w_bm_raddr),
         .bm_rdata       (w_bm_rdata),
         .bm_waddr       (w_bm_waddr),
@@ -202,9 +281,17 @@ module gc_top (
         .rd_data        (w_rd_data),
         .rd_data_valid  (w_rd_data_valid),
         .rd_data_ready  (w_rd_data_ready),
+        .hdr_cmd_addr   (w_hdr_cmd_addr),
+        .hdr_cmd_valid  (w_hdr_cmd_valid),
+        .hdr_cmd_ready  (w_hdr_cmd_ready),
+        .hdr_data       (w_hdr_data),
+        .hdr_data_valid (w_hdr_data_valid),
+        .hdr_data_ready (w_hdr_data_ready),
         .done           (w_done),
         .marked_count   (w_marked_count),
-        .cycles         (w_cycles)
+        .cycles         (w_cycles),
+        .err_ovf        (w_err_ovf),
+        .err_ref        (w_err_ref)
     );
 
     // ==================== 标记位图 (简单双口BRAM, 读写地址独立) ====================
@@ -229,26 +316,48 @@ module gc_top (
         .rdata  (w_q_pop_id),
         .rvalid (w_q_pop_ack),
         .head   (w_q_head),
-        .tail   (w_q_tail)
+        .tail   (w_q_tail),
+        .empty  (w_q_empty),
+        .full   (w_q_full),
+        .count  (w_q_count)
     );
 
     // ==================== AXI HP 读命令队列主控 ====================
     gc_axi_read u_axi_rd (
         .ACLK        (S_AXI_HP_ACLK),
         .ARESETN     (S_AXI_HP_ARESETN),
-        .cmd_valid   (w_rd_cmd_valid),
-        .cmd_addr    (w_rd_cmd_addr),
-        .cmd_ready   (w_rd_cmd_ready),
-        .data_out    (w_rd_data),
-        .data_valid  (w_rd_data_valid),
-        .data_ready  (w_rd_data_ready),
+
+        // ---- 流 0: 引用读 ----
+        .cmd0_valid  (w_rd_cmd_valid),
+        .cmd0_addr   (w_rd_cmd_addr),
+        .cmd0_ready  (w_rd_cmd_ready),
+        .data0_out   (w_rd_data),
+        .data0_valid (w_rd_data_valid),
+        .data0_ready (w_rd_data_ready),
+
+        // ---- 流 1: 对象头预取 ----
+        .cmd1_valid  (w_hdr_cmd_valid),
+        .cmd1_addr   (w_hdr_cmd_addr),
+        .cmd1_ready  (w_hdr_cmd_ready),
+        .data1_out   (w_hdr_data),
+        .data1_valid (w_hdr_data_valid),
+        .data1_ready (w_hdr_data_ready),
+
         .err         (w_rd_err),
+
         .ARADDR      (S_AXI_HP_ARADDR),
+        .ARID        (S_AXI_HP_ARID),
+        .ARLEN       (S_AXI_HP_ARLEN),
+        .ARSIZE      (S_AXI_HP_ARSIZE),
+        .ARBURST     (S_AXI_HP_ARBURST),
+        .ARCACHE     (S_AXI_HP_ARCACHE),
         .ARPROT      (S_AXI_HP_ARPROT),
         .ARVALID     (S_AXI_HP_ARVALID),
         .ARREADY     (S_AXI_HP_ARREADY),
         .RDATA       (S_AXI_HP_RDATA),
+        .RID         (S_AXI_HP_RID),
         .RRESP       (S_AXI_HP_RRESP),
+        .RLAST       (S_AXI_HP_RLAST),
         .RVALID      (S_AXI_HP_RVALID),
         .RREADY      (S_AXI_HP_RREADY)
     );

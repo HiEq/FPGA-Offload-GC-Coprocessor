@@ -24,7 +24,7 @@ call "%XV%\xvlog.bat" ^
 if errorlevel 1 goto :err
 
 echo === xelab ===
-call "%XV%\xelab.bat" tb_gc_top -s tb_sim --debug typical
+call "%XV%\xelab.bat" tb_gc_top -s tb_sim --debug typical --mt 20
 if errorlevel 1 goto :err
 
 echo === xsim ===

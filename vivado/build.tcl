@@ -92,14 +92,11 @@ puts "INFO: Single clock domain (100MHz), no HP reset generator"
 create_bd_cell -type module -reference gc_top gc_top_0
 puts "INFO: gc_top instantiated"
 
-# ---- 5. AXI Interconnect for HP path (AXI4 -> AXI3 自动转换) ----
-# 用Interconnect替代ProtocolConverter, 自动协商ID宽度和协议
-create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 hp_ic
-set_property -dict [list \
-    CONFIG.NUM_SI {1} \
-    CONFIG.NUM_MI {1} \
-] [get_bd_cells hp_ic]
-puts "INFO: AXI Interconnect for HP path created"
+# ---- 5. AXI HP 直连 (不再需要 Interconnect) ----
+# gc_top 的 HP 口已显式声明成 AXI3 / ID_WIDTH 6, 与 PS7 的 S_AXI_HP0 完全一致,
+# 1 主 1 从时 Interconnect 纯属多余 —— 它还要做 AXI4->AXI3 协议转换,
+# 实测那一级转换会让每对象多 1.5 拍. 直连后协议转换和流水级都省掉.
+puts "INFO: AXI HP path will be connected directly (no interconnect)"
 
 # ============================================================
 # 6. 时钟连接
@@ -117,11 +114,8 @@ connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins ps7_0/S_AXI_HP0_ACLK]
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins axi_lite_ic/S00_ACLK]
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins axi_lite_ic/M00_ACLK]
 
-# FCLK_CLK0 (100MHz) -> AXI HP + HP Interconnect (单一时钟域)
+# FCLK_CLK0 (100MHz) -> AXI HP (直连, 单一时钟域)
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins gc_top_0/S_AXI_HP_ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins hp_ic/ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins hp_ic/S00_ACLK]
-connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins hp_ic/M00_ACLK]
 
 puts "INFO: Clocks connected"
 
@@ -137,9 +131,6 @@ connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins gc_top_0/S_
 
 # 100MHz域 (AXI HP 与 AXI-Lite 同一域) — 复用 rst_gen
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins gc_top_0/S_AXI_HP_ARESETN]
-connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins hp_ic/ARESETN]
-connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins hp_ic/S00_ARESETN]
-connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins hp_ic/M00_ARESETN]
 
 puts "INFO: Resets connected (single 100MHz domain)"
 
@@ -154,14 +145,12 @@ connect_bd_intf_net [get_bd_intf_pins axi_lite_ic/M00_AXI] \
 puts "INFO: AXI-Lite path connected (GP0 -> interconnect -> gc_top)"
 
 # ============================================================
-# 8. AXI HP 数据通路 (gc_top 读DDR, 经AXI Interconnect)
+# 8. AXI HP 数据通路 (gc_top 直连 PS7 HP0, 无 Interconnect)
 # ============================================================
 connect_bd_intf_net [get_bd_intf_pins gc_top_0/S_AXI_HP] \
-                    [get_bd_intf_pins hp_ic/S00_AXI]
-connect_bd_intf_net [get_bd_intf_pins hp_ic/M00_AXI] \
                     [get_bd_intf_pins ps7_0/S_AXI_HP0]
 
-puts "INFO: AXI HP path connected (gc_top -> hp_ic -> HP0)"
+puts "INFO: AXI HP path connected directly (gc_top -> HP0)"
 
 # ============================================================
 # 9. 地址映射
@@ -202,6 +191,29 @@ if {[llength $hp_seg] > 0} {
 validate_bd_design
 save_bd_design
 puts "INFO: Block Design validated and saved"
+
+# ============================================================
+# [可选] 只建 BD 并导出接口推断结果, 不做综合/实现
+#   用法:  cmd /c "set BD_ONLY=1 && vivado -mode batch -source build.tcl"
+#   用途: 改完 RTL 的接口属性后, 3 分钟就能确认 Vivado 推断成什么协议
+# ============================================================
+if {[info exists ::env(BD_ONLY)] && $::env(BD_ONLY) ne "" && $::env(BD_ONLY) ne "0"} {
+    set dump [file join $SCRIPT_DIR "bd_if_dump.txt"]
+    set fh [open $dump w]
+    puts $fh "=== BD interface dump (BD_ONLY=1) ==="
+    foreach path {gc_top_0/S_AXI_HP hp_ic/S00_AXI ps7_0/S_AXI_HP0} {
+        set pin [get_bd_intf_pins -quiet $path]
+        if {$pin eq ""} { puts $fh "--- $path : NOT FOUND"; continue }
+        puts $fh "--- $path ---"
+        foreach p [lsort [list_property $pin]] {
+            if {[catch {set v [get_property $p $pin]} err]} { continue }
+            puts $fh "    $p = $v"
+        }
+    }
+    close $fh
+    puts "INFO: BD_ONLY -> interface dump written to $dump"
+    exit 0
+}
 
 # 防止OOC综合在Windows上因路径冒号报错
 set_property generate_synth_checkpoint false [get_files system.bd]
@@ -278,7 +290,7 @@ puts ""
 # ============================================================
 puts "INFO: Starting synthesis..."
 reset_run synth_1
-launch_runs synth_1 -jobs 4
+launch_runs synth_1 -jobs 8
 wait_on_run synth_1
 
 if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
@@ -291,7 +303,7 @@ puts "INFO: Synthesis PASSED"
 # 15. 实现
 # ============================================================
 puts "INFO: Starting implementation..."
-launch_runs impl_1 -jobs 4
+launch_runs impl_1 -jobs 8
 wait_on_run impl_1
 
 if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
@@ -325,7 +337,7 @@ puts "INFO: Reports saved to [file normalize $PROJ_DIR]"
 # 18. 生成Bitstream
 # ============================================================
 puts "INFO: Generating bitstream..."
-launch_runs impl_1 -to_step write_bitstream -jobs 4
+launch_runs impl_1 -to_step write_bitstream -jobs 8
 wait_on_run impl_1
 
 # ============================================================
