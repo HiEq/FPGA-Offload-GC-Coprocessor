@@ -86,10 +86,12 @@ FOGCCC/
 │   ├── build_rtl_only.tcl  只改 RTL 的快速重编 (复用 BD)
 │   └── constraints.xdc
 ├── tools/                  串口控制台 / 板上自动化 / JTAG 烧写
+├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
+├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 一条命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物
 ├── legacy/original-v1/     优化前 RTL 存档 (tag v1-original)
 ├── AGENTS.md               本项目对 AI 参与者的工程约束
-├── BUILD_GUIDE.md          构建步骤
+├── petalinux/BUILD_GUIDE.md 构建步骤
 └── README.md               本文件
 ```
 

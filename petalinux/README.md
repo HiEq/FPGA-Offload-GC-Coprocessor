@@ -1,6 +1,11 @@
 # PetaLinux 构建关键文件 / 信息
 
-> 完整步骤和踩过的坑见根目录 `BUILD_GUIDE.md`。这里只列**必须改的东西**。
+> **这些配置已经全部在仓库里**：`petalinux/project-spec/configs/`（bootargs、initramfs、
+> rootfs）和 `petalinux/project-spec/meta-user/`（layer、u-boot、device-tree），
+> `build_fogccc2.sh` 首次运行会自动创建工程并套用它们。
+> 下文是**它们分别控制什么**，便于排查，正常构建不需要手工操作。
+>
+> 完整步骤见 `BUILD_GUIDE.md`。这里只列**必须改的东西**。
 
 ## 1. 起点: 正确的 XSA
 
