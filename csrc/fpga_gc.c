@@ -51,7 +51,7 @@ int fpga_gc_init(fpga_gc_t *dev) {
     dev->obj_count   = 0;
 
     printf("[FOGCCC] Initialized:\n");
-    printf("  AXI-Lite regs @ 0x%08X\n", FPGA_BASE_ADDR);
+    printf("  AXI-Lite regs @ 0x%08X\n", (unsigned)FPGA_BASE_ADDR);
     printf("  Graph DDR     @ 0x%08X (1MB)\n", dev->graph_paddr);
     return 0;
 }
@@ -88,8 +88,8 @@ void fpga_gc_close(fpga_gc_t *dev) {
 //   [ref0][ref1]...[0xFFFFFFFF]
 // ============================================================
 int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
-    if (n <= 0 || n > 30000) {
-        printf("ERROR: invalid object count %d (1~30000)\n", n);
+    if (n <= 0 || n > 4096) {
+        printf("ERROR: invalid object count %d (1~4096, hardware limit)\n", n);
         return -1;
     }
 
@@ -113,12 +113,11 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
     uint32_t  cur_off    = REF_BASE;
 
     for (int i = 0; i < n; i++) {
-        int rc;
-        if (i == 0) {
-            rc = 0;  // 对象0是根, 无引用
-        } else {
-            rc = rand() % (avg_refs * 2 + 1);
-        }
+        // 每个对象都要有出边, 包括根对象.
+        // 旧代码给对象0判了 rc=0, 只要根没有出边, BFS 第一步就停,
+        // 1000 个对象的图也只标记 1 个 —— 性能对比完全失去意义.
+        int rc = rand() % (avg_refs * 2 + 1);
+        if (i == 0 && rc == 0) rc = avg_refs;   // 根至少有一条出边
         ref_counts[i] = rc;
         ref_offs[i]   = cur_off;
         cur_off += rc * 4 + 4;  // 引用 + 终止符
@@ -171,9 +170,10 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
 // 设置根集
 // ============================================================
 void fpga_gc_set_roots(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
-    if (n_roots > 48) {
-        printf("WARNING: root count %d > 48, truncated\n", n_roots);
-        n_roots = 48;
+    // 寄存器地址已扩到 12 位: 0x40..0x43F 共 256 项
+    if (n_roots > 256) {
+        printf("WARNING: root count %d > 256, truncated\n", n_roots);
+        n_roots = 256;
     }
     for (int i = 0; i < n_roots; i++) {
         dev->regs[(REG_ROOT_LIST + i * 4) / 4] = roots[i];
@@ -189,12 +189,18 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
     dev->regs[REG_OBJ_BASE  / 4] = dev->graph_paddr;
     dev->regs[REG_OBJ_COUNT / 4] = (uint32_t)dev->obj_count;
 
-    // 清零位图和队列
-    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_BM | CTRL_CLEAR_Q;
+    // 清零队列 (位图由引擎在每轮 S_CLR_BM 自动清, CTRL[1] 已废弃无效)
+    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q;
     usleep(200);  // 等200μs确保清零完成
 
     // 启动
     dev->regs[REG_CTRL / 4] = CTRL_START;
+
+    // 关键: START 是 AXI-Lite posted write, 紧接着的读可能先于写生效,
+    // 从而读到【上一轮遗留的 DONE=1】并直接返回旧结果.
+    // 先读一次 CTRL 把写刷下去 (同 master 的读写有序), 再轮询 DONE.
+    (void)dev->regs[REG_CTRL / 4];
+    usleep(1);
 
     // 轮询等待完成
     uint32_t timeout = 10000000;
@@ -290,7 +296,8 @@ void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
 // 清除
 // ============================================================
 void fpga_gc_clear(fpga_gc_t *dev) {
-    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_BM | CTRL_CLEAR_Q;
+    // 位图由引擎在每轮 S_CLR_BM 自动清, 这里只需要清队列
+    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q;
 }
 
 // ============================================================

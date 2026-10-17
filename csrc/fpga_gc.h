@@ -2,8 +2,9 @@
 // fpga_gc.h — FOGCCC PS端驱动头文件
 // 平台: Xilinx Zynq-7000 XC7Z100
 //
-// 编译: gcc -O2 -o test_fpga fpga_gc.c test_main.c -lrt
-// 运行: sudo ./test_fpga
+// 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
+//       $CC -O2 -o test_main fpga_gc.c test_main.c
+// 运行: sudo ./test_main
 // ============================================================
 #ifndef FPGA_GC_H
 #define FPGA_GC_H
@@ -31,7 +32,7 @@
 
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
-#define CTRL_CLEAR_BM    (1U << 1)   // 清标记位图
+#define CTRL_CLEAR_BM    (1U << 1)   // [已废弃] 位图由引擎每轮自动清, 写此位无效
 #define CTRL_CLEAR_Q     (1U << 2)   // 清BFS队列
 #define CTRL_DONE        (1U << 31)  // 完成标志
 

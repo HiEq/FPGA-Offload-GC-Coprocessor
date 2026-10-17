@@ -6,8 +6,9 @@
 //   Test 2: 循环图 (含环)
 //   Test 3: 重复执行一致性 (100次)
 //
-// 编译: gcc -O2 -o test_fpga fpga_gc.c test_main.c -lrt
-// 运行: sudo ./test_fpga
+// 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
+//       $CC -O2 -o test_main fpga_gc.c test_main.c
+// 运行: sudo ./test_main  [py_mark.py 路径]
 // ============================================================
 #include "fpga_gc.h"
 #include <stdio.h>
@@ -22,22 +23,49 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 }
 
 // ============================================================
-// Test 1: 正确性 + 性能
+// Test 1: 正确性 + 性能 (FPGA vs C vs CPython)
+//
+// 三个数都是实测:
+//   FPGA   : CYCLES 寄存器 / 100MHz  (引擎真实耗时, 不含驱动/睡眠开销)
+//   C      : fpga_gc_sw_mark(), 纯 C 的同一套 BFS
+//   CPython: py_mark.py 用 Python 遍历同一张 DDR 图 (独立进程, 独立实现)
 // ============================================================
-static int test_correctness(fpga_gc_t *dev) {
+#define PY_MARK_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_mark.py"
+
+// 让 CPython 标记同一张图, 返回毫秒 (失败返回 -1)
+static double cpython_mark_ms(const char *py, int n, uint32_t paddr,
+                              uint32_t root, uint32_t *count_out) {
+    char cmd[512];
+    if (count_out) *count_out = 0;
+    snprintf(cmd, sizeof cmd, "python3 '%s' %d 0x%08X %u 2>/dev/null",
+             py, n, (unsigned)paddr, (unsigned)root);
+    FILE *p = popen(cmd, "r");
+    if (!p) return -1.0;
+    double ms = -1.0;
+    unsigned pc = 0;
+    if (fscanf(p, "%lf %u", &ms, &pc) != 2) ms = -1.0;
+    pclose(p);
+    if (count_out) *count_out = pc;
+    return ms;
+}
+
+static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     printf("\n");
-    printf("=============================================\n");
-    printf("  Test 1: Correctness & Performance\n");
-    printf("=============================================\n");
-    printf("%-8s %-10s %-10s %-13s %-13s %-7s %-9s\n",
-           "Objects", "FPGA", "SW", "SW Time(us)", "FPGA Time(us)",
-           "Match", "Speedup");
-    printf("-------- ---------- ---------- ------------- ------------- "
-           "------- ---------\n");
+    printf("=============================================================\n");
+    printf("  Test 1: correctness + speed (FPGA vs C vs CPython)\n");
+    printf("=============================================================\n");
+    printf("%-8s %-8s %-11s %-11s %-13s %-8s %-9s\n",
+           "Objects", "marked", "FPGA us", "C us", "CPython ms",
+           "vs C", "vs CPython");
+    printf("-------- -------- ----------- ----------- ------------- "
+           "-------- ---------\n");
 
     int sizes[] = {10, 50, 100, 500, 1000, 2000, 4000};
     int n_sizes = (int)(sizeof(sizes) / sizeof(sizes[0]));
     int all_pass = 1;
+
+    double best_hw_us = 0, best_py_ms = 0, best_py_x = 0;
+    int    best_n = 0, best_marked = 0;
 
     for (int s = 0; s < n_sizes; s++) {
         int n = sizes[s];
@@ -49,33 +77,60 @@ static int test_correctness(fpga_gc_t *dev) {
         uint32_t roots[] = {0};
         fpga_gc_set_roots(dev, roots, 1);
 
-        // 软件标记 (基准)
+        // ---- C 基准 (同一张图, 同一套 BFS) ----
         struct timespec t0, t1;
         clock_gettime(CLOCK_MONOTONIC, &t0);
         uint32_t sw_count = fpga_gc_sw_mark(dev, roots, 1);
         clock_gettime(CLOCK_MONOTONIC, &t1);
         double sw_us = elapsed_us(&t0, &t1);
 
-        // FPGA标记
-        clock_gettime(CLOCK_MONOTONIC, &t0);
+        // ---- FPGA (只认 CYCLES 寄存器, 不掺驱动开销) ----
         uint32_t cycles = 0;
         uint32_t fpga_count = fpga_gc_mark(dev, &cycles);
-        clock_gettime(CLOCK_MONOTONIC, &t1);
-        double fpga_us = elapsed_us(&t0, &t1);
+        double hw_us = cycles * 0.01;          // 100 MHz -> 10 ns/cycle
 
-        // 结果
-        int match = (fpga_count == sw_count);
-        double speedup = (fpga_us > 0) ? sw_us / fpga_us : 0;
+        // ---- CPython 基准 (独立进程, 独立实现) ----
+        uint32_t py_count = 0;
+        double py_ms = cpython_mark_ms(py_path, n, dev->graph_paddr,
+                                       roots[0], &py_count);
 
-        printf("%-8d %-10u %-10u %-13.1f %-13.1f %-7s %6.2fx%s\n",
-               n, fpga_count, sw_count, sw_us, fpga_us,
-               match ? "PASS" : "FAIL", speedup,
+        // ---- 结果 ----
+        int match = (fpga_count == sw_count) &&
+                    (py_count == 0 || py_count == fpga_count);
+        char cbuf[16], pbuf[16], nbuf[16];
+        if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);
+        else           snprintf(cbuf, sizeof cbuf, "n/a");
+        if (py_ms > 0 && hw_us > 0) {
+            snprintf(pbuf, sizeof pbuf, "%.0fx", py_ms * 1000.0 / hw_us);
+            snprintf(nbuf, sizeof nbuf, "%.3f", py_ms);
+        } else {
+            snprintf(pbuf, sizeof pbuf, "n/a");
+            snprintf(nbuf, sizeof nbuf, "n/a");
+        }
+
+        printf("%-8d %-8u %-11.1f %-11.1f %-13s %-8s %-9s%s\n",
+               n, fpga_count, hw_us, sw_us, nbuf, cbuf, pbuf,
                match ? "" : "  <<<< MISMATCH");
 
         if (!match) all_pass = 0;
+        if (n == sizes[n_sizes - 1]) {
+            best_n = n; best_marked = (int)fpga_count;
+            best_hw_us = hw_us; best_py_ms = py_ms;
+            best_py_x = (py_ms > 0 && hw_us > 0) ? py_ms * 1000.0 / hw_us : 0;
+        }
     }
 
     printf("  Result: %s\n", all_pass ? "ALL PASS" : "SOME FAILED");
+
+    if (best_py_x > 0) {
+        printf("\n  >>> %d objects marked in %.1f us (%.1f ns/obj)\n",
+               best_marked, best_hw_us, best_hw_us * 1000.0 / best_marked);
+        printf("  >>> CPython needs %.2f ms for the same graph\n", best_py_ms);
+        printf("  >>> FPGA is %.0fx FASTER than CPython\n", best_py_x);
+    } else if (best_n > 0) {
+        printf("\n  (CPython baseline unavailable: %s not found?)\n", py_path);
+    }
+
     return all_pass;
 }
 
@@ -105,32 +160,32 @@ static int test_cycle(fpga_gc_t *dev) {
     uint32_t REF_BASE = 0x1000;
 
     // 对象0: 引用{1}
-    *(uint32_t *)(base + 0*16 + 1) = 1;          // ref_count
-    *(uint32_t *)(base + 0*16 + 2) = paddr + REF_BASE; // ref_addr
+    *(uint32_t *)(base + 0*16 + 4) = 1;          // ref_count
+    *(uint32_t *)(base + 0*16 + 8) = paddr + REF_BASE; // ref_addr
     *(uint32_t *)(base + REF_BASE + 0) = 1;
     *(uint32_t *)(base + REF_BASE + 4) = 0xFFFFFFFF;
 
     // 对象1: 引用{2}
-    *(uint32_t *)(base + 1*16 + 1) = 1;
-    *(uint32_t *)(base + 1*16 + 2) = paddr + REF_BASE + 8;
+    *(uint32_t *)(base + 1*16 + 4) = 1;
+    *(uint32_t *)(base + 1*16 + 8) = paddr + REF_BASE + 8;
     *(uint32_t *)(base + REF_BASE + 8)  = 2;
     *(uint32_t *)(base + REF_BASE + 12) = 0xFFFFFFFF;
 
     // 对象2: 引用{0} (形成环!)
-    *(uint32_t *)(base + 2*16 + 1) = 1;
-    *(uint32_t *)(base + 2*16 + 2) = paddr + REF_BASE + 16;
+    *(uint32_t *)(base + 2*16 + 4) = 1;
+    *(uint32_t *)(base + 2*16 + 8) = paddr + REF_BASE + 16;
     *(uint32_t *)(base + REF_BASE + 16) = 0;
     *(uint32_t *)(base + REF_BASE + 20) = 0xFFFFFFFF;
 
     // 对象3: 引用{1}
-    *(uint32_t *)(base + 3*16 + 1) = 1;
-    *(uint32_t *)(base + 3*16 + 2) = paddr + REF_BASE + 24;
+    *(uint32_t *)(base + 3*16 + 4) = 1;
+    *(uint32_t *)(base + 3*16 + 8) = paddr + REF_BASE + 24;
     *(uint32_t *)(base + REF_BASE + 24) = 1;
     *(uint32_t *)(base + REF_BASE + 28) = 0xFFFFFFFF;
 
     // 对象4: 无引用 (孤立)
-    *(uint32_t *)(base + 4*16 + 1) = 0;
-    *(uint32_t *)(base + 4*16 + 2) = paddr + REF_BASE + 32;
+    *(uint32_t *)(base + 4*16 + 4) = 0;
+    *(uint32_t *)(base + 4*16 + 8) = paddr + REF_BASE + 32;
     *(uint32_t *)(base + REF_BASE + 32) = 0xFFFFFFFF;
 
     // 根集 = {0, 3}
@@ -207,7 +262,9 @@ int main(int argc, char **argv) {
     printf("║  Platform: Xilinx Zynq-7000 XC7Z100        ║\n");
     printf("╚════════════════════════════════════════════╝\n");
 
-    (void)argc; (void)argv;
+    (void)argc;
+    // 可选参数: CPython 基准脚本路径
+    const char *py_path = (argc > 1) ? argv[1] : PY_MARK_DEFAULT;
 
     // 初始化FPGA
     fpga_gc_t dev;
@@ -215,13 +272,13 @@ int main(int argc, char **argv) {
         printf("\nFPGA initialization FAILED!\n");
         printf("Checklist:\n");
         printf("  1. Bitstream loaded?  cat /sys/class/fpga_manager/fpga0/state\n");
-        printf("  2. Running as root?   sudo ./test_fpga\n");
+        printf("  2. Running as root?   sudo ./test_main\n");
         printf("  3. Address correct?   FPGA_BASE_ADDR in fpga_gc.h\n");
         return 1;
     }
 
     // 运行测试
-    int pass1 = test_correctness(&dev);
+    int pass1 = test_correctness(&dev, py_path);
     int pass2 = test_cycle(&dev);
     int pass3 = test_repeat(&dev);
 
