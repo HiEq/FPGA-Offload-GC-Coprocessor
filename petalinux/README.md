@@ -29,7 +29,7 @@ XSA 必须来自**修好的 Vivado 工程**（`vivado/build.tcl`）。PS7 的关
 
 ```
 CONFIG_SUBSYSTEM_HOSTNAME="linux"
-CONFIG_SUBSYSTEM_USER_CMDLINE="console=ttyPS0,115200 earlyprintk"
+CONFIG_SUBSYSTEM_USER_CMDLINE="console=ttyPS0,115200 earlycon"
 ```
 
 > ⚠️ **不要**在这里加 `mem=480M`！initramfs 解压要 ~244MB + 内核 Image 101MB，
@@ -99,7 +99,7 @@ CONFIG_SYS_BOOTM_LEN=0x10000000
 - `reserved-memory` 把 PL 用的 `0x1E000000` 从内核分配器里挖出来（AXI HP 与 PS 不
   缓存一致，这段内存绝不能被内核当普通内存用）。Linux 仍然拿到 ~1GB。
 
-> 兜底：BOOT 分区放一个 `uEnv.txt`（`bootargs=console=ttyPS0,115200 earlyprintk`），
+> 兜底：BOOT 分区放一个 `uEnv.txt`（`bootargs=console=ttyPS0,115200 earlycon`），
 > `boot.scr` 会 `env import` 它，U-Boot 环境里的 `bootargs` 覆盖设备树，改内核
 > cmdline 就不用重建镜像。
 

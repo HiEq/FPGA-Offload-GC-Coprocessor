@@ -5,7 +5,7 @@
 # 前置:
 #   - Vivado 已产出  <工程根>\vivado\fogccc_proj\system.xsa
 #   - fogccc2_linux 是从 fogccc_linux 复制来的, 保留了全部手工配置:
-#       kernel cmdline = console=ttyPS0,115200 earlyprintk
+#       kernel cmdline = console=ttyPS0,115200 earlycon
 #       rootfs = initramfs, hostname = linux, empty-root-password
 #       device-tree 里 reserved-memory pl_graph@1e000000
 #
@@ -54,8 +54,8 @@ echo "=== Step 2.5: 校验手工配置是否被 get-hw-description 冲掉 ==="
 fail=0
 grep -q 'CONFIG_SUBSYSTEM_ROOTFS_INITRAMFS=y' project-spec/configs/config \
     || { echo "!!! 丢失: ROOTFS_INITRAMFS"; fail=1; }
-grep -q 'earlyprintk' project-spec/configs/config \
-    || { echo "!!! 丢失: kernel cmdline (earlyprintk)"; fail=1; }
+grep -q 'earlycon' project-spec/configs/config \
+    || { echo "!!! 丢失: kernel cmdline (earlycon)"; fail=1; }
 grep -q 'CONFIG_imagefeature-empty-root-password=y' project-spec/configs/rootfs_config \
     || { echo "!!! 丢失: empty-root-password (上板会登不进去)"; fail=1; }
 grep -q 'CONFIG_python3=y' project-spec/configs/rootfs_config \
@@ -102,7 +102,7 @@ cp -v images/linux/system.dtb "$OUT/system.dtb"
 echo "=== Step 6: 校验 DT 里的 reserved-memory / cmdline ==="
 dtc -I dtb -O dts images/linux/system.dtb 2>/dev/null | grep -A3 "pl_graph" || \
     echo "(跳过: 没有 dtc)"
-strings images/linux/image.ub | grep -m1 "earlyprintk" || true
+strings images/linux/image.ub | grep -m1 "earlycon" || true
 
 echo ""
 echo "=== DONE ==="

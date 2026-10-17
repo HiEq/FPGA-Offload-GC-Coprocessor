@@ -64,7 +64,7 @@ the_ROM_image:
 ### 5. PetaLinux 配置
 ```bash
 # 内核启动参数
-console=ttyPS0,115200 earlyprintk
+console=ttyPS0,115200 earlycon
 
 # 根文件系统类型
 initramfs

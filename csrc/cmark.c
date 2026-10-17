@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
     }
 
     printf(" %s\n", "--------------------------------------------------------------------------------------------");
-    printf(" totals: HW %.2f us | C-uncached %.3f ms | C-cached %.3f ms   (live objects %u)\n",
+    printf(" totals: HW %.2f us | C-uncached %.3f us | C-cached %.3f us   (live objects %u)\n",
            tot_hw, tot_cu, tot_cc, tot_l);
     if (tot_hw > 0) {
         printf(" speedup HW vs C-uncached : %.1fx\n", tot_cu / tot_hw);

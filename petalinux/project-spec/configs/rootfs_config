@@ -2447,14 +2447,14 @@ CONFIG_packagegroup-core-boot=y
 #
 # packagegroup-core-buildessential 
 #
-CONFIG_packagegroup-core-buildessential=y
+# CONFIG_packagegroup-core-buildessential is not set
 # CONFIG_packagegroup-core-buildessential-dev is not set
 # CONFIG_packagegroup-core-buildessential-dbg is not set
 
 #
 # packagegroup-core-sdk 
 #
-CONFIG_packagegroup-core-sdk=y
+# CONFIG_packagegroup-core-sdk is not set
 # CONFIG_packagegroup-core-sdk-dbg is not set
 # CONFIG_packagegroup-core-sdk-dev is not set
 

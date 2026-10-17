@@ -31,7 +31,7 @@ cd ${PROJ_NAME}
 echo "=== Step 3: Import XSA ==="
 petalinux-config --get-hw-description=${XSA_PATH}
 # 手动配置:
-#   DT Settings → Kernel Bootargs → console=ttyPS0,115200 earlyprintk
+#   DT Settings → Kernel Bootargs → console=ttyPS0,115200 earlycon
 #   Image Packaging Configuration → Root filesystem type → initramfs
 
 echo "=== Step 4: Configure rootfs ==="

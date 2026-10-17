@@ -35,7 +35,7 @@ wsl -e bash <repo>/petalinux/build_fogccc2.sh
 1. 若 `~/xilinx/fogccc2_linux` 不存在 → `petalinux-create` 建工程，把
    `petalinux/project-spec/` 与 `driver/plnx/fogccc-irq/` 拷进去；
 2. `petalinux-config --get-hw-description=<XSA> --silentconfig`；
-3. 校验手工配置没被冲掉（initramfs / earlyprintk / 空密码 / python3 /
+3. 校验手工配置没被冲掉（initramfs / earlycon / 空密码 / python3 /
    `pl_graph` reserved-memory / 层路径能解析）；
 4. `petalinux-build`（首次约 1–3 小时）；
 5. `petalinux-package boot`，产物拷到 `artifacts/`。
@@ -59,7 +59,7 @@ petalinux-build
 关键菜单项（仅供核对，正常情况由 config 文件带入）：
 
 ```
-DT Settings → Kernel Bootargs:        console=ttyPS0,115200 earlyprintk
+DT Settings → Kernel Bootargs:        console=ttyPS0,115200 earlycon
 Image Packaging → Root filesystem:    initramfs
 rootfs: python3 / packagegroup-core-buildessential / empty-root-password
 ```
