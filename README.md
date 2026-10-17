@@ -424,17 +424,18 @@ FPGA Offload GC Coprocessor for CPython/
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 | --- | --- | --- | --- |
 | [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + rootfs 精简 | `04CFEC20A279CFA2F03225481D42D0EF` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
-| `v3-optimized`（资产 `BOOT.BIN-v3-optimized`） | 优化版（`main`：多笔未完成读 + 预取 + 竞态修复，AXI HP 100MHz 单时钟域） | `D62AC4EBACEF8F4C8B6C208E5088A563` | `1CEDF5898D3429AFCD390CEBD75192F5` |
-| `v1-original`（资产 `BOOT.BIN-v1-original`） | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `1CEDF5898D3429AFCD390CEBD75192F5` |
+| [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 
-> 三个版本的镜像都挂在同一个 release [`v4-optimized`](../../releases/tag/v4-optimized) 下，按资产名区分。
+> 每个 release 只放自己那一版的 `BOOT.BIN`，加同一份精简 `image.ub`。
+> **v3（Ver3）的启动镜像不再提供**：它的优化已全部包含在 v4 里，
+> 只保留 git 标签 `v3-optimized` 和性能表中的数据。
 
-> **两个版本的 `image.ub` 完全相同** —— 优化只动了 PL 侧（RTL + 比特流），
+> **两个 release 的 `image.ub` 完全相同** —— 优化只动了 PL 侧（RTL + 比特流），
 > PS7 的 20 条 `CONFIG.PCW_*` 参数（`FCLK0=100MHz` / `FCLK1=200MHz` / `DDR 533.33MHz` …）
 > 一个字都没改，所以设备树和内核是同一份。
 >
-> 但 **`BOOT.BIN` 必须配对**：跑 Ver1 就用 Ver1 的那块，别拿 Ver3 的（那是新设计的比特流）。
-> v1/v3 两块都是 18,582,708 B，v4 是 18,582,704 B；大小相近但内容不同，一律用 md5 区分。
+> 但 **`BOOT.BIN` 必须配对**：跑 Ver1 就用 `v1-original` 里那块，别拿 v4 的（那是新设计的比特流）。
+> v1 是 18,582,708 B，v4 是 18,582,704 B；大小相近但内容不同，一律用 md5 区分。
 
 ## TF 卡布局
 
