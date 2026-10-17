@@ -313,7 +313,7 @@ Otherwise mark it `historical/unverified`.
 
 These are known by code reading. Do not assume they are safe. Do not fix them opportunistically; raise them, get approval, and add a failing test first.
 
-1. AXI HP read interface omits `ARLEN`/`ARSIZE`/`ARBURST` (`rtl/gc_top.v:43-54`, `rtl/gc_axi_read.v:122`). The design assumes one 64-bit beat while `ARSIZE` defaults to 0 (one byte). Verify the actual AXI contract; drive `ARSIZE=3`, `ARLEN=0`, `ARBURST=INCR`; add protocol assertions.
+1. ~~AXI HP read interface omits `ARLEN`/`ARSIZE`/`ARBURST`~~ **CLOSED 2026-10-17.** The RTL has always driven `ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR` as constants (`rtl/gc_axi_read.v` reset block); the gap was the absence of any checker. `sim/axi_proto_check.v` now fails the run on a wrong geometry, a misaligned address, `ARID>1`, a withdrawn `ARVALID`, or a response with no outstanding request. Negative control: `ARSIZE=3'b010` produces 1588 `[AXI][FAIL]` lines while every functional test still passes.
 2. Queue saturation silently drops objects (`rtl/gc_mark_engine.v:232,355`). `q_tail < Q_MAX` has no error path. Add an overflow counter/flag and a test with the live set near 4096.
 3. Root marking does not consult the bitmap (`rtl/gc_mark_engine.v:224-240`). Duplicate roots can be pushed twice and counted twice. Add a duplicate-root test.
 4. `fpga_gc_build_graph` gives object 0 (the root) out-degree 0 (`csrc/fpga_gc.c:117`). `test_main.c` Test 1/3 and `python/fogccc.py` therefore mark only one object. Add a connectivity check or a spanning-tree builder; prove the test fails when the graph is disconnected.
@@ -324,7 +324,7 @@ These are known by code reading. Do not assume they are safe. Do not fix them op
 9. DONE polling can return stale results (`csrc/fpga_gc.c:187-213`). Use a start acknowledgment or detect a `CYCLES` change; add a timeout/negative test.
 10. The performance comparison uses full `gc.collect()` against a mark-only hardware run (`python/benchmark.py`, README). Label the methodology and compare mark phase to mark phase; include the cached-C result.
 11. The simulation memory model is not an AXI protocol checker and ignores `ARSIZE` (`sim/tb_gc_top.v`). Add protocol assertions/VIP and backpressure tests.
-12. `tools/gc_test.py` is unseeded and evidence logs are gitignored. Print the seed and archive the evidence.
+12. ~~`tools/gc_test.py` is unseeded~~ **CLOSED 2026-10-17 (seed).** It now takes `--seed N`, prints the seed, and replays exactly (verified: two runs with `--seed 424242` produced identical N/exp per trial; HW cycles still jitter ~0.5% from DDR). Still open: evidence logs remain gitignored — archive them per release.
 
 ---
 
