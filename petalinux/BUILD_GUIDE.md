@@ -11,55 +11,77 @@
 - PetaLinux 2026.1 安装在 `~/xilinx/petalinux`
 - Vivado 2026.1 已编译 bitstream
 
-## 快速构建
+## 一条命令构建
 
-### 1. 创建 PetaLinux 项目
+仓库里已经包含 PetaLinux 工程的**全部手工配置**（`petalinux/project-spec/`）：
+
+| 内容 | 说明 |
+| --- | --- |
+| `project-spec/configs/config` | kernel bootargs、initramfs、DT 设置 |
+| `project-spec/configs/rootfs_config` | python3 / buildessential / 空 root 密码 |
+| `project-spec/meta-user/` | layer.conf、u-boot 配置、device-tree 追加、`pl_graph` reserved-memory |
+| `driver/plnx/fogccc-irq/` | 中断驱动模块 recipe（可选，构建时自动拷入） |
+
+```bash
+# 1) 先在 Vivado 里出 bitstream 和 XSA
+vivado -mode batch -source vivado/build.tcl
+
+# 2) 一条命令（首次会自动创建工程并套用上面的配置）
+wsl -e bash <repo>/petalinux/build_fogccc2.sh
+```
+
+脚本依次做：
+
+1. 若 `~/xilinx/fogccc2_linux` 不存在 → `petalinux-create` 建工程，把
+   `petalinux/project-spec/` 与 `driver/plnx/fogccc-irq/` 拷进去；
+2. `petalinux-config --get-hw-description=<XSA> --silentconfig`；
+3. 校验手工配置没被冲掉（initramfs / earlyprintk / 空密码 / python3 /
+   `pl_graph` reserved-memory / 层路径能解析）；
+4. `petalinux-build`（首次约 1–3 小时）；
+5. `petalinux-package boot`，产物拷到 `artifacts/`。
+
+> **不需要手工进 menuconfig** —— 上面两个 config 文件就是菜单选项的结果。
+
+## 手动步骤（等同，便于排查）
+
 ```bash
 source ~/xilinx/petalinux/settings.sh
 cd ~/xilinx
-petalinux-create --type project --template zynq --name fogccc_linux
-cd fogccc_linux
-petalinux-config --get-hw-description=/home/hieq/xilinx/system.xsa
+petalinux-create --type project --template zynq --name fogccc2_linux
+cd fogccc2_linux
+cp -a <repo>/petalinux/project-spec/configs/.   project-spec/configs/
+cp -a <repo>/petalinux/project-spec/meta-user/. project-spec/meta-user/
+cp -a <repo>/driver/plnx/fogccc-irq            project-spec/meta-user/recipes-modules/
+petalinux-config --get-hw-description=<XSA> --silentconfig
+petalinux-build
 ```
 
-### 2. 配置 (petalinux-config)
+关键菜单项（仅供核对，正常情况由 config 文件带入）：
+
 ```
-DT Settings → Kernel Bootargs:
-  console=ttyPS0,115200 earlyprintk
-
-Image Packaging Configuration → Root filesystem type:
-  initramfs
+DT Settings → Kernel Bootargs:        console=ttyPS0,115200 earlyprintk
+Image Packaging → Root filesystem:    initramfs
+rootfs: python3 / packagegroup-core-buildessential / empty-root-password
 ```
 
-### 3. 配置根文件系统 (petalinux-config -c rootfs)
-启用以下包:
-- `packagegroup-core-buildessential` (包含 gcc, g++, make)
-- `python3`
-- `binutils`
+## 打包 BOOT.BIN
 
-### 4. 编译
 ```bash
-petalinux-build 2>&1 | tee build.log
-```
-
-### 5. 打包 BOOT.BIN
-```bash
-# 使用厂商FSBL (正确的 ps7_init)
+# 使用厂商 FSBL (正确的 ps7_init), 不用 PetaLinux 生成的
 petalinux-package boot \
   --fsbl /path/to/vendor/zynq_fsbl/executable.elf \
   --fpga images/linux/system.bit \
   --u-boot --force
 ```
 
-### 6. 制作 TF 卡
-- **分区1 (FAT32, 512MB)**: BOOT.BIN + image.ub
-- **不需要其他分区** (rootfs 使用 initramfs)
-
 ## 关键文件说明
 
 | 文件 | 用途 |
 |------|------|
-| `petalinux/build_petalinux.sh` | 完整构建脚本 |
+| `petalinux/build_fogccc2.sh` | **主构建脚本**（自动 bootstrap + 配置校验） |
+| `petalinux/project-spec/` | 工程的 config / rootfs_config / meta-user 源码 |
+| `driver/plnx/fogccc-irq/` | 中断驱动模块 recipe |
+| `petalinux/build_petalinux.sh` | 早期脚本（保留） |
 | `petalinux/package_boot.sh` | BOOT.BIN 打包脚本 |
 | `vivado/build.tcl` | Vivado 自动构建脚本 |
 | `rtl/` | Verilog RTL 源码 |

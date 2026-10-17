@@ -30,6 +30,21 @@ echo "=== Step 1: 载入 PetaLinux 2026.1 环境 ==="
 source "$PLNX_ROOT/petalinux/settings.sh"
 echo "PETALINUX_VER=$PETALINUX_VER"
 
+echo "=== Step 1.5: 工程不存在则从仓库骨架创建 ==="
+if [ ! -d "$PROJ" ]; then
+    SKEL="$ROOT/petalinux/project-spec"
+    [ -d "$SKEL" ] || { echo "!!! 仓库里没有 petalinux/project-spec 骨架"; exit 1; }
+    cd "$PLNX_ROOT"
+    petalinux-create --type project --template zynq --name "$(basename "$PROJ")"
+    cp -a "$SKEL/configs/."  "$PROJ/project-spec/configs/"
+    cp -a "$SKEL/meta-user/." "$PROJ/project-spec/meta-user/"
+    mkdir -p "$PROJ/project-spec/meta-user/recipes-modules"
+    cp -a "$ROOT/driver/plnx/fogccc-irq" "$PROJ/project-spec/meta-user/recipes-modules/"
+    echo "  工程已从仓库骨架创建 (含 config/rootfs_config/meta-user/模块 recipe)"
+else
+    echo "  工程已存在: $PROJ"
+fi
+
 cd "$PROJ"
 
 echo "=== Step 2: 用新硬件描述刷新 (这一步才会更新比特流源) ==="
