@@ -48,13 +48,13 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 
 | 项目         | 规格                                                              |
 | ------------ | ----------------------------------------------------------------- |
-| FPGA         | Xilinx Zynq-7000 XC7Z100FFG900-**2**（AMD DS190）                  |
-| 逻辑单元     | 444K Logic Cells（AMD DS190）                                      |
-| LUT / FF     | 277,400 CLB LUT ／ 554,800 CLB FF（AMD DS190）                     |
-| BRAM         | 26.5 Mb（755 × 36Kb）（AMD DS190）                                 |
-| DSP          | 2,020 Slices（AMD DS190）                                          |
-| PS CPU       | 2× ARM Cortex-A9@666.67MHz |
-| PS 内存      | DDR3 @ 533.33MHz（本板 PS7 配置）                                  |
+| FPGA         | Xilinx Zynq-7000 XC7Z100FFG900-**2**                |
+| 逻辑单元     | 444K Logic Cells                                     |
+| LUT / FF     | 277,400 CLB LUT ／ 554,800 CLB FF                |
+| BRAM         | 26.5 Mb（755 × 36Kb）                                 |
+| DSP          | 2,020 Slices                                         |
+| PS CPU       | 2× ARM Cortex-A9 @666.67MHz |
+| PS 内存      | DDR3 @ 533.33MHz                                  |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
 | 实测资源占用（本板） | LUT 7,444 (2.68%) ／ FF 18,181 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
