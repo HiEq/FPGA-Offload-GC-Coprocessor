@@ -90,6 +90,12 @@ _lib.fpga_gc_clear.argtypes = [ctypes.POINTER(FpgaGcStruct)]
 _lib.fpga_gc_print_stats.restype = None
 _lib.fpga_gc_print_stats.argtypes = [ctypes.POINTER(FpgaGcStruct)]
 
+_lib.fpga_gc_status.restype = ctypes.c_uint32
+_lib.fpga_gc_status.argtypes = [ctypes.POINTER(FpgaGcStruct)]
+
+_lib.fpga_gc_read_mark.restype = ctypes.c_uint32
+_lib.fpga_gc_read_mark.argtypes = [ctypes.POINTER(FpgaGcStruct), ctypes.c_uint32]
+
 
 # ==================== Python封装类 ====================
 class FOGCCC:
@@ -158,7 +164,8 @@ class FOGCCC:
         return {
             'marked':    marked,
             'cycles':    cycles_out.value,
-            'elapsed_us': elapsed_us,
+            'hw_us':     cycles_out.value * 0.01,   # 100 MHz -> 10 ns/cycle
+            'elapsed_us': elapsed_us,               # wall clock (includes usleep)
         }
 
     def mark_sw(self, roots: list) -> int:
@@ -176,48 +183,60 @@ class FOGCCC:
         """打印硬件统计信息"""
         _lib.fpga_gc_print_stats(ctypes.byref(self._dev))
 
+    def status(self) -> int:
+        """
+        STATUS register (0x20): bit0 queue overflow, bit1 AXI read error,
+        bit2 ref desync, bit3 bad object header. Cleared by the next start.
+        """
+        return _lib.fpga_gc_status(ctypes.byref(self._dev))
+
+    def read_mark(self, obj_id: int) -> int:
+        """Read one object's mark bit back through the bitmap probe (0x24/0x28)"""
+        return _lib.fpga_gc_read_mark(ctypes.byref(self._dev), obj_id)
+
+    def dump_marks(self, n: int = None) -> list:
+        """Read the whole bitmap back, one probe round trip per object"""
+        if n is None:
+            n = self._dev.obj_count
+        return [self.read_mark(i) for i in range(min(n, 4096))]
+
 
 # ==================== 直接运行: 快速测试 ====================
 if __name__ == '__main__':
-    print("=" * 55)
-    print("  FOGCCC Python Test")
-    print("=" * 55)
+    print("=" * 66)
+    print("  FOGCCC Python Test (FPGA vs C vs bitmap readback)")
+    print("=" * 66)
 
     try:
         with FOGCCC() as fpga:
             sizes = [10, 50, 100, 500, 1000, 2000, 4000]
 
-            print(f"\n{'Objects':>8} {'FPGA':>8} {'SW':>8} "
-                  f"{'FPGA(us)':>10} {'Match':>7} {'Speedup':>8}")
-            print("-" * 55)
+            print(f"\n{'Objects':>8} {'FPGA':>7} {'SW':>7} {'HW(us)':>9} "
+                  f"{'readback':>9} {'STATUS':>7} {'Match':>6}")
+            print("-" * 66)
 
+            ok = True
             for n in sizes:
                 fpga.build_graph(n, avg_refs=3)
                 roots = [0]
                 fpga.set_roots(roots)
 
-                # 软件标记
-                t0 = time.perf_counter_ns()
                 sw_count = fpga.mark_sw(roots)
-                t1 = time.perf_counter_ns()
-                sw_us = (t1 - t0) / 1000.0
+                r = fpga.mark()
+                bits = sum(fpga.dump_marks(n))
+                st = fpga.status()
 
-                # FPGA标记
-                result = fpga.mark()
-
-                match = "OK" if result['marked'] == sw_count else "FAIL"
-                speedup = (sw_us / result['elapsed_us']
-                           if result['elapsed_us'] > 0 else 0)
-
-                print(f"{n:>8} {result['marked']:>8} {sw_count:>8} "
-                      f"{result['elapsed_us']:>10.1f} {match:>7} "
-                      f"{speedup:>7.2f}x")
+                match = (r['marked'] == sw_count == bits) and st == 0
+                ok = ok and match
+                print(f"{n:>8} {r['marked']:>7} {sw_count:>7} "
+                      f"{r['hw_us']:>9.1f} {bits:>9} {st:>7} "
+                      f"{'OK' if match else 'FAIL':>6}")
 
             print()
             fpga.print_stats()
+            print(f"\nOverall: {'PASS' if ok else 'FAIL'}")
+            sys.exit(0 if ok else 1)
 
     except RuntimeError as e:
         print(f"\nError: {e}")
         sys.exit(1)
-
-    print("\nDone.")

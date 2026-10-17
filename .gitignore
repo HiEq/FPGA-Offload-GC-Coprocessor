@@ -51,3 +51,6 @@ tools/__pycache__/
 
 # 本地存档: 改造前的 XSA/bitstream (17 MB, 不入库)
 vivado/artifacts_before_axi_fix/
+
+# 卡镜像里的 Python 绑定必须随卡发布 (板上没有 gcc 不能现编)
+!artifacts/userdata/py/libfogccc.so

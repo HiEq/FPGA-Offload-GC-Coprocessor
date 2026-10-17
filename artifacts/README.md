@@ -31,6 +31,7 @@ FAT32、卷标 `USERDATA`。板子起来后挂到 `/run/media/USERDATA-mmcblk0p2
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块（由 PetaLinux 构建产出，**不入库**） |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证（板上唯一保留的测试脚本） |
 | `tests/py_mark.py` | CPython 基准，`test_main` 用 popen 调用它 |
+| `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定（含 STATUS / 位图探针 API），板上 `python3 py/fogccc.py` |
 
 日志不进本目录：`run_gc.sh` 会写到卡上的 `logs/`。
 
