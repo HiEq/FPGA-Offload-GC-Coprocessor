@@ -10,8 +10,8 @@
 #   直接复用现有工程, 只重跑 综合 -> 实现 -> 比特流 -> XSA.
 #
 # 用法:
-#   cd C:\Users\wwwmt\Desktop\FOGCCC2\vivado
-#   D:\AMDDesignTools\2026.1\Vivado\bin\vivado.bat -mode batch -source build_rtl_only.tcl -log vivado_build.log -journal vivado_build.jou
+#   cd <工程根>/vivado
+#   <Vivado bin>/vivado.bat -mode batch -source build_rtl_only.tcl -log vivado_build.log -journal vivado_build.jou
 #
 # 注意: 如果改了 gc_top 的端口 / 加了新模块 / 动了 BD, 请改用 build.tcl
 # ============================================================

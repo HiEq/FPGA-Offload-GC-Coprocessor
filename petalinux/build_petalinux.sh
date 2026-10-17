@@ -11,10 +11,13 @@
 
 set -e
 
+# 路径从脚本位置推导, 不写死用户名
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 PLNX_ROOT=~/xilinx
 PROJ_NAME=fogccc_linux
 XSA_PATH=${PLNX_ROOT}/system.xsa
-IMAGES=/mnt/c/Users/wwwmt/Desktop/fogccc_build
+IMAGES="$ROOT/artifacts"
 
 echo "=== Step 1: Load PetaLinux environment ==="
 source ${PLNX_ROOT}/petalinux/settings.sh
@@ -44,8 +47,9 @@ petalinux-build 2>&1 | tee build.log
 
 echo "=== Step 6: Package BOOT.BIN ==="
 # 使用厂商 FSBL (正确的 ps7_init)
-VENDOR_FSBL='/mnt/c/Users/wwwmt/AppData/Local/Temp/zynq_sd_example/05_zynq_sd/vitis/design_1_wrapper/zynq_fsbl/executable.elf'
-BITSTREAM='/mnt/c/Users/wwwmt/Desktop/fogccc/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit'
+# 厂商 FSBL 在板卡资料包里, 请按实际位置修改
+VENDOR_FSBL="${VENDOR_FSBL:-artifacts/zynq_fsbl.elf}"
+BITSTREAM="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
 
 petalinux-package boot --fsbl "$VENDOR_FSBL" --fpga "$BITSTREAM" --u-boot --force
 

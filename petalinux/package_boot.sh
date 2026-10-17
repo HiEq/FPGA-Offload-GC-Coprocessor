@@ -6,10 +6,13 @@
 
 set -e
 
-IMAGES=/mnt/c/Users/wwwmt/Desktop/fogccc_build
+# 路径从脚本位置推导, 不写死用户名
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IMAGES="$ROOT/artifacts"
 PLNX=~/xilinx/fogccc_linux
-VENDOR_FSBL='/mnt/c/Users/wwwmt/AppData/Local/Temp/zynq_sd_example/05_zynq_sd/vitis/design_1_wrapper/zynq_fsbl/executable.elf'
-BITSTREAM='/mnt/c/Users/wwwmt/Desktop/fogccc/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit'
+# 厂商 FSBL 在板卡资料包里, 请按实际位置修改
+VENDOR_FSBL="${VENDOR_FSBL:-artifacts/zynq_fsbl.elf}"
+BITSTREAM="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
 
 echo "=== Strip U-Boot ==="
 arm-linux-gnueabihf-strip --strip-debug ${PLNX}/images/linux/u-boot.elf -o ${PLNX}/images/linux/u-boot-stripped.elf

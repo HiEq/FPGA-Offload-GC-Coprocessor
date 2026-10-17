@@ -3,23 +3,25 @@
 # FOGCCC2 — PetaLinux 重建 (在独立工程 fogccc2_linux 里用新 XSA 重跑)
 #
 # 前置:
-#   - Vivado 已产出  C:\Users\wwwmt\Desktop\FOGCCC2\vivado\system.xsa
+#   - Vivado 已产出  <工程根>\vivado\fogccc_proj\system.xsa
 #   - fogccc2_linux 是从 fogccc_linux 复制来的, 保留了全部手工配置:
 #       kernel cmdline = console=ttyPS0,115200 earlyprintk
 #       rootfs = initramfs, hostname = linux, empty-root-password
 #       device-tree 里 reserved-memory pl_graph@1e000000
 #
-# 用法:  wsl -e bash /mnt/c/Users/wwwmt/Desktop/FOGCCC2/petalinux/build_fogccc2.sh
+# 用法:  wsl -e bash <工程根>/petalinux/build_fogccc2.sh
 # ============================================================
 set -e
 set -o pipefail     # 关键: 否则 petalinux-build 失败会被 tee 吞掉, 后面步骤会照着跑
 
 PLNX_ROOT="$HOME/xilinx"
 PROJ="$PLNX_ROOT/fogccc2_linux"
-XSA="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/vivado/fogccc_proj/system.xsa"
-BIT="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
-FSBL="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/artifacts/zynq_fsbl.elf"
-OUT="/mnt/c/Users/wwwmt/Desktop/FOGCCC2/artifacts"
+# 路径从脚本位置推导, 不写死用户名
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+XSA="$ROOT/vivado/fogccc_proj/system.xsa"
+BIT="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
+FSBL="$ROOT/artifacts/zynq_fsbl.elf"
+OUT="$ROOT/artifacts"
 
 echo "=== Step 0: 检查输入文件 ==="
 ls -la "$XSA" "$BIT" "$FSBL"

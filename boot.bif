@@ -1,6 +1,7 @@
+# boot.bif — BOOT.BIN 打包模板 (路径相对工程根; 用 bootgen -image 时在其上一级目录执行)
 the_ROM_image:
 {
-    [bootloader] /mnt/c/Users/wwwmt/AppData/Local/Temp/zynq_sd_example/05_zynq_sd/vitis/design_1_wrapper/zynq_fsbl/executable.elf
-    /mnt/c/Users/wwwmt/Desktop/fogccc/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit
-    [load = 0x04000000] /mnt/c/Users/wwwmt/Desktop/fogccc_build/u-boot-dtb-fixed.bin
+    [bootloader] artifacts/zynq_fsbl.elf
+    vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit
+    [load = 0x04000000] artifacts/u-boot-dtb.bin
 }

@@ -9,11 +9,13 @@
 # (自己从 sysroots-components 拼的扁平 sysroot 会因为 gcc13 的 +simd/+fp 新语法
 #  与系统老汇编器不匹配而失败.)
 #
-# 用法:  wsl -e bash /mnt/c/Users/wwwmt/Desktop/FOGCCC2/csrc/build_cmark.sh
+# 用法:  wsl -e bash <工程根>/csrc/build_cmark.sh
 # ============================================================
 set -u
-SRC=/mnt/c/Users/wwwmt/Desktop/FOGCCC2/csrc/cmark.c
-OUT=/mnt/c/Users/wwwmt/Desktop/FOGCCC2/artifacts/cmark
+# 路径从脚本位置推导, 不写死用户名
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC="$ROOT/csrc/cmark.c"
+OUT="$ROOT/artifacts/cmark"
 
 echo "=== 1. 找存活的 recipe-sysroot 对 ==="
 S=""
@@ -50,7 +52,7 @@ if [ -f "$OUT" ]; then
     file "$OUT" 2>/dev/null || true
     ls -la "$OUT"
     # 源码也一并放进 artifacts, 方便在板上/别处重新编译
-    cp -v "$SRC" /mnt/c/Users/wwwmt/Desktop/FOGCCC2/artifacts/cmark.c
+    cp -v "$SRC" "$ROOT/artifacts/cmark.c"
     echo "=== DONE — 板上运行:  ./cmark 4096 8 2 ==="
 else
     echo "!!! 失败"
