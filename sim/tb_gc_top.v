@@ -176,6 +176,28 @@ module tb_gc_top;
     wire [31:0] hp_widx = hp_raddr[31:2] - BASE[31:2];
     assign hp_rdata = { mem[hp_widx + 1], mem[hp_widx] };  // 小端: 低字在先
 
+    // ---------------- AXI 协议检查器 (AGENTS.md 缺口 #1) ----------------
+    // 行为级存储模型不是协议检查器: 它对 ARSIZE/ARLEN/ARBURST 错误照常应答,
+    // 只有数据看起来不对劲. 这里直接盯住主端口, 数清每一次违约.
+    wire [31:0] axi_errs;
+    axi_proto_check u_axi_chk (
+        .clk     (clk),
+        .rstn    (rstn),
+        .ARADDR  (hp_araddr),
+        .ARID    (hp_arid),
+        .ARLEN   (hp_arlen),
+        .ARSIZE  (hp_arsize),
+        .ARBURST (hp_arburst),
+        .ARCACHE (hp_arcache),
+        .ARVALID (hp_arvalid),
+        .ARREADY (hp_arready),
+        .RID     (hp_rid),
+        .RRESP   (hp_rresp),
+        .RVALID  (hp_rvalid),
+        .RREADY  (hp_rready),
+        .errors  (axi_errs)
+    );
+
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
             for (si = 0; si < LAT; si = si + 1) shr[si] <= 39'd0;
@@ -618,6 +640,14 @@ module tb_gc_top;
             errors = errors + 1;
         end else begin
             $display("[TB] #6 在飞 AR 从未超过 8 OK");
+        end
+
+        // ---- AXI 协议检查 (#1) ----
+        if (axi_errs !== 32'd0) begin
+            $display("[TB][FAIL] AXI 协议违规 %0d 次 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定性)", axi_errs);
+            errors = errors + 1;
+        end else begin
+            $display("[TB] AXI 协议检查 OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 对齐, VALID 稳定)");
         end
 
         // ---- 结论 ----
