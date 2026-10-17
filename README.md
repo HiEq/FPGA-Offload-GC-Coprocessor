@@ -408,6 +408,7 @@ FPGA Offload GC Coprocessor for CPython/
 
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 | --- | --- | --- | --- |
+| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + rootfs 精简 | `04CFEC20A279CFA2F03225481D42D0EF` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | [`v3-optimized`](../../releases/tag/v3-optimized) | 优化版（`main`：多笔未完成读 + 预取 + 竞态修复，AXI HP 100MHz 单时钟域） | `D62AC4EBACEF8F4C8B6C208E5088A563` | `1CEDF5898D3429AFCD390CEBD75192F5` |
 | [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `1CEDF5898D3429AFCD390CEBD75192F5` |
 
