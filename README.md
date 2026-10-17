@@ -48,16 +48,17 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 
 | 项目         | 规格                                                              |
 | ------------ | ----------------------------------------------------------------- |
-| FPGA         | Xilinx Zynq-7000 XC7Z100FFG900-**2**                              |
-| 逻辑资源     | 277,400 LUT / 554,800 FF                                          |
-| BRAM         | 26.5Mb (755 块 36Kb)                                              |
-| DSP          | 2,020                                                             |
-| PS CPU       | 2× ARM Cortex-A9 @ 666.67MHz                                      |
-| PS 内存      | DDR3 @ 533MHz                                                     |
+| FPGA         | Xilinx Zynq-7000 XC7Z100FFG900-**2**（AMD DS190）                  |
+| 逻辑单元     | 444K Logic Cells（AMD DS190）                                      |
+| LUT / FF     | 277,400 CLB LUT ／ 554,800 CLB FF（AMD DS190）                     |
+| BRAM         | 26.5 Mb（755 × 36Kb）（AMD DS190）                                 |
+| DSP          | 2,020 Slices（AMD DS190）                                          |
+| PS CPU       | 2× ARM Cortex-A9；**本板配置 666.67MHz**（AMD Z-7100 家族上限 1GHz 需 -3 速度等级，本板为 -2） |
+| PS 内存      | DDR3 @ 533.33MHz（本板 PS7 配置）                                  |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
-| 实测资源占用 | LUT 7,444 (2.68%) ／ FF 18,181 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
-| 时序         | WNS +1.854 ns ／ WHS +0.052 ns                                    |
+| 实测资源占用（本板） | LUT 7,444 (2.68%) ／ FF 18,181 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
+| 时序（本板） | WNS +1.854 ns ／ WHS +0.052 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
 ## 目录结构
@@ -67,30 +68,30 @@ FOGCCC/
 ├── rtl/                    Verilog RTL 源码
 │   ├── gc_top.v            顶层 (AXI-Lite + AXI3 HP, 单时钟域无 CDC)
 │   ├── gc_regs.v           AXI-Lite 寄存器接口 (12 位地址 / 含 STATUS)
-│   ├── gc_mark_engine.v    BFS 状态机 + 对象头预取"侦察兵" + 引用发射器
-│   ├── gc_bitmap.v         标记位图 BRAM 4096×32 (读/写地址独立)
-│   ├── gc_queue.v          BFS 队列 BRAM 4096×12 (带 count, 可安全用满)
+│   ├── gc_mark_engine.v    BFS 状态机 + 对象头预取 + 引用发射器
+│   ├── gc_bitmap.v         标记位图 BRAM 4096×32
+│   ├── gc_queue.v          BFS 队列 BRAM 4096×12
 │   └── gc_axi_read.v       AXI3 读主控: 双流 (ID=0 引用 / ID=1 对象头)
 ├── sim/                    xsim 自检仿真
 │   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + STATUS)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
-│   ├── run_sim.bat         一键仿真 (主用例 + T1..T8，全过才 PASS)
+│   ├── run_sim.bat         一键仿真
 │   ├── tb_axi_read.v       #6 未完成读事务上限的定向测试 (+ run_axi_tb.bat)
-│   └── lat_sweep.bat       延迟扫描 LAT=1..32 (量"延迟敏感度"/斜率)
+│   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
 │   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
 │   ├── py_mark.py          CPython 基准 (被 test_main 经 popen 调用)
 │   ├── cmark.c / cmark     C 基准源码 + 卡上二进制
-│   └── build_cmark.sh      cmark 交叉编译 (工具链从脚本位置推导)
+│   └── build_cmark.sh      cmark 交叉编译
 ├── python/                 ctypes 绑定 + 基准
 ├── vivado/
-│   ├── build.tcl           首次建工程 (BD + 综合 + 实现 + XSA)
-│   ├── build_rtl_only.tcl  只改 RTL 的快速重编 (复用 BD)
+│   ├── build.tcl           BD + 综合 + 实现 + XSA
+│   ├── build_rtl_only.tcl  复用 BD
 │   └── constraints.xdc
 ├── tools/                  宿主脚本: serial_run_gc.ps1(基准) / tests/(功能) / debug/(调试)
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
-├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 一条命令构建
+├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物
 ├── legacy/original-v1/     优化前 RTL 存档 (tag v1-original)
 ├── AGENTS.md               本项目对 AI 参与者的工程约束
@@ -209,7 +210,7 @@ python3 python/benchmark.py
 | 流 ID | **0 = 引用, 1 = 对象头** | 两流各有独立数据 FIFO；同 ID 保序、异 ID 互不阻塞 |
 | 时钟 | **FCLK0 = 100MHz** | 引擎 / AXI-Lite / AXI HP 同一域，**无 CDC** |
 | 位图 | 4096×32 = 128 Kb | 对象 x 的状态 = `mem[x]` 的第 `x%32` 位 |
-| 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满；旧版卡在 4000 且**静默丢弃**，现已改成报告 `err_ovf` |
+| 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满 |
 
 ## Object Graph DDR Format
 
