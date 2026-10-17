@@ -488,10 +488,13 @@ module tb_gc_top;
         // T2: 重复根 —— 同一个 root 写两次, 必须只计一次 (#5)
         // ============================================================
         $display("[TB] ===== T2: duplicate root =====");
-        axil_wr(R_RLIST,     32'd0);
-        axil_wr(R_RLIST + 4, 32'd0);        // 同一个根再写一次
-        axil_wr(R_COUNT, 32'd2);
-        axil_wr(R_ROOTS, 32'd2);            // root_count = 2
+        // 用一个 ID >= 32 的根 —— 让它落在**不同的位图字**上。
+        // 否则"跳过 S_ROOT_CHK 后偶然读到位图字 0"会掩盖重复检测, 反向验证无效.
+        mem[(33*16)/4 + 1] = 32'd0;          // obj33 ref_count = 0 (在 +4, 字索引 +1)
+        axil_wr(R_RLIST,     32'd33);
+        axil_wr(R_RLIST + 4, 32'd33);        // 同一个根再写一次
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd2);             // root_count = 2
 
         axil_wr(R_CTRL, 32'h6);
         repeat (200) @(negedge clk);
@@ -501,9 +504,9 @@ module tb_gc_top;
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         axil_rd(R_MARKED, rd_val);
-        $display("[TB] T2 duplicate-root: marked=%0d (expect 2)", rd_val);
-        if (rd_val !== 32'd2) begin
-            $display("[TB][FAIL] T2 marked=%0d != 2 (重复根被重复计数?)", rd_val);
+        $display("[TB] T2 duplicate-root: marked=%0d (expect 1)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T2 marked=%0d != 1 (重复根被重复计数?)", rd_val);
             errors = errors + 1;
         end
 
