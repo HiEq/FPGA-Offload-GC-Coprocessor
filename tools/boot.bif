@@ -1,7 +1,0 @@
-# boot.bif — BOOT.BIN 打包模板 (路径相对工程根; 用 bootgen -image 时在其上一级目录执行)
-the_ROM_image:
-{
-    [bootloader] artifacts/zynq_fsbl.elf
-    vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit
-    [load = 0x04000000] artifacts/u-boot-dtb.bin
-}

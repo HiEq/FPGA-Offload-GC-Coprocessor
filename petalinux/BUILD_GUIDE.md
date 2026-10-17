@@ -124,5 +124,5 @@ sudo umount /mnt/boot
 # 登录: root (密码空或 root)
 
 # JTAG 调试:
-D:\AMDDesignTools\2026.1\Vivado\bin\xsdb.bat debug_boot.tcl
+D:\AMDDesignTools\2026.1\Vivado\bin\xsdb.bat -eval "connect; targets"
 ```
