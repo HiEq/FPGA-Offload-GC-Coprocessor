@@ -5,7 +5,7 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段（Mark Phase）** 卸载到 FPGA 硬件，把标记阶段的指针追逐交给硬件，减轻 CPU 负担。
+FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段（Mark Phase）** 卸载到 FPGA 硬件，指针追逐由硬件完成。
 
 ## 架构概览
 
@@ -160,7 +160,7 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
 
 ### 4. Python 测试
 
-板上没有 gcc，共享库也在 PC 上交叉编译（`artifacts/userdata/py/` 已经带了一份）：
+板上没有 gcc，共享库在 PC 上交叉编译，卡上 `py/` 已随仓库提供：
 
 ```bash
 # PC
@@ -231,7 +231,7 @@ python3 python/benchmark.py
 
 ## 性能实测
 
-四次上板实测，全部使用同一套严格判据（`gc_test.py`，`maxN=4096 trials=8 avg_refs=2`）。
+上板实测，统一判据（`gc_test.py`，`maxN=4096 trials=8 avg_refs=2`）。
 "每对象周期" = HW cycles ÷ 活跃对象数（已扣除固定的 4096 拍清位图）。
 
 > **可复现**：`gc_test.py` 现在支持 `--seed N` 并会把种子打印在日志里
@@ -339,11 +339,10 @@ SPI 编号 = ID − 32）。
 | 3  | 4096 / 16 / 1            | 17.7       | 489 ns     | 125 ns   | **2.8x**       | **0.7x**       |
 | 4  | 2048 / 16 / 2            | 20.6       | 547 ns     | 125 ns   | **2.7x**       | **0.6x**       |
 
-72 次全部 OK —— 三个实现（HW / C 非缓存 / C 缓存）的标记数都等于已知真值 L。
+72 次全部 OK；三个实现（HW / C 非缓存 / C 缓存）标记数均等于真值 L。
 
-> 上表用**当前**比特流（`36D14E4B…`）和**当前**动态链接 `cmark`（23,200 B）重跑：
-> 重跑的 72 次结果：72/72 OK，HW 拍/对象与旧版完全一致（17.5 / 20.2 / 17.7 / 20.6），
-> C 侧数字有 ±3% 的正常波动。命令：`tools/tests/run_cmark_sweep.ps1`。
+> 上表用当前比特流（`36D14E4B…`）与当前 `cmark`（23,200 B）重跑，72/72 OK；
+> HW 拍/对象与旧版一致，C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`。
 
 **结论**：
 
@@ -416,7 +415,7 @@ FPGA Offload GC Coprocessor for CPython/
 
 ## 下载启动镜像（Release）
 
-`image.ub` 现在 **43.2 MB**（精简 rootfs 之后）。仍然不入仓库：二进制镜像随 Release 发布，
+`image.ub` 为 **43.2 MB**，不入仓库：二进制镜像随 Release 发布，
 仓库只保留可复现的构建配置。
 `BOOT.BIN` 虽然仓库里有，Release 里也一并提供，做到**开箱即用**。
 

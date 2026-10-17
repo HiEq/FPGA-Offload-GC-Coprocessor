@@ -20,7 +20,7 @@
 | `project-spec/configs/config` | kernel bootargs、initramfs、DT 设置 |
 | `project-spec/configs/rootfs_config` | python3 / buildessential / 空 root 密码 |
 | `project-spec/meta-user/` | layer.conf、u-boot 配置、device-tree 追加、`pl_graph` reserved-memory |
-| `driver/plnx/fogccc-irq/` | 中断驱动模块 recipe（可选，构建时自动拷入） |
+| `driver/plnx/fogccc-irq/` | 中断驱动模块 recipe，构建时自动拷入 |
 
 ```bash
 # 1) 先在 Vivado 里出 bitstream 和 XSA
@@ -40,7 +40,7 @@ wsl -e bash <repo>/petalinux/build_fogccc2.sh
 4. `petalinux-build`（首次约 1–3 小时）；
 5. `petalinux-package boot`，产物拷到 `artifacts/`。
 
-> **不需要手工进 menuconfig** —— 上面两个 config 文件就是菜单选项的结果。
+> 无需手工进入 menuconfig；上述 config 文件即菜单选项的结果。
 
 ## 手动步骤（等同，便于排查）
 
@@ -56,7 +56,7 @@ petalinux-config --get-hw-description=<XSA> --silentconfig
 petalinux-build
 ```
 
-关键菜单项（仅供核对，正常情况由 config 文件带入）：
+关键菜单项，正常由 config 文件带入，此处仅供核对：
 
 ```
 DT Settings → Kernel Bootargs:        console=ttyPS0,115200 earlycon
@@ -67,7 +67,7 @@ rootfs: python3 / packagegroup-core-buildessential / empty-root-password
 ## 打包 BOOT.BIN
 
 ```bash
-# 使用厂商 FSBL (正确的 ps7_init), 不用 PetaLinux 生成的
+# 使用厂商 FSBL，其 ps7_init 与此板卡匹配；不要用 PetaLinux 生成的
 petalinux-package boot \
   --fsbl /path/to/vendor/zynq_fsbl/executable.elf \
   --fpga images/linux/system.bit \
@@ -78,10 +78,10 @@ petalinux-package boot \
 
 | 文件 | 用途 |
 |------|------|
-| `petalinux/build_fogccc2.sh` | **主构建脚本**（自动 bootstrap + 配置校验） |
+| `petalinux/build_fogccc2.sh` | 主构建脚本，自动 bootstrap 并校验配置 |
 | `petalinux/project-spec/` | 工程的 config / rootfs_config / meta-user 源码 |
 | `driver/plnx/fogccc-irq/` | 中断驱动模块 recipe |
-| `petalinux/build_petalinux.sh` | 早期脚本（保留） |
+| `petalinux/build_petalinux.sh` | 早期脚本 |
 | `petalinux/package_boot.sh` | BOOT.BIN 打包脚本 |
 | `vivado/build.tcl` | Vivado 自动构建脚本 |
 | `rtl/` | Verilog RTL 源码 |
@@ -121,7 +121,7 @@ sudo umount /mnt/boot
 ## 调试
 ```bash
 # 串口: COM口, 115200, 8N1
-# 登录: root (密码空或 root)
+# 登录: root，密码为空
 
 # JTAG 调试:
 D:\AMDDesignTools\2026.1\Vivado\bin\xsdb.bat -eval "connect; targets"

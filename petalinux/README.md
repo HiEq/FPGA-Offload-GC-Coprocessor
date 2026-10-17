@@ -1,11 +1,10 @@
 # PetaLinux 构建关键文件 / 信息
 
-> **这些配置已经全部在仓库里**：`petalinux/project-spec/configs/`（bootargs、initramfs、
-> rootfs）和 `petalinux/project-spec/meta-user/`（layer、u-boot、device-tree），
-> `build_fogccc2.sh` 首次运行会自动创建工程并套用它们。
-> 下文是**它们分别控制什么**，便于排查，正常构建不需要手工操作。
->
-> 完整步骤见 `BUILD_GUIDE.md`。这里只列**必须改的东西**。
+配置均已在仓库中：`petalinux/project-spec/configs/`（bootargs、initramfs、rootfs）
+与 `petalinux/project-spec/meta-user/`（layer、u-boot、device-tree）。
+`build_fogccc2.sh` 首次运行会创建工程并套用这些配置。
+
+下文说明各配置项的作用与必须修改的内容。完整步骤见 `BUILD_GUIDE.md`。
 
 ## 1. 起点: 正确的 XSA
 
@@ -44,8 +43,8 @@ CONFIG_imagefeature-empty-root-password=y
 # CONFIG_imagefeature-debug-tweaks is not set
 ```
 
-- `empty-root-password` → 串口登录 `root` + 回车（空密码），方便调试
-- **不要**开 `serial-autologin-root`：自动登录会让人以为"开机没反应"
+- `empty-root-password`：串口登录 `root`，密码为空
+- **不要**开 `serial-autologin-root`：自动登录会掩盖启动过程
 
 > 注：`CONFIG_ADD_EXTRA_USERS="root:root;..."` 在本工程里**没有真正给 root 设上密码**
 > （`/etc/shadow` 里 root 是 `*` 锁定），所以才改用 `empty-root-password`。
@@ -113,11 +112,11 @@ petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
 
 TF 卡上的三件套：`BOOT.BIN` + `image.ub` + **`boot.scr`**（缺 boot.scr 会停在 `Zynq>`）。
 
-## ⚠️ 最大的坑：`images/linux/system.bit` 是一次性解压的
+## 注意：`images/linux/system.bit` 只解出一次
 
-它**只在 `petalinux-config --get-hw-description` 时**从 XSA 里解出来。
-之后**换多少次 XSA、跑多少次 `petalinux-build`，它都不会更新** ——
-结果是 BOOT.BIN 里装的还是最早的旧位流（**所有 RTL 改动全部白做**，且没有任何报错）。
+该文件仅在 `petalinux-config --get-hw-description` 时从 XSA 解出。
+之后更换 XSA 或重复 `petalinux-build` 都不会更新它，BOOT.BIN 中仍是最初的位流，
+RTL 改动全部失效且不报错。
 
 换 XSA 后必须手动刷新：
 
