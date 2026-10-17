@@ -75,7 +75,7 @@ FOGCCC/
 │   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + STATUS)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真 (主用例 + T1..T8，全过才 PASS)
-│   ├── tb_axi_read.v       #6 在飞上限的定向测试 (+ run_axi_tb.bat)
+│   ├── tb_axi_read.v       #6 未完成读事务上限的定向测试 (+ run_axi_tb.bat)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32 (量"延迟敏感度"/斜率)
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
@@ -200,7 +200,7 @@ python3 python/benchmark.py
 
 | 参数 | 值 | 为什么是这个值 |
 | --- | --- | --- |
-| `MAXO` | **8** | 未完成读上限，与 PS7 `S_AXI_HP0` 自己声明的 `NUM_READ_OUTSTANDING=8` 一致；再大只会被 `ARREADY` 反压 |
+| `MAXO` | **8** | 未完成读事务上限，与 PS7 `S_AXI_HP0` 自己声明的 `NUM_READ_OUTSTANDING=8` 一致；再大只会被 `ARREADY` 反压 |
 | `QD` | **80** | 每条流的命令/数据 FIFO 容量（存储体 128 深、指针 7 位） |
 | `PD` | **4** | 对象头暂存环深度 = **预取深度**（领先最多 4 个对象） |
 | `DQD` | **8** | 引用描述符队列深度（对象头填好即入队，由 issuer 独立发命令） |
@@ -270,7 +270,7 @@ python3 python/benchmark.py
 | **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
 | **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
-| **#6** | 在飞 AR 数任何时刻 ≤ `MAXO`(8) |
+| **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
 
 > 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、

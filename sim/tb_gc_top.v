@@ -266,7 +266,7 @@ module tb_gc_top;
     integer     tgt, node, head, tail, cnt_exp;
     integer     errors, got, bitv, qtail_dut, marked_dut;
     integer     rr;
-    integer     err_ho = 0;          // #6: 在飞 AR 超过 8 的次数
+    integer     err_ho = 0;          // #6: 未完成读事务超过 8 的次数
     reg [31:0]  rcs [0:N-1];
     reg [31:0]  roff [0:N-1];
     reg [31:0]  expb [0:N-1];      // 期望位图 (1=活跃)
@@ -737,10 +737,10 @@ module tb_gc_top;
 
         // ---- #6 汇总 ----
         if (err_ho != 0) begin
-            $display("[TB][FAIL] #6 在飞 AR 超过 8 的次数: %0d", err_ho);
+            $display("[TB][FAIL] #6 未完成读事务超过 8 的次数: %0d", err_ho);
             errors = errors + 1;
         end else begin
-            $display("[TB] #6 在飞 AR 从未超过 8 OK");
+            $display("[TB] #6 未完成读事务从未超过 8 OK");
         end
 
         // ---- AXI 协议检查 (#1) ----
@@ -760,7 +760,7 @@ module tb_gc_top;
         $finish;
     end
 
-    // #6 监视: 两条流合计的在飞 AR 数, 任何时刻都不得超过 8 (= 声明值 MAXO)
+    // #6 监视: 两条流合计的未完成读事务数, 任何时刻都不得超过 8 (= 声明值 MAXO)
     always @(posedge clk) begin
         if ((dut.u_axi_rd.h0cnt + dut.u_axi_rd.h1cnt) > 8)
             err_ho = err_ho + 1;

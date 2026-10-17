@@ -2,7 +2,7 @@
 // ============================================================
 // tb_axi_read.v — gc_axi_read 专项单测 (针对 #6 未完成读上限)
 //
-// 目的: 整机仿真里引擎的读需求不够密, 在飞 AR 到不了 8, 无法验证 #6.
+// 目的: 整机仿真里引擎的读需求不够密, 未完成读事务到不了 8, 无法验证 #6.
 //       这里直接驱动 cmd0, 用长延迟 (LAT=40) 把 AR 堆起来,
 //       行为级统计 (ar_cnt - r_cnt) 必须任何时刻都 ≤ MAXO(8).
 //
@@ -128,11 +128,11 @@ module tb_axi_read;
         end
     end
 
-    // ---------- 统计: 在飞 AR = AR 握手数 - R 握手数 ----------
+    // ---------- 统计: 未完成读事务 = AR 握手数 - R 握手数 ----------
     integer ar_cnt = 0;
     integer r_cnt  = 0;
     integer peak   = 0;
-    integer viol   = 0;              // 在飞超过 MAXO(8) 的拍数
+    integer viol   = 0;              // 未完成读事务超过 MAXO(8) 的拍数
 
     always @(posedge clk) begin
         if (rstn) begin
@@ -168,7 +168,7 @@ module tb_axi_read;
         while ((r_cnt < NCMD) && guard < 20000) begin @(posedge clk); guard = guard + 1; end
         repeat (20) @(negedge clk);
 
-        $display("[AXITB] NCMD=%0d LAT=%0d | AR=%0d R=%0d | 在飞峰值=%0d (上限 8) | 超限拍数=%0d",
+        $display("[AXITB] NCMD=%0d LAT=%0d | AR=%0d R=%0d | 未完成读峰值=%0d (上限 8) | 超限拍数=%0d",
                  NCMD, LAT, ar_cnt, r_cnt, peak, viol);
 
         if (ar_cnt != NCMD) begin
@@ -176,7 +176,7 @@ module tb_axi_read;
         end else if (r_cnt != NCMD) begin
             $display("[AXITB][FAIL] 收回的 R 数 %0d != %0d (丢数据)", r_cnt, NCMD);
         end else if (viol != 0) begin
-            $display("[AXITB][FAIL] 在飞 AR 超过 8 共 %0d 拍 —— #6 未修复!", viol);
+            $display("[AXITB][FAIL] 未完成读事务超过 8 共 %0d 拍 —— #6 未修复!", viol);
         end else if (axi_errs !== 32'd0) begin
             $display("[AXITB][FAIL] AXI 协议违规 %0d 次", axi_errs);
         end else begin
