@@ -65,22 +65,30 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython 的 GC **标记阶段�
 ```
 FOGCCC/
 ├── rtl/                    Verilog RTL 源码
-│   ├── gc_top.v            顶层模块
-│   ├── gc_regs.v           AXI-Lite 寄存器接口
-│   ├── gc_mark_engine.v    BFS 标记状态机 (核心, 24 状态)
-│   ├── gc_bitmap.v         标记位图 BRAM 4096×32
-│   ├── gc_queue.v          BFS 队列 BRAM 4096×12
-│   └── gc_axi_read.v       AXI HP 读主控
-├── csrc/                   C 源码 (运行在 PS 端 Linux)
-│   ├── fpga_gc.h           驱动头文件
-│   ├── fpga_gc.c           驱动实现
-│   └── test_main.c         测试主程序
-├── python/                 Python 脚本
-│   ├── fogccc.py           ctypes 绑定 + 多规模测试
-│   └── benchmark.py        CPython 软件 GC 基准
+│   ├── gc_top.v            顶层 (AXI-Lite + AXI3 HP, 单时钟域无 CDC)
+│   ├── gc_regs.v           AXI-Lite 寄存器接口 (12 位地址 / 含 STATUS)
+│   ├── gc_mark_engine.v    BFS 状态机 + 对象头预取"侦察兵" + 引用发射器
+│   ├── gc_bitmap.v         标记位图 BRAM 4096×32 (读/写地址独立)
+│   ├── gc_queue.v          BFS 队列 BRAM 4096×12 (带 count, 可安全用满)
+│   └── gc_axi_read.v       AXI3 读主控: 双流 (ID=0 引用 / ID=1 对象头)
+├── sim/                    xsim 自检仿真
+│   ├── tb_gc_top.v         自检 testbench (主用例 + T1/T2/T3 + STATUS)
+│   ├── run_sim.bat         一键仿真 (PASS = 250/250、孤岛 0)
+│   └── lat_sweep.bat       延迟扫描 LAT=1..32 (量"延迟敏感度"/斜率)
+├── csrc/                   C 源码 (PS 端 Linux)
+│   ├── fpga_gc.h / .c      驱动
+│   ├── test_main.c         测试主程序
+│   └── build_cmark.sh      cmark 交叉编译 (工具链从脚本位置推导)
+├── python/                 ctypes 绑定 + 基准
 ├── vivado/
-│   ├── build.tcl           Vivado 工程自动创建脚本
-│   └── constraints.xdc     约束文件
+│   ├── build.tcl           首次建工程 (BD + 综合 + 实现 + XSA)
+│   ├── build_rtl_only.tcl  只改 RTL 的快速重编 (复用 BD)
+│   └── constraints.xdc
+├── tools/                  串口控制台 / 板上自动化 / JTAG 烧写
+├── artifacts/              要拷到 TF 卡的构建产物
+├── legacy/original-v1/     优化前 RTL 存档 (tag v1-original)
+├── AGENTS.md               本项目对 AI 参与者的工程约束
+├── BUILD_GUIDE.md          构建步骤
 └── README.md               本文件
 ```
 
@@ -153,7 +161,23 @@ python3 python/benchmark.py
 | 0x14 | CYCLES | R | 硬件周期计数 |
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
-| 0x40+ | ROOT_LIST | W | 根集对象 ID 数组 |
+| 0x20 | STATUS | R | [0]=队列溢出 [1]=AXI 读错误 [2]=引用流失步（每次 start 清零） |
+| 0x40+ | ROOT_LIST | W | 根集对象 ID 数组（0x40~0x43F，最多 256 个） |
+
+## 关键设计参数
+
+| 参数 | 值 | 为什么是这个值 |
+| --- | --- | --- |
+| `MAXO` | **8** | 未完成读上限，与 PS7 `S_AXI_HP0` 自己声明的 `NUM_READ_OUTSTANDING=8` 一致；再大只会被 `ARREADY` 反压 |
+| `QD` | **80** | 每条流的命令/数据 FIFO 容量（存储体 128 深、指针 7 位） |
+| `PD` | **4** | 对象头暂存环深度 = **预取深度**（领先最多 4 个对象） |
+| `DQD` | **8** | 引用描述符队列深度（对象头填好即入队，由 issuer 独立发命令） |
+| 对象上限 | **4096** | 12 位对象 ID / 位图 4096×32 / 队列 4096 深 |
+| AXI 协议 | **AXI3** | Zynq-7000 HP 口原生协议：`ID_WIDTH=6`、单拍、`ARSIZE=3`(8 字节) |
+| 流 ID | **0 = 引用, 1 = 对象头** | 两流各有独立数据 FIFO；同 ID 保序、异 ID 互不阻塞 |
+| 时钟 | **FCLK0 = 100MHz** | 引擎 / AXI-Lite / AXI HP 同一域，**无 CDC** |
+| 位图 | 4096×32 = 128 Kb | 对象 x 的状态 = `mem[x]` 的第 `x%32` 位 |
+| 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满；旧版卡在 4000 且**静默丢弃**，现已改成报告 `err_ovf` |
 
 ## Object Graph DDR Format
 
@@ -174,7 +198,7 @@ python3 python/benchmark.py
 
 ## 性能实测
 
-三次上板实测，全部使用同一套严格判据（`gc_test.py`，`maxN=4096 trials=8 avg_refs=2`）。
+四次上板实测，全部使用同一套严格判据（`gc_test.py`，`maxN=4096 trials=8 avg_refs=2`）。
 "每对象周期" = HW cycles ÷ 活跃对象数（清位图是固定的 4096 拍，扣掉后更公平）。
 
 |                | 原始设计 Ver1<br>(单笔未完成读) | Ver2<br>(多笔未完成读 + 快路径) | Ver3<br>(+ 对象头预取 + 竞态修复) | Ver4<br>(+ 引用流水 + 6 项修复) |
@@ -188,6 +212,21 @@ python3 python/benchmark.py
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
 > 只有 **每对象周期** 是可比的。
+
+### 仿真回归
+
+`sim\run_sim.bat` 一次跑完下面全部检查（**全过才算 PASS**）：
+
+| 检查 | 内容 |
+| --- | --- |
+| 主用例 | N=300 / 活跃 250 / 孤岛 50；标记数、队列尾、位图逐位比对 |
+| STATUS | `0x20` 必须为 0（无队列溢出 / 无 AXI 读错误 / 无引用流失步） |
+| **T1** | **连续两次运行**：`marked` 两次都必须是 2（回归 `prev_ref` 跨运行残留） |
+| **T2** | **重复根**（同一 root 写两次）：只算一次 |
+| **T3** | **流水 AW**（AW/W 双线程背靠背两笔写）：两笔都必须落到正确寄存器 |
+| **#6** | 在飞 AR 数任何时刻 ≤ `MAXO`(8) |
+
+> 反向验证：把对应修复去掉后，T1 会 `marked=1`、T3 会死锁超时 —— 这两个都实测过。
 
 ### 提升幅度
 
