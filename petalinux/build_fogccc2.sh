@@ -47,6 +47,18 @@ grep -q 'CONFIG_python3=y' project-spec/configs/rootfs_config \
     || { echo "!!! 丢失: python3 (板子上跑不了测试脚本)"; fail=1; }
 grep -q 'pl_graph' project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi \
     || { echo "!!! 丢失: device-tree reserved-memory pl_graph"; fail=1; }
+# 层路径必须能解析. 复制 PetaLinux 工程时 SDKBASEMETAPATH 会一起被复制过来,
+# 指向旧工程; 旧工程一旦删掉, 构建就会崩在 gen-machineconf / HDF_URI 上.
+SDK=$(sed -n 's/^SDKBASEMETAPATH = "\(.*\)"/\1/p' build/conf/bblayers.conf)
+if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+    echo "!!! SDKBASEMETAPATH 指向的目录不存在: '$SDK'"
+    echo "    两个办法:"
+    echo "      a) 建软链接: ln -s fogccc2_linux \$HOME/xilinx/fogccc_linux   (零重编)"
+    echo "      b) sed 改成 $PROJ/components/yocto, 然后全量重编 1-3 小时"
+    echo "    注意 b) 会改 build/conf, 触发 gen-machineconf —— 本机安装里没有这个工具, 会失败"
+    fail=1
+fi
+
 if [ "$fail" != "0" ]; then
     echo "!!! 手工配置被冲掉了 —— 停下, 从 fogccc_linux 重新复制一份再来"
     exit 1
