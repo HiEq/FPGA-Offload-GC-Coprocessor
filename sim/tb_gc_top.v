@@ -240,6 +240,7 @@ module tb_gc_top;
     integer     tgt, node, head, tail, cnt_exp;
     integer     errors, got, bitv, qtail_dut, marked_dut;
     integer     rr;
+    integer     err_ho = 0;          // #6: 在飞 AR 超过 8 的次数
     reg [31:0]  rcs [0:N-1];
     reg [31:0]  roff [0:N-1];
     reg [31:0]  expb [0:N-1];      // 期望位图 (1=活跃)
@@ -506,6 +507,57 @@ module tb_gc_top;
             errors = errors + 1;
         end
 
+        // ============================================================
+        // T3: 流水 AW —— 背靠背两笔写, 两笔都必须落到正确地址 (#2)
+        // ============================================================
+        $display("[TB] ===== T3: pipelined AW (back-to-back writes) =====");
+        begin : t3
+            integer e0;
+            e0 = errors;
+            @(negedge clk);
+            m_bready = 1'b1;
+            fork
+                begin : aw_th
+                    m_awaddr = 12'h004; m_awvalid = 1'b1;
+                    @(posedge clk); while (!(m_awvalid && m_awready)) @(posedge clk);
+                    @(negedge clk); m_awaddr = 12'h008;
+                    @(posedge clk); while (!(m_awvalid && m_awready)) @(posedge clk);
+                    @(negedge clk); m_awvalid = 1'b0;
+                end
+                begin : w_th
+                    m_wdata = 32'hA5A50001; m_wstrb = 4'hF; m_wvalid = 1'b1;
+                    @(posedge clk); while (!(m_wvalid && m_wready)) @(posedge clk);
+                    @(posedge clk); while (!m_bvalid) @(posedge clk);
+                    @(negedge clk); m_wdata = 32'h5A5A0002;
+                    @(posedge clk); while (!(m_wvalid && m_wready)) @(posedge clk);
+                    @(negedge clk); m_wvalid = 1'b0;
+                end
+            join
+            repeat (20) @(negedge clk);
+            m_bready = 1'b0;
+            @(negedge clk);
+
+            axil_rd(8'h04, rd_val);
+            if (rd_val !== 32'hA5A50001) begin
+                $display("[TB][FAIL] T3 reg04=%h != A5A50001 (第一笔写丢失/写错)", rd_val);
+                errors = errors + 1;
+            end
+            axil_rd(8'h08, rd_val);
+            if (rd_val !== 32'h5A5A0002) begin
+                $display("[TB][FAIL] T3 reg08=%h != 5A5A0002 (第二笔 AW 未锁存)", rd_val);
+                errors = errors + 1;
+            end
+            if (errors == e0) $display("[TB] T3 pipelined-AW OK");
+        end
+
+        // ---- #6 汇总 ----
+        if (err_ho != 0) begin
+            $display("[TB][FAIL] #6 在飞 AR 超过 8 的次数: %0d", err_ho);
+            errors = errors + 1;
+        end else begin
+            $display("[TB] #6 在飞 AR 从未超过 8 OK");
+        end
+
         // ---- 结论 ----
         if (errors == 0)
             $display("\n[TB] ==================== PASS ====================");
@@ -513,6 +565,12 @@ module tb_gc_top;
             $display("\n[TB] ==================== FAIL (%0d 处) ====================", errors);
 
         $finish;
+    end
+
+    // #6 监视: 两条流合计的在飞 AR 数, 任何时刻都不得超过 8 (= 声明值 MAXO)
+    always @(posedge clk) begin
+        if ((dut.u_axi_rd.h0cnt + dut.u_axi_rd.h1cnt) > 8)
+            err_ho = err_ho + 1;
     end
 
     // ================= 环形轨迹缓冲 (超时时倒出来看) =================
