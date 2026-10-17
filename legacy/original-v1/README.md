@@ -26,7 +26,7 @@ git checkout v1-original        # 或在 GitHub 的 Tags 页面直接下载 zip
 
 **启动镜像在 Release 里**，不需要碰 Vivado / PetaLinux：
 
-[`v1-original` Release](../../../releases/tag/v1-original) → `BOOT.BIN` + `image.ub`
+`v1-original`（资产 `BOOT.BIN-v1-original`，挂在 release `v4-optimized` 下） → `BOOT.BIN` + `image.ub`
 
 把这两个文件放到 TF 卡第一个分区（FAT32，BOOT 分区）根目录即可启动。
 
