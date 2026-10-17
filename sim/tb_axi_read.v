@@ -83,6 +83,26 @@ module tb_axi_read;
         .RREADY      (rready)
     );
 
+    // ---------- AXI 协议检查器 ----------
+    wire [31:0] axi_errs;
+    axi_proto_check u_axi_chk (
+        .clk     (clk),
+        .rstn    (rstn),
+        .ARADDR  (araddr),
+        .ARID    (arid),
+        .ARLEN   (arlen),
+        .ARSIZE  (arsize),
+        .ARBURST (arburst),
+        .ARCACHE (arcache),
+        .ARVALID (arvalid),
+        .ARREADY (arready),
+        .RID     (rid),
+        .RRESP   (rresp),
+        .RVALID  (rvalid),
+        .RREADY  (rready),
+        .errors  (axi_errs)
+    );
+
     // ---------- 行为记忆模型: 固定 LAT 拍, 回显 ARID ----------
     reg  [38:0] sh [0:LAT-1];        // {valid, id[5:0], addr[31:0]}
     integer     si;
@@ -157,7 +177,10 @@ module tb_axi_read;
             $display("[AXITB][FAIL] 收回的 R 数 %0d != %0d (丢数据)", r_cnt, NCMD);
         end else if (viol != 0) begin
             $display("[AXITB][FAIL] 在飞 AR 超过 8 共 %0d 拍 —— #6 未修复!", viol);
+        end else if (axi_errs !== 32'd0) begin
+            $display("[AXITB][FAIL] AXI 协议违规 %0d 次", axi_errs);
         end else begin
+            $display("[AXITB] AXI 协议检查 OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 对齐)");
             $display("[AXITB] ==================== PASS ====================");
         end
         $finish;

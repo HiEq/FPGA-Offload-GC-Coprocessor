@@ -16,7 +16,7 @@ if not exist "%CACHE%" mkdir "%CACHE%"
 cd /d "%CACHE%"
 
 echo === xvlog ===
-call "%XV%\xvlog.bat" "%SRC%\rtl\gc_axi_read.v" "%SRC%\sim\tb_axi_read.v"
+call "%XV%\xvlog.bat" "%SRC%\rtl\gc_axi_read.v" "%SRC%\sim\axi_proto_check.v" "%SRC%\sim\tb_axi_read.v"
 if errorlevel 1 goto :err
 
 echo === xelab ===
