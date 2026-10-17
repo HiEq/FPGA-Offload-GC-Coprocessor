@@ -2,11 +2,14 @@
 # ============================================================
 # gc_test.py - FOGCCC reliability + performance sweep  (strict)
 #
-#   usage: python3 gc_test.py [maxN] [trials] [avg_refs]
+#   usage: python3 gc_test.py [maxN] [trials] [avg_refs] [--seed N]
 #     maxN     : upper bound of object count per trial (default 4096;
 #                hardware limit is 4096 = 12-bit ids / 4096x32 bitmap)
 #     trials   : randomised runs (default 8)
 #     avg_refs : average extra out-degree (default 2)
+#     --seed   : RNG seed.  If omitted one is taken from the clock and PRINTED,
+#                so every run can be replayed exactly:
+#                  python3 gc_test.py 4096 8 2 --seed 12345
 #
 # WHY THIS TEST CANNOT GIVE A FALSE "OK"
 # --------------------------------------
@@ -51,9 +54,19 @@ def task(pct, label):
     sys.stdout.write("@@TASK %d %s\n" % (pct, label)); sys.stdout.flush()
 
 def main():
-    maxN     = int(sys.argv[1]) if len(sys.argv) > 1 else 4096
-    trials   = int(sys.argv[2]) if len(sys.argv) > 2 else 8
-    avg_refs = int(sys.argv[3]) if len(sys.argv) > 3 else 2
+    argv = sys.argv[1:]
+    seed = None
+    if '--seed' in argv:
+        i = argv.index('--seed')
+        if i + 1 >= len(argv):
+            raise SystemExit('--seed needs a value')
+        seed = int(argv[i + 1]); del argv[i:i + 2]
+    maxN     = int(argv[0]) if len(argv) > 0 else 4096
+    trials   = int(argv[1]) if len(argv) > 1 else 8
+    avg_refs = int(argv[2]) if len(argv) > 2 else 2
+    if seed is None:
+        seed = int(time.time() * 1000) & 0x7FFFFFFF
+    rng = random.Random(seed)
     if maxN > N_MAX_HW:
         print("NOTE: maxN %d clamped to hardware limit %d" % (maxN, N_MAX_HW))
         maxN = N_MAX_HW
@@ -72,6 +85,7 @@ def main():
     print(" FOGCCC  FPGA mark  --  strict reliability + performance sweep")
     print("   maxN=%d  trials=%d  avg_refs=%d   (HW limit %d, min cycles %d)"
           % (maxN, trials, avg_refs, N_MAX_HW, MIN_CYCLES))
+    print("   seed=%d   (replay exactly: --seed %d)" % (seed, seed))
     print("   expected count is KNOWN A PRIORI = L (live region), garbage must be 0")
     print("   regs @ 0x%08X  graph @ 0x%08X  reset CTRL = 0x%08X"
           % (REG_BASE, GRAPH_BASE, rr(R_CTRL)))
@@ -80,7 +94,7 @@ def main():
     rows = []
     for t in range(1, trials + 1):
         lo = min(maxN, max(64, maxN // 8))
-        n  = random.randint(lo, maxN)
+        n  = rng.randint(lo, maxN)
         L  = (n * 3) // 4
         REF_BASE = (HDR_BASE + n * 16 + 0xFFF) & ~0xFFF
         task(int(5 + 85.0 * (t - 1) / trials), "trial %d/%d  N=%d  (expect %d)" % (t, trials, n, L))
@@ -90,18 +104,18 @@ def main():
         edges = [[] for _ in range(n)]
         # live: spanning tree 0 -> everything  (guarantees reachability)
         for i in range(1, L):
-            p = random.randrange(0, i)
+            p = rng.randrange(0, i)
             edges[p].append(i)
             edges[i].append(p)
         # live: extra random edges (make it a real graph, not just a tree)
         for i in range(L):
-            for _ in range(random.randrange(0, avg_refs + 1)):
-                x = random.randrange(0, L)
+            for _ in range(rng.randrange(0, avg_refs + 1)):
+                x = rng.randrange(0, L)
                 if x != i: edges[i].append(x)
         # garbage: edges only inside [L, n)
         for i in range(L, n):
-            for _ in range(random.randrange(0, avg_refs * 2 + 1)):
-                x = random.randrange(L, n)
+            for _ in range(rng.randrange(0, avg_refs * 2 + 1)):
+                x = rng.randrange(L, n)
                 if x != i: edges[i].append(x)
 
         ref_counts = [len(e) for e in edges]
@@ -216,6 +230,7 @@ def main():
     tot_sw  = sum(r['sw_ms'] for r in rows)
     sp = [r['speed'] for r in rows if r['ok']]
     print("  trials                : %d" % len(rows))
+    print("  seed                  : %d   (replay: --seed %d)" % (seed, seed))
     print("  PASSED (all invariants): %d/%d" % (nok, len(rows)))
     print("  total HW cycles        : %d  (= %.2f us @100MHz)" % (tot_cyc, tot_hw))
     print("  total SW (Python)      : %.2f ms" % tot_sw)

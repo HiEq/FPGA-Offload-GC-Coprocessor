@@ -15,7 +15,8 @@ DIR=$(cd "$(dirname "$0")" && pwd)
 MAXN=${1:-4096}
 TRIALS=${2:-8}
 AVG=${3:-2}
-LOG="$DIR/gc_run_$(date +%Y%m%d_%H%M%S).log"
+mkdir -p "$DIR/logs" 2>/dev/null
+LOG="$DIR/logs/gc_run_$(date +%Y%m%d_%H%M%S).log"
 
 echo "=========================================================="
 echo " FOGCCC on-board test"

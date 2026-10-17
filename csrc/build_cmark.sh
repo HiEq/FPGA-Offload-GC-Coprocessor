@@ -15,7 +15,7 @@ set -u
 # 路径从脚本位置推导, 不写死用户名
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/csrc/cmark.c"
-OUT="$ROOT/artifacts/cmark"
+OUT="$ROOT/artifacts/userdata/cmark"
 
 echo "=== 1. 找存活的 recipe-sysroot 对 ==="
 S=""
@@ -51,8 +51,7 @@ if [ -f "$OUT" ]; then
     fi
     file "$OUT" 2>/dev/null || true
     ls -la "$OUT"
-    # 源码也一并放进 artifacts, 方便在板上/别处重新编译
-    cp -v "$SRC" "$ROOT/artifacts/cmark.c"
+    # 源码只保留在 csrc/cmark.c：板上没有 gcc，不再往卡目录里放副本
     echo "=== DONE — 板上运行:  ./cmark 4096 8 2 ==="
 else
     echo "!!! 失败"
