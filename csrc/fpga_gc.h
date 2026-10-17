@@ -29,6 +29,15 @@
 #define REG_Q_HEAD       0x18   // 队列头指针 (只读)
 #define REG_Q_TAIL       0x1C   // 队列尾指针 (只读)
 #define REG_ROOT_LIST    0x40   // 根集数组起始
+#define REG_STATUS       0x20   // [0]=queue overflow [1]=AXI read error [2]=ref desync [3]=bad header
+#define REG_BM_ADDR      0x24   // bitmap probe address (0..4095)
+#define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
+
+// STATUS bit masks
+#define STATUS_OVF       (1U << 0)   // queue full, object dropped
+#define STATUS_RDERR     (1U << 1)   // AXI read response error
+#define STATUS_REFDESYNC (1U << 2)   // consumed more refs than issued
+#define STATUS_HDR       (1U << 3)   // ref_count > 4096 (corrupt header)
 
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
@@ -97,6 +106,7 @@ void fpga_gc_dump_marks(fpga_gc_t *dev, int n);
 void fpga_gc_clear(fpga_gc_t *dev);
 
 // 打印硬件统计信息
+uint32_t fpga_gc_status(fpga_gc_t *dev);
 void fpga_gc_print_stats(fpga_gc_t *dev);
 
 #endif // FPGA_GC_H

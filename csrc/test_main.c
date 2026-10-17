@@ -112,6 +112,21 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
                n, fpga_count, hw_us, sw_us, nbuf, cbuf, pbuf,
                match ? "" : "  <<<< MISMATCH");
 
+        // ---- STATUS must be clean: no overflow, no AXI error, no desync ----
+        uint32_t st = fpga_gc_status(dev);
+        if (st != 0) {
+            printf("  STATUS=0x%X  (bit0=overflow bit1=axierr bit2=desync bit3=badhdr)\n", st);
+            all_pass = 0;
+        }
+
+        // ---- bitmap readback (0x24/0x28) must agree with MARKED ----
+        uint32_t bits = 0;
+        for (int o = 0; o < n; o++)
+            bits += fpga_gc_read_mark(dev, (uint32_t)o);
+        if (bits != fpga_count) {
+            printf("  bitmap readback=%u != MARKED=%u (probe broken)\n", bits, fpga_count);
+            all_pass = 0;
+        }
         if (!match) all_pass = 0;
         if (n == sizes[n_sizes - 1]) {
             best_n = n; best_marked = (int)fpga_count;
@@ -256,6 +271,38 @@ static int test_repeat(fpga_gc_t *dev) {
 // ============================================================
 // 主函数
 // ============================================================
+// ============================================================
+// Test 4: duplicate roots must be counted once
+//   roots {0,0,0} and {0} must both mark the same set. The engine
+//   checks the bitmap before pushing a root, so the second and third
+//   copy are skipped (no double push, no double count).
+// ============================================================
+static int test_dup_roots(fpga_gc_t *dev) {
+    printf("\n");
+    printf("=============================================\n");
+    printf("  Test 4: duplicate roots\n");
+    printf("=============================================\n");
+
+    if (fpga_gc_build_graph(dev, 200, 3) < 0) return 0;
+
+    uint32_t one[1] = {0};
+    uint32_t dup[3] = {0, 0, 0};
+
+    fpga_gc_set_roots(dev, one, 1);
+    uint32_t c1 = fpga_gc_mark(dev, NULL);
+    uint32_t st1 = fpga_gc_status(dev);
+
+    fpga_gc_set_roots(dev, dup, 3);
+    uint32_t c3 = fpga_gc_mark(dev, NULL);
+    uint32_t st3 = fpga_gc_status(dev);
+
+    int pass = (c1 == c3) && (c1 > 1) && (st1 == 0) && (st3 == 0);
+    printf("  roots={0}      -> marked=%u  STATUS=0x%X\n", c1, st1);
+    printf("  roots={0,0,0}  -> marked=%u  STATUS=0x%X\n", c3, st3);
+    printf("  %s (duplicate roots must not double count, expect %u == %u)\n",
+           pass ? "PASS" : "FAIL", c1, c3);
+    return pass;
+}
 int main(int argc, char **argv) {
     printf("╔════════════════════════════════════════════╗\n");
     printf("║  FOGCCC GC Coprocessor Test Suite          ║\n");
@@ -281,12 +328,13 @@ int main(int argc, char **argv) {
     int pass1 = test_correctness(&dev, py_path);
     int pass2 = test_cycle(&dev);
     int pass3 = test_repeat(&dev);
+    int pass4 = test_dup_roots(&dev);
 
     // 打印硬件统计
     fpga_gc_print_stats(&dev);
 
     // 汇总
-    int all_pass = pass1 && pass2 && pass3;
+    int all_pass = pass1 && pass2 && pass3 && pass4;
     printf("\n");
     printf("=============================================\n");
     printf("  SUMMARY\n");
@@ -294,6 +342,7 @@ int main(int argc, char **argv) {
     printf("  Test 1 (Correctness) : %s\n", pass1 ? "PASS" : "FAIL");
     printf("  Test 2 (Cycle)       : %s\n", pass2 ? "PASS" : "FAIL");
     printf("  Test 3 (Repeat)      : %s\n", pass3 ? "PASS" : "FAIL");
+    printf("  Test 4 (Dup roots)   : %s\n", pass4 ? "PASS" : "FAIL");
     printf("  -------------------------------------------\n");
     printf("  Overall: %s\n", all_pass ? "*** ALL PASS ***" : "*** FAILED ***");
     printf("=============================================\n");

@@ -271,38 +271,44 @@ uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 // 读取单个对象的标记状态
 // ============================================================
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
-    // 通过位图寄存器读取
-    // 位图在BRAM中, 但当前寄存器接口未暴露位图读端口
-    // 替代方案: 重新运行软件标记并对比
-    // 或: 添加BM_ADDR/BM_DATA寄存器 (需要修改gc_regs.v)
-    (void)dev; (void)obj_id;
-    return 0;  // TODO: 需要扩展寄存器接口
+    // Bitmap probe: object x is bit (x % 32) of word x.
+    // Valid only while the engine is idle (the read port is muxed then).
+    if (obj_id >= 4096)
+        return 0;
+    dev->regs[REG_BM_ADDR / 4] = obj_id;
+    (void)dev->regs[REG_BM_ADDR / 4];      // flush the posted write
+    uint32_t word = dev->regs[REG_BM_DATA / 4];
+    return (word >> (obj_id & 31)) & 1U;
 }
 
 // ============================================================
-// 打印标记位图 (简化版: 通过软件标记对比)
+// Dump the bitmap (probe loop, one register round trip per object)
 // ============================================================
 void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
-    printf("Object reachability (from software reference):\n");
-    uint32_t roots[] = {0};
-    uint8_t *base = (uint8_t *)dev->graph_vaddr;
-    // 使用软件标记作为参考输出
-    // 实际FPGA位图需要ILA或扩展寄存器读取
-    printf("  (Use ILA in Vivado to observe bitmap signals)\n");
-    (void)dev; (void)n; (void)base; (void)roots;
+    if (n > 4096) n = 4096;
+    printf("Bitmap readback (%d objects):\n", n);
+    for (int i = 0; i < n; i++) {
+        if (i % 64 == 0) printf("  [%4d] ", i);
+        printf("%u", fpga_gc_read_mark(dev, (uint32_t)i));
+        if (i % 64 == 63) printf("\n");
+    }
+    if (n % 64) printf("\n");
 }
-
-// ============================================================
-// 清除
-// ============================================================
 void fpga_gc_clear(fpga_gc_t *dev) {
     // 位图由引擎在每轮 S_CLR_BM 自动清, 这里只需要清队列
     dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q;
 }
+// ============================================================
+// STATUS register: sticky error flags (cleared by the next start)
+// ============================================================
 
+uint32_t fpga_gc_status(fpga_gc_t *dev) {
+    return dev->regs[REG_STATUS / 4] & 0xFU;
+}
 // ============================================================
-// 打印硬件统计
+// Print hardware statistics
 // ============================================================
+
 void fpga_gc_print_stats(fpga_gc_t *dev) {
     uint32_t cycles = dev->regs[REG_CYCLES / 4];
     uint32_t marked = dev->regs[REG_MARKED / 4];
@@ -312,6 +318,7 @@ void fpga_gc_print_stats(fpga_gc_t *dev) {
 
     printf("\n--- Hardware Statistics ---\n");
     printf("  Marked objects : %u\n", marked);
+    printf("  STATUS         : 0x%X\n", fpga_gc_status(dev));
     printf("  HW cycles      : %u\n", cycles);
     printf("  HW time        : %.2f us (@100MHz)\n", time_us);
     printf("  Queue head/tail: %u / %u (depth=%u)\n",
