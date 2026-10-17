@@ -145,7 +145,7 @@ sudo ./bin/test_main
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
 | `CPython ms` | `py_mark.py` 独立进程、独立实现的 Python BFS |
 
-2026-10-17 实测（XC7Z100，PL 100 MHz）：
+实测（XC7Z100，PL 100 MHz）：
 
 ```
 Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
