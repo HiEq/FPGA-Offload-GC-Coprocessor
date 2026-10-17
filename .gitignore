@@ -43,3 +43,8 @@ sim/xsim_*.backup.*
 
 # board / serial transcripts
 tools/*.log
+
+# 工具日志 (统一放 tools/logs/)
+tools/logs/*
+!tools/logs/.gitkeep
+tools/__pycache__/

@@ -13,7 +13,7 @@
 param(
     [string]$Port = "COM3",
     [int]   $Baud = 115200,
-    [string]$Out  = "$PSScriptRoot\board_run.log"
+    [string]$Out  = "$PSScriptRoot\logs\board_run.log"
 )
 
 $sp = New-Object System.IO.Ports.SerialPort $Port,$Baud,'None',8,'One'

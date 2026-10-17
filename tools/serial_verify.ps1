@@ -1,8 +1,10 @@
 param([string]$Port = "COM3")
 
 $ErrorActionPreference = 'Stop'
+# logs 鐩綍: 鏃ュ織缁熶竴鏀捐繖閲? 涓嶈鍜屽伐鍏锋贩鍦?tools/ 鏍圭洰褰?$logDir = Join-Path $PSScriptRoot 'logs'
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-$outFile = "$PSScriptRoot\board_verify_$stamp.log"
+$outFile = "$PSScriptRoot\logs\board_verify_$stamp.log"
 
 $sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
 $sp.ReadBufferSize  = 65536

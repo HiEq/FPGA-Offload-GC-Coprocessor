@@ -1,6 +1,8 @@
 param([string]$Port = "COM3")
 
 $ErrorActionPreference = 'Stop'
+# logs 鐩綍: 鏃ュ織缁熶竴鏀捐繖閲? 涓嶈鍜屽伐鍏锋贩鍦?tools/ 鏍圭洰褰?$logDir = Join-Path $PSScriptRoot 'logs'
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
 $sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
 $sp.ReadBufferSize = 65536
 $sp.ReadTimeout = 200
@@ -53,7 +55,7 @@ Write-Host ("  shell prompt: " + $gotShell)
 Pump 300
 $sp.Close()
 
-[System.IO.File]::WriteAllText("$PSScriptRoot\boot_login.log", $sb.ToString())
+[System.IO.File]::WriteAllText("$PSScriptRoot\logs\boot_login.log", $sb.ToString())
 $t = $sb.ToString()
 Write-Host "--- transcript tail ---"
 ($t -split "`r?`n") | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 30 | ForEach-Object { "  | " + $_ }

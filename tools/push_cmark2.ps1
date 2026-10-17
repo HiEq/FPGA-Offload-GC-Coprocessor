@@ -94,7 +94,7 @@ if (PumpUntil 'speedup HW vs C' 180000) { Write-Host "`n[cmark finished]" } else
 Pump 2000
 
 $sp.Close()
-$out = "$PSScriptRoot\cmark_onboard.log"
+$out = "$PSScriptRoot\logs\cmark_onboard.log"
 [System.IO.File]::WriteAllText($out, $sb.ToString())
 $log = $sb.ToString()
 Write-Host ""

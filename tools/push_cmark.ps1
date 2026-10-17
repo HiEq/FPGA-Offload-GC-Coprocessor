@@ -89,5 +89,5 @@ SendLine "ls -l /mnt/userdata/cmark"
 Pump 1200
 
 $sp.Close()
-[System.IO.File]::WriteAllText("$PSScriptRoot\push_cmark.log", $sb.ToString())
-Write-Host "`n=== transcript: $PSScriptRoot\push_cmark.log ==="
+[System.IO.File]::WriteAllText("$PSScriptRoot\logs\push_cmark.log", $sb.ToString())
+Write-Host "`n=== transcript: $PSScriptRoot\logs\push_cmark.log ==="
