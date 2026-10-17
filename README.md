@@ -204,7 +204,9 @@ python3 python/benchmark.py
 
 > **可复现**：`gc_test.py` 现在支持 `--seed N` 并会把种子打印在日志里
 > （不传则从时钟取一个并打印），同一种子的两次运行图**完全一致**
-> （N/exp 相同；HW cycles 因 DDR 响应仍有约 ±0.5% 抖动）。
+> （N/exp 相同）。HW cycles 仍有 DDR 响应带来的抖动，实测同一张图
+> （seed 424242，N=2578）跑 5 次为 33673 / 33679 / 33698 / 33808 / 33828 拍，
+> 极差 **155 拍 = 0.46%** —— 引用性能时请带上这个误差。
 > 例：`python3 gc_test.py 4096 8 2 --seed 424242`
 
 |                | 原始设计 Ver1<br>(单笔未完成读) | Ver2<br>(多笔未完成读 + 快路径) | Ver3<br>(+ 对象头预取 + 竞态修复) | Ver4<br>(+ 引用流水 + 6 项修复) |
@@ -238,6 +240,22 @@ python3 python/benchmark.py
 > 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
 > T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 `2` 会报 1588 条 `[AXI][FAIL]`
 > （而功能用例**照样通过**，因为存储模型不检查 ARSIZE）。
+
+### 中断链路
+
+`gc_top.irq_o = done` 接到 `ps7_0/IRQ_F2P[0]`，即 **GIC 中断 ID 61**
+（`ISPENDR1` bit 29）。`driver/` 里有一个最小模块验证整条链路：
+
+```
+insmod fogccc-irq.ko          # 映射 SPI 61 + request_irq，生成 /dev/fogccc_irq
+echo arm > /dev/fogccc_irq    # 使能（done=0 时不会触发）
+python3 gc_test.py 1024 1 2 --seed 11   # done 0 -> 1
+cat /dev/fogccc_irq           # "1 0 <virq>"  ← 中断已触发，处理函数自动关线
+```
+
+实测：`before arm 0 0 / after arm 0 1 / after run 1 0`，`VERDICT: IRQ_DRIVEN_DONE_OK`。
+两个坑见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
+SPI 编号 = ID − 32）。
 
 ### 提升幅度
 
