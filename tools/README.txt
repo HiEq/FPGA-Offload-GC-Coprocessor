@@ -63,9 +63,11 @@ FOGCCC 串口控制台  ——  使用说明
   log.bat            查看 com5.log
   monitor_com5.ps1   fogccc.bat 的后端
   gc_test.py         板级测试脚本 (同一份也放在 USERDATA)
-  com5.log           串口原始日志
+  logs\              所有脚本的日志输出目录 (已加入 .gitignore)
 
-【备用工具】(已挪到 ..\build_scripts\fallback\, 需要时再用)
-  push_file.ps1      不插卡的备用方案: 通过串口把 gc_test.py 推到板子并运行
-  raw_console.ps1    纯裸串口控制台(永远滚动, 不切仪表盘)
-    用法:  powershell -ExecutionPolicy Bypass -File ..\build_scripts\fallback\push_file.ps1
+【已移除】(2026-10-17 清理)
+  drive_com5.ps1 / fix_cmark_onboard.ps1 / push_cmark.ps1
+  serial_cmark_sweep.ps1 / gic_dump.py / irq_loss_test.sh
+  fogccc-dash.bat / fallback\push_file.ps1 / fallback\raw_console.ps1
+  原因: 依赖已删除的板上 gcc / 旧 COM5 / 功能已被其它脚本取代。
+  GIC 寄存器调试请改用 JTAG: xsdb 里 mrd 0xF8F01000 等 (见 hw_probe.tcl)。
