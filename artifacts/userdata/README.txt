@@ -14,6 +14,10 @@ bin/
 ko/
   fogccc-irq.ko    IRQ_F2P[0] 内核模块（只给 tests/irq_drv_test.sh 用）
 
+py/
+  fogccc.py         Python ctypes 绑定 (STATUS / 位图探针)
+  libfogccc.so      交叉编译的共享库 (fogccc.py 用)
+
 tests/
   irq_drv_test.sh  中断驱动端到端验证（板上唯一保留的测试脚本）
 
