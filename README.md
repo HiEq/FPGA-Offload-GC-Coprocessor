@@ -382,6 +382,7 @@ FPGA Offload GC Coprocessor for CPython/
 │    gc_queue.v        BFS 队列 4096x12 BRAM
 │    gc_axi_read.v     AXI HP 读命令队列 (多笔未完成读, 64 位对齐 + 半字选择)
 ├─ vivado/            build.tcl 首次建工程+综合+实现+导出 XSA ; build_rtl_only.tcl 只改 RTL 时快速重编
+│                     bd_if_dump.txt  BD 里 gc_top 的连线记录 ; constraints.xdc 时序约束
 │                     fogccc_proj/ 由 build.tcl 生成, 已 .gitignore
 ├─ csrc/              PS 端 C 驱动 (fpga_gc.h/.c, test_main.c)
 ├─ python/            CPython 侧 ctypes 绑定 + 软件基准
