@@ -171,7 +171,8 @@ module tb_gc_top;
     assign hp_arready = hp_can_shift;   // 输出被阻塞时不再收地址
     assign hp_rvalid  = hp_rvalid_i;
     assign hp_rid     = hp_rid_o;       // 回显请求的 ID
-    assign hp_rresp   = 2'b00;
+    reg  inject_err = 1'b0;
+    assign hp_rresp   = inject_err ? 2'b10 : 2'b00;
 
     wire [31:0] hp_widx = hp_raddr[31:2] - BASE[31:2];
     assign hp_rdata = { mem[hp_widx + 1], mem[hp_widx] };  // 小端: 低字在先
@@ -254,6 +255,9 @@ module tb_gc_top;
     localparam [11:0] R_CYCLES = 12'h14;
     localparam [11:0] R_QHEAD  = 12'h18;
     localparam [11:0] R_QTAIL  = 12'h1C;
+    localparam [11:0] R_STATUS = 12'h20;
+    localparam [11:0] R_BMADDR = 12'h24;
+    localparam [11:0] R_BMDATA = 12'h28;
     localparam [11:0] R_RLIST  = 12'h40;
 
     // ================= TB 数据结构 =================
@@ -631,6 +635,103 @@ module tb_gc_top;
         $display("[TB] T5 root60: marked=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
             $display("[TB][FAIL] T5 marked=%0d != 1 (root[60] 地址被截断?)", rd_val);
+            errors = errors + 1;
+        end
+
+        // ============================================================
+        // T6: bitmap readback (0x24 BM_ADDR / 0x28 BM_DATA)
+        //   T5 just finished and marked only obj60. The probe must read the
+        //   same word the engine wrote. Before the probe existed, 0x28 read
+        //   back 0xDEADBEEF.
+        // ============================================================
+        $display("[TB] ===== T6: bitmap readback =====");
+        axil_wr(R_BMADDR, 32'd60);
+        axil_rd(R_BMDATA, rd_val);
+        $display("[TB] T6 probe[60]=%h (bit28=%0d) bram=%h", rd_val, rd_val[28], dut.u_bitmap.mem[60]);
+        if (rd_val[28] !== 1'b1) begin
+            $display("[TB][FAIL] T6 BM_DATA[60] bit28 != 1 (probe did not see the bit)");
+            errors = errors + 1;
+        end
+        if (rd_val !== dut.u_bitmap.mem[60]) begin
+            $display("[TB][FAIL] T6 probe %h != bram %h", rd_val, dut.u_bitmap.mem[60]);
+            errors = errors + 1;
+        end
+        axil_wr(R_BMADDR, 32'd61);
+        axil_rd(R_BMDATA, rd_val);
+        if (rd_val !== 32'h0) begin
+            $display("[TB][FAIL] T6 BM_DATA[61]=%h, expect 0", rd_val);
+            errors = errors + 1;
+        end
+        $display("[TB] T6 bitmap probe OK");
+
+        // ============================================================
+        // T7: queue overflow must be reported (STATUS[0]), not silent
+        //   Force q_full while starting: the root cannot be enqueued, so
+        //   marked stays 0 and err_ovf must latch.
+        // ============================================================
+        $display("[TB] ===== T7: queue overflow -> STATUS[0] =====");
+        mem[(0*16)/4 + 1] = 32'd0;                 // obj0 has no refs
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd1);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        force dut.u_engine.q_full = 1'b1;
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        release dut.u_engine.q_full;
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T7 DONE never asserted (engine hung with q_full)");
+            errors = errors + 1;
+        end
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T7 STATUS=%h (expect bit0=1)", rd_val);
+        if (rd_val[0] !== 1'b1) begin
+            $display("[TB][FAIL] T7 STATUS[0]=%b, queue full but not reported", rd_val[0]);
+            errors = errors + 1;
+        end
+        axil_rd(R_MARKED, rd_val);
+        if (rd_val !== 32'd0) begin
+            $display("[TB][FAIL] T7 marked=%0d, expected 0 when the root is refused", rd_val);
+            errors = errors + 1;
+        end
+
+        // ============================================================
+        // T8: AXI read error must be reported (STATUS[1]) and must not hang
+        //   inject_err makes the slave answer SLVERR; the read master turns
+        //   the beat into 0xFFFFFFFF (list terminator) and sets err.
+        // ============================================================
+        $display("[TB] ===== T8: AXI RRESP error -> STATUS[1] =====");
+        mem[(0*16)/4 + 1] = 32'd1;
+        mem[(0*16)/4 + 2] = BASE + ref_base;
+        mem[ref_base/4 + 0] = 32'd1;
+        mem[ref_base/4 + 1] = 32'hFFFFFFFF;
+        mem[(1*16)/4 + 1] = 32'd0;
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd2);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        inject_err = 1'b1;
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        inject_err = 1'b0;
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T8 DONE never asserted (engine hung on AXI error)");
+            errors = errors + 1;
+        end
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T8 STATUS=%h (expect bit1=1)", rd_val);
+        if (rd_val[1] !== 1'b1) begin
+            $display("[TB][FAIL] T8 STATUS[1]=%b, AXI error not reported", rd_val[1]);
             errors = errors + 1;
         end
 

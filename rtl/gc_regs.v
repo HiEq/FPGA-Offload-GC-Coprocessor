@@ -11,7 +11,9 @@
 //   0x14   CYCLES         R     硬件周期计数 (只读)
 //   0x18   Q_HEAD         R     BFS队列头指针 (只读)
 //   0x1C   Q_TAIL         R     BFS队列尾指针 (只读)
-//   0x20   STATUS         R     [0]=队列溢出 [1]=AXI读错误 [2]=引用流失步
+//   0x20   STATUS         R     [0]=队列溢出 [1]=AXI读错误 [2]=引用流失步 [3]=非法对象头
+//   0x24   BM_ADDR        R/W   位图探针地址 (0~4095, 引擎空闲时有效)
+//   0x28   BM_DATA        R     位图探针数据 = mem[BM_ADDR] (1 拍延迟后更新)
 //   0x40+  ROOT_LIST[i]   W     根集数组: 0x40 + i*4 = 第i个根对象ID (最多256个)
 //
 // 变更:
@@ -64,6 +66,10 @@ module gc_regs (
     input  wire        err_ref,       // 引用流失步
     input  wire        err_hdr,       // 对象头非法 (ref_count > 4096)
 
+    // ---- 位图探针 (软件读回标记位) ----
+    output reg  [11:0] reg_bm_addr,   // 0x24: 探针地址
+    input  wire [31:0] reg_bm_data,   // 0x28: 探针数据
+
     // ---- 根集写入端口 ----
     output reg  [7:0]  root_wr_addr = 8'd0,
     output reg  [31:0] root_wr_data = 32'd0,
@@ -96,6 +102,7 @@ module gc_regs (
             reg_root_count <= 32'h0;
             reg_start      <= 1'b0;
             reg_clear_q    <= 1'b0;
+            reg_bm_addr    <= 12'h0;
             root_wr_addr   <= 8'h0;
             root_wr_data   <= 32'h0;
             root_we        <= 1'b0;
@@ -124,6 +131,7 @@ module gc_regs (
                     12'h004: reg_obj_base   <= WDATA;
                     12'h008: reg_obj_count  <= WDATA;
                     12'h00C: reg_root_count <= WDATA;
+                    12'h024: reg_bm_addr    <= WDATA[11:0];
                     default: begin
                         // 根集写入: 0x40 ~ 0x43F (256 项)
                         if ((awaddr_r >= 12'h040) && (awaddr_r < 12'h440)) begin
@@ -173,6 +181,8 @@ module gc_regs (
                     12'h018: RDATA <= {20'h0, q_head};
                     12'h01C: RDATA <= {20'h0, q_tail};
                     12'h020: RDATA <= {28'h0, err_hdr, err_ref, err_rd, err_ovf};
+                    12'h024: RDATA <= {20'h0, reg_bm_addr};
+                    12'h028: RDATA <= reg_bm_data;
                     default: RDATA <= 32'hDEADBEEF;
                 endcase
                 RVALID  <= 1'b1;

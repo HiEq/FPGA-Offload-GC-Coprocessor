@@ -184,10 +184,14 @@ module gc_top (
     wire        w_err_ovf, w_err_ref, w_err_hdr;
 
     // 位图引擎端口 (读口/写口地址独立)
-    wire [11:0] w_bm_raddr, w_bm_waddr;
+    wire [11:0] w_bm_raddr_eng, w_bm_waddr;
+    wire [11:0] w_bm_raddr_eff;
+    wire [11:0] w_regs_bm_addr;
     wire [31:0] w_bm_wdata;
     wire [31:0] w_bm_rdata;
+    reg  [31:0] w_bm_probe_r = 32'h0;
     wire        w_bm_we;
+    wire        w_engine_idle;
 
     // DDR读命令队列接口 (同一时钟域, 无CDC)
     wire [31:0] w_rd_cmd_addr;
@@ -240,7 +244,9 @@ module gc_top (
         .err_hdr           (w_err_hdr),
         .root_wr_addr      (root_wr_addr),
         .root_wr_data      (root_wr_data),
-        .root_we           (root_we)
+        .root_we           (root_we),
+        .reg_bm_addr       (w_regs_bm_addr),
+        .reg_bm_data       (w_bm_probe_r)
     );
 
     // 对象头预取流 (gc_axi_read 的流 1)
@@ -270,7 +276,7 @@ module gc_top (
         .q_tail         (w_q_tail),
         .q_empty        (w_q_empty),
         .q_full         (w_q_full),
-        .bm_raddr       (w_bm_raddr),
+        .bm_raddr       (w_bm_raddr_eng),
         .bm_rdata       (w_bm_rdata),
         .bm_waddr       (w_bm_waddr),
         .bm_wdata       (w_bm_wdata),
@@ -292,7 +298,8 @@ module gc_top (
         .cycles         (w_cycles),
         .err_ovf        (w_err_ovf),
         .err_ref        (w_err_ref),
-        .err_hdr        (w_err_hdr)
+        .err_hdr        (w_err_hdr),
+        .engine_idle    (w_engine_idle)
     );
 
     // ==================== 标记位图 (简单双口BRAM, 读写地址独立) ====================
@@ -301,9 +308,15 @@ module gc_top (
         .waddr (w_bm_waddr),
         .din   (w_bm_wdata),
         .we    (w_bm_we),
-        .raddr (w_bm_raddr),
+        .raddr (w_bm_raddr_eff),
         .dout  (w_bm_rdata)
     );
+
+    // 位图读口分时复用: 引擎运行时给引擎, 引擎空闲时给软件探针 (0x24/0x28)
+    assign w_bm_raddr_eff = w_engine_idle ? w_regs_bm_addr : w_bm_raddr_eng;
+
+    // 探针数据寄存一拍, 软件读 0x28 时拿到稳定值
+    always @(posedge S_AXI_ACLK) w_bm_probe_r <= w_bm_rdata;
 
     // ==================== BFS队列 ====================
     gc_queue u_queue (

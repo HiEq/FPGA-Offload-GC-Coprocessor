@@ -85,7 +85,11 @@ module gc_mark_engine (
     // 错误标志 (粘滞, 每次 start 清零)
     output reg         err_ovf = 1'b0,     // 队列写满, 对象没能入队 (#1)
     output reg         err_ref = 1'b0,     // 引用流失步: 消费数 > 发出数 (#4)
-    output reg         err_hdr = 1'b0      // 对象头非法: ref_count > 4096
+    output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 4096
+
+
+    // 引擎空闲 (S_IDLE): 位图读口在空闲时借给软件探针使用
+    output wire        engine_idle
 );
 
     localparam [11:0] Q_MAX = 12'd4000;
@@ -119,6 +123,8 @@ module gc_mark_engine (
         S_ROOT_CHK   = 5'd24;   // #5: 根节点查位图去重
 
     reg [4:0]  state = 5'd0;
+
+    assign engine_idle = (state == S_IDLE);
     reg [11:0] cur_obj = 12'd0;
     reg [31:0] ref_count = 32'd0;
     reg [31:0] ref_addr = 32'd0;
