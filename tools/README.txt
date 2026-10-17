@@ -59,20 +59,25 @@ FOGCCC 串口控制台  ——  使用说明
   汇总 "PASSED (all invariants): 8/8"
 
 【本目录文件】
-  fogccc.bat          统一控制台(唯一入口)：开串口 + 仪表盘 + 写 logs\serial.log
-  monitor_com5.ps1    控制台后端
-  log.bat             查看串口日志
-  serial_cmd.ps1      串口发一条命令并抓输出（自动化的基础件）
-  serial_run_gc.ps1   串口跑 gc_test 并解析结果
-  gc_test.py          板级测试脚本 (同一份也放在 USERDATA)
-  hw_program.tcl      JTAG 烧比特流（不用拔卡、不用重启）
-  hw_probe.tcl        JTAG 探测器件
-  irq_drv_test.sh     中断端到端验证 (同一份在 USERDATA)
-  irq_loss_test.sh    中断计数诊断 (仅诊断, 非验收)
-  gic_dump.py         GIC 寄存器只读探针
-  gic_irq_test.py     GIC SPI 探测
-  run_cmark_sweep.ps1 72 次参数扫描 (README 里那组数据的来源)
-  logs\               所有脚本的日志输出 (已 .gitignore)
+  只需要这两个入口:
+    fogccc.bat          统一控制台(唯一入口)：开串口 + 仪表盘 + 写 logs\serial.log
+    serial_run_gc.ps1   性能基准：串口跑 gc_test 并解析结果
+
+  基础设施:
+    monitor_com5.ps1    控制台后端
+    log.bat             查看串口日志
+    serial_cmd.ps1      串口发一条命令并抓输出（自动化的基础件）
+    logs\               所有脚本的日志输出 (已 .gitignore)
+
+  tests\                功能测试与调试脚本 (详见 tests\README.md)
+    gc_test.py          板级测试（卡上 run_gc.sh 同一份）
+    irq_drv_test.sh     中断端到端验证（验收级）
+    irq_loss_test.sh    中断计数诊断（非验收）
+    gic_dump.py         GIC 寄存器只读探针
+    gic_irq_test.py     GIC SPI 探测
+    hw_program.tcl      JTAG 烧比特流
+    hw_probe.tcl        JTAG 器件探测
+    run_cmark_sweep.ps1 72 次参数扫描 (README 里 C 数据的出处)
 
 【已移除】(2026-10-17 清理)
   push_cmark2.ps1 / serial_login.ps1 / serial_verify.ps1 / serial_cmark.ps1

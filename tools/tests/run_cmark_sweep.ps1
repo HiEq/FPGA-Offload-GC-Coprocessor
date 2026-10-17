@@ -72,6 +72,6 @@ foreach ($sw in $sweeps) {
 }
 
 $sp.Close()
-$out = "$PSScriptRoot\logs\cmark_sweep.log"
+$out = "$PSScriptRoot\..\logs\cmark_sweep.log"
 [System.IO.File]::WriteAllText($out, $sb.ToString())
 Write-Host "`n=== transcript: $out ==="
