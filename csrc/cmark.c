@@ -1,22 +1,6 @@
 // ============================================================
-// cmark.c — FOGCCC: C 标记基准 (自包含, 同一张图上对比)
-//
+// cmark.c — FOGCCC: C 标记基准
 //   用法:  ./cmark [maxN] [trials] [avg_refs]      默认 4096 8 2
-//
-// 为什么要三个数:
-//   1) FPGA   : PL 引擎的确定性周期数 (100MHz)
-//   2) C 非缓存: C 直接读 /dev/mem 那块 DDR —— 和硬件走**同一条内存路径**
-//                (都是绕开 cache 的直接访存), 这是最"同条件"的对比
-//   3) C 缓存  : 把图拷一份到普通堆内存再标 —— 反映"如果 GC 跑在进程内、
-//                数据在 cache 里"时 CPU 能有多快, 是 CPU 的乐观上界
-//
-// 图结构与 gc_test.py 完全一致 (同一张图三个实现都标, 结果必须都等于 L):
-//   [0,L)  = 从对象0出发的生成树 + 额外随机边        (L = 3n/4, 已知真值)
-//   [L,n)  = 垃圾区, 边只落在自己内部               (必须 0 误标)
-//   对象头 @ obj_base + i*16  : [id][ref_count][ref_phys_addr][0]
-//   引用数组: ref_count 个 u32 + 终止符 0xFFFFFFFF
-//   REF_BASE = (n*16 + 0xFFF) & ~0xFFF
-//
 // 交叉编译:
 //   arm-*-gcc -O2 -static -o cmark cmark.c
 // ============================================================
@@ -162,10 +146,6 @@ static uint32_t c_mark(uint32_t n, const uint8_t *base, int already_fixed) {
     }
     return tail;
 }
-
-/* 把图拷到普通堆内存并修好指针。
- * 注意: 拷贝/修指针的开销**不计入**标记时间 —— 真实进程内 GC 里这份数据本来就
- * 在堆上, 不需要"拷贝"这一步; 把它算进 C 侧计时会虚高耗时, 对 C 不公平。 */
 static void c_prepare_cached(uint32_t n, uint32_t used) {
     uint32_t i;
     memcpy(cbuf, gbase, used);
