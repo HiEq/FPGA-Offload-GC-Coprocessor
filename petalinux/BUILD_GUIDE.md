@@ -1,7 +1,7 @@
 # FOGCCC PetaLinux 构建指南
 
 ## 硬件平台
-- **板卡**: 开源骚客 OS-ZYNQ7100 Lite (XC7Z100)
+- **板卡**: OpenSoc OS-ZYNQ7100 Lite (XC7Z100)
 - **处理器**: ARM Cortex-A9 (双核)
 - **DDR3**: MT41K256M16 RE-125 (1GB)
 - **串口**: UART0 (MIO 14-15), CH340 USB, COM口, 115200波特率
