@@ -1,18 +1,9 @@
 #!/bin/bash
 # ============================================================
 # build_cmark.sh — 交叉编译 cmark.c 到 Zynq (Cortex-A9, armv7-a/neon 硬浮点)
-#
-# 工具链来源: PetaLinux 构建树里"存活"的一个 recipe-sysroot 对:
-#   .../work/<machine>/linux-xlnx/<ver>/recipe-sysroot-native   (gcc + as, 配套)
-#   .../work/<machine>/linux-xlnx/<ver>/recipe-sysroot          (target glibc, 已合并)
-# 这两个是 Yocto 真正用来编译的 sysroot, gcc/汇编器版本是配套的, 所以最可靠.
-# (自己从 sysroots-components 拼的扁平 sysroot 会因为 gcc13 的 +simd/+fp 新语法
-#  与系统老汇编器不匹配而失败.)
-#
 # 用法:  wsl -e bash <工程根>/csrc/build_cmark.sh
 # ============================================================
 set -u
-# 路径从脚本位置推导, 不写死用户名
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/csrc/cmark.c"
 OUT="$ROOT/artifacts/userdata/cmark"
