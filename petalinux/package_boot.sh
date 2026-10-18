@@ -6,7 +6,7 @@
 
 set -e
 
-# 路径从脚本位置推导, 不写死用户名
+# 路径由脚本位置推导
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGES="$ROOT/artifacts"
 PLNX=~/xilinx/fogccc_linux
@@ -18,7 +18,7 @@ echo "=== Strip U-Boot ==="
 arm-linux-gnueabihf-strip --strip-debug ${PLNX}/images/linux/u-boot.elf -o ${PLNX}/images/linux/u-boot-stripped.elf
 
 echo "=== Create fixed u-boot-dtb.bin ==="
-# 修复 _end 偏移: u-boot.bin + BSS填充 + system.dtb
+# _end 偏移处理: u-boot.bin + BSS 填充 + system.dtb
 UBOOT_BIN_SIZE=$(stat -c%s ${PLNX}/images/linux/u-boot.bin)
 END_OFFSET=0x106C30
 BSS_PAD=$((END_OFFSET - UBOOT_BIN_SIZE))

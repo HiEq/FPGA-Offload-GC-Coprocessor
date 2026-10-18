@@ -11,7 +11,7 @@
 
 set -e
 
-# 路径从脚本位置推导, 不写死用户名
+# 路径由脚本位置推导
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 PLNX_ROOT=~/xilinx

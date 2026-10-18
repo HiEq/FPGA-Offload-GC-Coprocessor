@@ -2,10 +2,6 @@
 # ============================================================
 # irq_loss_test.sh - DIAGNOSTIC ONLY, not an acceptance test.
 #
-# The product polls CYCLES; interrupts are not on its critical path.  This
-# script only characterises the *driver* if someone ever builds an
-# interrupt-driven client.  Do not treat it as evidence for the GC engine.
-#
 #   sh irq_loss_test.sh [cycles]
 #
 # Each cycle: run one GC test (done 0 -> 1), then arm the driver, then check

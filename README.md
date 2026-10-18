@@ -199,7 +199,7 @@ python3 python/benchmark.py
 
 ## 关键设计参数
 
-| 参数 | 值 | 为什么是这个值 |
+| 参数 | 值 | 说明 |
 | --- | --- | --- |
 | `MAXO` | **8** | 未完成读事务上限，与 PS7 `S_AXI_HP0` 自己声明的 `NUM_READ_OUTSTANDING=8` 一致；再大只会被 `ARREADY` 反压 |
 | `QD` | **80** | 每条流的命令/数据 FIFO 容量（存储体 128 深、指针 7 位） |
@@ -295,7 +295,7 @@ cat /dev/fogccc_irq           # "1 0 <virq>"  ← 中断已触发，处理函数
 ```
 
 实测：`before arm 0 0 / after arm 0 1 / after run 1 0`，`VERDICT: IRQ_DRIVEN_DONE_OK`。
-两个坑见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
+两处约束见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
 SPI 编号 = ID − 32）。
 
 ### 提升幅度

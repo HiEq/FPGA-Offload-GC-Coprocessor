@@ -86,7 +86,7 @@ CONFIG_SYS_BOOTM_LEN=0x10000000
     };
 };
 
-/* 修复 U-Boot 串口时钟配置 */
+/* U-Boot 串口时钟配置 */
 &uart0 { clock-frequency = <100000000>; status = "okay"; };
 &uart1 { status = "disabled"; };
 ```

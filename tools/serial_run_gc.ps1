@@ -1,7 +1,7 @@
 param([string]$Port = "COM3")
 
 $ErrorActionPreference = 'Stop'
-# logs dir: keep logs out of the tools/ root
+# logs directory
 $logDir = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'

@@ -2,8 +2,7 @@
 rem ============================================================
 rem run_sim.bat - run Vivado xsim on tb_gc_top
 rem   Verifies gc_axi_read (read command queue) + gc_mark_engine.
-rem   All simulation caches and logs go to Desktop\Cache\sim, so the
-rem   project tree stays clean.
+rem   Simulation caches and logs go to Desktop\Cache\sim.
 rem ============================================================
 setlocal
 set XV=D:\AMDDesignTools\2026.1\Vivado\bin

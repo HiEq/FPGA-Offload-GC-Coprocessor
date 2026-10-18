@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/csrc/cmark.c"
 OUT="$ROOT/artifacts/userdata/cmark"
 
-echo "=== 1. 找存活的 recipe-sysroot 对 ==="
+echo "=== 1. 找可用的 recipe-sysroot 对 ==="
 S=""
 for proj in fogccc_linux fogccc2_linux; do
     for d in $(find $HOME/xilinx/$proj/build/tmp/work -maxdepth 5 -type d -name 'recipe-sysroot' 2>/dev/null); do
