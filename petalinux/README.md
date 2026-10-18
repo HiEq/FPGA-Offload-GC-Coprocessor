@@ -16,9 +16,9 @@ XSA 必须来自**修好的 Vivado 工程**（`vivado/build.tcl`）。PS7 的关
 
 | 项 | 值 | 备注 |
 |---|---|---|
-| UART0 使能 | `CONFIG.PCW_UART0_PERIPHERAL_ENABLE {1}` | **不是** `PCW_EN_UART0`（那是个无效属性） |
+| UART0 使能 | `CONFIG.PCW_UART0_PERIPHERAL_ENABLE {1}` ||
 | UART0 引脚 | `PCW_UART0_UART0_IO {MIO 14 .. 15}` | 板上 CH340 接 UART0 |
-| SDIO0 使能 | `CONFIG.PCW_SD0_PERIPHERAL_ENABLE {1}` | **不是** `PCW_EN_SDIO0` |
+| SDIO0 使能 | `CONFIG.PCW_SD0_PERIPHERAL_ENABLE {1}` ||
 | SDIO0 引脚 | `PCW_SD0_SD0_IO {MIO 40 .. 45}` | |
 | AXI | `PCW_USE_M_AXI_GP0 {1}` / `PCW_USE_S_AXI_HP0 {1}` / HP0 宽度 64 | |
 | gc_top 地址 | `0x43C00000` (64K) | |
@@ -31,9 +31,6 @@ CONFIG_SUBSYSTEM_HOSTNAME="linux"
 CONFIG_SUBSYSTEM_USER_CMDLINE="console=ttyPS0,115200 earlycon"
 ```
 
-> ⚠️ **不要**在这里加 `mem=480M`！initramfs 解压要 ~244MB + 内核 Image 101MB，
-> 把内存砍到 480MB 会导致 `Kernel panic - not syncing: write error`。
-> 给 PL 预留内存请用下面的设备树 `reserved-memory`。
 
 ## 3. `project-spec/configs/rootfs_config`
 
@@ -66,14 +63,11 @@ CONFIG_SYS_BOOTM_LEN=0x10000000
 #define CFG_SYS_BOOTM_LEN    0x10000000
 ```
 
-> `CONFIG_SYS_BOOTM_LEN` 必须放大：initramfs 被链接进内核后，image.ub 的 kernel
-> 子镜像约 **101 MiB**，Xilinx 默认 `0x3c00000`(60MiB) 会导致
-> `Image too large: increase CONFIG_SYS_BOOTM_LEN`。
 
 ## 5. `project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`
 
 ```dts
-/include/ "system-conf.dtsi"        /* ← 这一行绝对不能删！ */
+/include/ "system-conf.dtsi"  
 
 / {
     reserved-memory {
@@ -91,16 +85,6 @@ CONFIG_SYS_BOOTM_LEN=0x10000000
 &uart1 { status = "disabled"; };
 ```
 
-- 第一行 `/include/ "system-conf.dtsi"` **把 PetaLinux 生成的配置（`chosen/bootargs`、
-  `memory`、`aliases` …）带进来**。删掉它，内核 cmdline 会静默丢失 —— 生成的
-  `system.dtb` 里 `chosen/bootargs` 就只剩 `earlycon`，Linux 没有串口控制台。
-- `reserved-memory` 把 PL 用的 `0x1E000000` 从内核分配器里挖出来（AXI HP 与 PS 不
-  缓存一致，这段内存绝不能被内核当普通内存用）。Linux 仍然拿到 ~1GB。
-
-> 兜底：BOOT 分区放一个 `uEnv.txt`（`bootargs=console=ttyPS0,115200 earlycon`），
-> `boot.scr` 会 `env import` 它，U-Boot 环境里的 `bootargs` 覆盖设备树，改内核
-> cmdline 就不用重建镜像。
-
 ## 6. 构建与打包
 
 ```bash
@@ -109,7 +93,7 @@ petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
                        --fpga images/linux/system.bit --u-boot --force
 ```
 
-TF 卡上的三件套：`BOOT.BIN` + `image.ub` + **`boot.scr`**（缺 boot.scr 会停在 `Zynq>`）。
+TF 卡上的三件套：`BOOT.BIN` + `image.ub` + **`boot.scr`**
 
 ## `images/linux/system.bit` 的更新时机
 
