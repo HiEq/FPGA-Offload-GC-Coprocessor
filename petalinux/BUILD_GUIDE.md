@@ -88,7 +88,7 @@ petalinux-package boot \
 | `csrc/` | C 驱动程序 |
 | `python/` | Python 绑定 |
 
-## 重要注意事项
+## 约束
 
 ### FSBL 的 ps7_init
 必须使用厂商的 `ps7_init.c/h`（DDR/MIO/UART 配置）。

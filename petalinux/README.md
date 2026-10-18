@@ -44,10 +44,9 @@ CONFIG_imagefeature-empty-root-password=y
 ```
 
 - `empty-root-password`：串口登录 `root`，密码为空
-- **不要**开 `serial-autologin-root`：自动登录会掩盖启动过程
+- `serial-autologin-root`：不启用
 
-> 注：`CONFIG_ADD_EXTRA_USERS="root:root;..."` 在本工程里**没有真正给 root 设上密码**
-> （`/etc/shadow` 里 root 是 `*` 锁定），所以才改用 `empty-root-password`。
+> root 口令由 `empty-root-password` 提供；`CONFIG_ADD_EXTRA_USERS` 不设置口令。
 
 ## 4. `project-spec/meta-user/recipes-bsp/u-boot/files/`
 
@@ -112,11 +111,10 @@ petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
 
 TF 卡上的三件套：`BOOT.BIN` + `image.ub` + **`boot.scr`**（缺 boot.scr 会停在 `Zynq>`）。
 
-## 注意：`images/linux/system.bit` 只解出一次
+## `images/linux/system.bit` 的更新时机
 
-该文件仅在 `petalinux-config --get-hw-description` 时从 XSA 解出。
-之后更换 XSA 或重复 `petalinux-build` 都不会更新它，BOOT.BIN 中仍是最初的位流，
-RTL 改动全部失效且不报错。
+该文件仅在 `petalinux-config --get-hw-description` 时从 XSA 解出；
+更换 XSA 或重复 `petalinux-build` 不会更新它，BOOT.BIN 中仍是最初的位流。
 
 换 XSA 后必须手动刷新：
 

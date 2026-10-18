@@ -37,7 +37,7 @@ FAT32，卷标 `USERDATA`。板子启动后挂载于 `/run/media/USERDATA-mmcblk
 
 以下文件只留在仓库，不放入卡：
 
-| 文件 | 原因 |
+| 文件 | 说明 |
 |---|---|
 | `csrc/cmark.c` | 板上无 gcc，无法编译 |
 | `tools/gic_dump.py`、`tools/gic_irq_test.py` | GIC 诊断，可用 JTAG 读取同样寄存器 |
