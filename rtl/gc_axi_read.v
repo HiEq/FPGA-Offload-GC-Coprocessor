@@ -1,10 +1,8 @@
-// ============================================================
 // gc_axi_read.v — AXI3 读命令队列主控 (双流 / dual stream)
 // 协议: AXI3 , ID 宽 6, 单拍读.
 //   ARADDR = addr & ~7       (8 字节对齐)
 //   hi_sel = addr[2]         (1 = 取 RDATA[63:32])
 //   每笔读只返回 1 拍, 取其中一半.
-// ============================================================
 module gc_axi_read #(
     parameter integer QD   = 80,   // 每条流的命令 FIFO 容量
     parameter integer MAXO = 8     // 允许的最大未完成 AR 笔数 (HP0 就是 8)
@@ -12,7 +10,6 @@ module gc_axi_read #(
     input  wire        ACLK,
     input  wire        ARESETN,
 
-    // ---- 流 0: 引用读 ----
     input  wire        cmd0_valid,
     input  wire [31:0] cmd0_addr,
     output wire        cmd0_ready,
@@ -20,7 +17,6 @@ module gc_axi_read #(
     output wire        data0_valid,
     input  wire        data0_ready,
 
-    // ---- 流 1: 对象头读 ----
     input  wire        cmd1_valid,
     input  wire [31:0] cmd1_addr,
     output wire        cmd1_ready,
@@ -28,10 +24,8 @@ module gc_axi_read #(
     output wire        data1_valid,
     input  wire        data1_ready,
 
-    // ---- 状态 ----
     output reg         err,        // AXI 读错误 (粘滞, 复位清除)
 
-    // ---- AXI3 读地址通道 ----
     output reg  [31:0] ARADDR,
     output reg  [5:0]  ARID,       // 0 = 引用流, 1 = 对象头流
     output reg  [3:0]  ARLEN,      // 恒 0 (单拍)
@@ -42,7 +36,6 @@ module gc_axi_read #(
     output reg         ARVALID,
     input  wire        ARREADY,
 
-    // ---- AXI3 读数据通道 ----
     input  wire [63:0] RDATA,
     input  wire [5:0]  RID,
     input  wire [1:0]  RRESP,
@@ -51,11 +44,9 @@ module gc_axi_read #(
     output wire        RREADY
 );
 
-    // 指针宽度: 存储体必须是 2^PW 深, 指针自然回绕对齐
     localparam integer PW  = 7;        // 128 深
     localparam integer DEP = 1 << PW;
 
-    // ==================== 流 0: 命令 FIFO {hi_sel, addr} ====================
     reg  [32:0] c0f [0:DEP-1];
     reg  [PW-1:0] c0w = 0, c0r = 0;
     wire [PW-1:0] c0cnt = c0w - c0r;
@@ -63,7 +54,6 @@ module gc_axi_read #(
     wire          c0empty = (c0w == c0r);
     assign cmd0_ready = ~c0full;
 
-    // ==================== 流 1: 命令 FIFO ====================
     reg  [32:0] c1f [0:DEP-1];
     reg  [PW-1:0] c1w = 0, c1r = 0;
     wire [PW-1:0] c1cnt = c1w - c1r;
@@ -71,7 +61,6 @@ module gc_axi_read #(
     wire          c1empty = (c1w == c1r);
     assign cmd1_ready = ~c1full;
 
-    // ==================== 数据 FIFO (每流一个, 32 位字) ====================
     reg  [31:0] d0f [0:DEP-1];
     reg  [PW-1:0] d0w = 0, d0r = 0;
     wire [PW-1:0] d0cnt = d0w - d0r;
@@ -88,7 +77,6 @@ module gc_axi_read #(
     assign data1_out   = d1f[d1r];
     assign data1_valid = ~d1empty;
 
-    // ==================== hi_sel FIFO (每流一个) ====================
     reg          h0f [0:DEP-1];
     reg  [PW-1:0] h0w = 0, h0r = 0;
     wire [PW-1:0] h0cnt = h0w - h0r;
@@ -102,12 +90,10 @@ module gc_axi_read #(
     // 总未完成数 (AXI 实际限制是 8 笔, 两条流合起来不能超)
     // 总未完成数在 AR 段之后声明 (它依赖本拍握手的增量计数)
 
-    // ==================== AR 通道 ====================
     reg        ar_hi  = 1'b0;      // 当前在 AR 通道上的读的 hi_sel
     reg        ar_sel = 1'b0;      // 0 = 引用流, 1 = 对象头流
     wire       ar_hs  = ARVALID && ARREADY;
 
-    // 组合: 本拍结束后 AR 通道是否空闲
     wire ar_can_load = (~ARVALID) | ar_hs;
 
     // 仲裁: 两条流轮转
@@ -123,13 +109,11 @@ module gc_axi_read #(
     wire issue1 = ready1 && (ready0 ? (last_served == 1'b0) : 1'b1);
     wire issue_any = (issue0 || issue1) && !ho_full;
 
-    // ==================== R 通道路由 ====================
     // RID 在 RVALID 有效时可用; 按 ID 分流
     wire r_is1  = (RID[0] == 1'b1);
     wire r_full = r_is1 ? d1full : d0full;
     assign RREADY = ~r_full;
 
-    // ==================== 主逻辑 ====================
     always @(posedge ACLK or negedge ARESETN) begin
         if (!ARESETN) begin
             c0w <= 0; c0r <= 0;
@@ -151,7 +135,6 @@ module gc_axi_read #(
             last_served <= 1'b0;
             err     <= 1'b0;
         end else begin
-            // ---------------- 命令入队 ----------------
             if (cmd0_valid && cmd0_ready) begin
                 c0f[c0w] <= {cmd0_addr[2], cmd0_addr};
                 c0w <= c0w + 1'b1;
@@ -161,7 +144,6 @@ module gc_axi_read #(
                 c1w <= c1w + 1'b1;
             end
 
-            // ---------------- 发起 AXI 读 ----------------
             if (ar_hs) begin
                 // 结算已发出的那笔: 记下它属于哪条流
                 if (ar_sel) begin
@@ -195,7 +177,6 @@ module gc_axi_read #(
                 end
             end
 
-            // ---------------- 接收读数据 (按 RID 分流) ----------------
             if (RVALID && RREADY) begin
                 if (RRESP != 2'b00)
                     err <= 1'b1;
@@ -218,7 +199,6 @@ module gc_axi_read #(
                 end
             end
 
-            // ---------------- 数据出队 ----------------
             if (data0_valid && data0_ready)
                 d0r <= d0r + 1'b1;
             if (data1_valid && data1_ready)
@@ -226,7 +206,6 @@ module gc_axi_read #(
         end
     end
 
-    // 抑制未使用警告
     wire _unused = &{1'b0, c0cnt, c1cnt, d0cnt, d1cnt, ho_cnt, RLAST};
 
 endmodule

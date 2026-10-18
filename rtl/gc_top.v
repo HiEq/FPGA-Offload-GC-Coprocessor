@@ -1,4 +1,3 @@
-// ============================================================
 // gc_top.v — FOGCCC GC协处理器顶层模块
 // 平台: Xilinx Zynq-7000 XC7Z100
 //
@@ -15,9 +14,7 @@
 //   gc_queue       BFS队列 (双口BRAM)
 //   gc_axi_read    AXI HP读命令队列主控 (多笔未完成读)
 //   root_mem[]     根集存储 (分布式RAM)
-// ============================================================
 module gc_top (
-    // ---- AXI-Lite 从机 (PS → PL 寄存器控制) ----
     input  wire        S_AXI_ACLK,
     input  wire        S_AXI_ARESETN,
     input  wire [11:0] S_AXI_AWADDR,
@@ -38,7 +35,6 @@ module gc_top (
     output wire        S_AXI_RVALID,
     input  wire        S_AXI_RREADY,
 
-    // ---- AXI HP 主机口 (PL 读 DDR 中的对象图) ----
     // 声明为 AXI4 主机 (PROTOCOL=AXI4, HAS_BURST=1, ID_WIDTH=4)
     // 全部读使用同一 ARID
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXI_HP_ACLK, ASSOCIATED_BUSIF S_AXI_HP, ASSOCIATED_RESET S_AXI_HP_ARESETN" *)
@@ -79,7 +75,6 @@ module gc_top (
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP RREADY" *)
     output wire        S_AXI_HP_RREADY,
 
-    // ---- AXI HP 写通道 (桩: 从不发起写, 只把必需信号绑常量) ----
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWADDR" *)
     output wire [31:0] S_AXI_HP_AWADDR,
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP AWID" *)
@@ -119,17 +114,14 @@ module gc_top (
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_HP BREADY" *)
     output wire        S_AXI_HP_BREADY,
 
-    // ---- 中断输出 ----
     output wire        irq_o
 );
 
-    // ==================== 内部连线 ====================
     wire [31:0] w_obj_base, w_obj_count, w_root_count;
     wire        w_start, w_clear_q;
     wire        w_done;
     wire [31:0] w_marked_count, w_cycles;
 
-    // ===== AXI HP 写通道桩 =====
     // 只读 DDR; 接口为完整 AXI4, 写信号绑常量
     assign S_AXI_HP_AWADDR  = 32'h0;
     assign S_AXI_HP_AWID    = 6'h0;
@@ -148,7 +140,6 @@ module gc_top (
 
     assign S_AXI_HP_BREADY  = 1'b1;
 
-    // 根集存储 (256条目, 8Kb → 分布式RAM即可)
     (* ram_style = "distributed" *)
     reg  [31:0] root_mem [0:255];
     wire [7:0]  root_wr_addr;
@@ -157,18 +148,15 @@ module gc_top (
     wire [7:0]  root_rd_addr;
     reg  [31:0] root_rd_data;
 
-    // 写口 — 独立always块 (BRAM推断要求)
     always @(posedge S_AXI_ACLK) begin
         if (root_we)
             root_mem[root_wr_addr] <= root_wr_data;
     end
 
-    // 读口 — 独立always块 (BRAM推断要求)
     always @(posedge S_AXI_ACLK) begin
         root_rd_data <= root_mem[root_rd_addr];
     end
 
-    // 队列接口
     wire        w_q_push, w_q_pop;
     wire [11:0] w_q_push_data, w_q_push_addr;
     wire        w_q_pop_ack;
@@ -179,7 +167,6 @@ module gc_top (
     wire [12:0] w_q_count;
     wire        w_err_ovf, w_err_ref, w_err_hdr;
 
-    // 位图引擎端口 (读口/写口地址独立)
     wire [11:0] w_bm_raddr_eng, w_bm_waddr;
     wire [11:0] w_bm_raddr_eff;
     wire [11:0] w_regs_bm_addr;
@@ -189,21 +176,18 @@ module gc_top (
     wire        w_bm_we;
     wire        w_engine_idle;
 
-    // DDR读命令队列接口 (同一时钟域, 无CDC)
     wire [31:0] w_rd_cmd_addr;
     wire        w_rd_cmd_valid, w_rd_cmd_ready;
     wire [31:0] w_rd_data;
     wire        w_rd_data_valid, w_rd_data_ready;
     wire        w_rd_err;
 
-    // 消除未使用端口/信号的警告
     wire _unused = &{1'b0,
                      S_AXI_WSTRB,                          // AXI-Lite字节选通(不用)
                      S_AXI_HP_AWREADY, S_AXI_HP_WREADY,    // 写通道桩(从不写)
                      S_AXI_HP_BRESP, S_AXI_HP_BVALID,      // 写响应(从不写)
                      w_rd_err};                            // 读错误标志(仅诊断)
 
-    // ==================== AXI-Lite 寄存器 ====================
     gc_regs u_regs (
         .ACLK              (S_AXI_ACLK),
         .ARESETN           (S_AXI_ARESETN),
@@ -245,7 +229,6 @@ module gc_top (
         .reg_bm_data       (w_bm_probe_r)
     );
 
-    // 对象头预取流 (gc_axi_read 的流 1)
     wire [31:0] w_hdr_cmd_addr;
     wire        w_hdr_cmd_valid;
     wire        w_hdr_cmd_ready;
@@ -253,7 +236,6 @@ module gc_top (
     wire        w_hdr_data_valid;
     wire        w_hdr_data_ready;
 
-    // ==================== 标记引擎 ====================
     gc_mark_engine u_engine (
         .clk            (S_AXI_ACLK),
         .rst_n          (S_AXI_ARESETN),
@@ -298,7 +280,6 @@ module gc_top (
         .engine_idle    (w_engine_idle)
     );
 
-    // ==================== 标记位图 (简单双口BRAM, 读写地址独立) ====================
     gc_bitmap u_bitmap (
         .clk   (S_AXI_ACLK),
         .waddr (w_bm_waddr),
@@ -308,13 +289,10 @@ module gc_top (
         .dout  (w_bm_rdata)
     );
 
-    // 位图读口分时复用: 引擎运行时给引擎, 引擎空闲时给软件探针 (0x24/0x28)
     assign w_bm_raddr_eff = w_engine_idle ? w_regs_bm_addr : w_bm_raddr_eng;
 
-    // 探针数据寄存一拍, 软件读 0x28 时拿到稳定值
     always @(posedge S_AXI_ACLK) w_bm_probe_r <= w_bm_rdata;
 
-    // ==================== BFS队列 ====================
     gc_queue u_queue (
         .clk    (S_AXI_ACLK),
         .rst_n  (S_AXI_ARESETN),
@@ -332,12 +310,10 @@ module gc_top (
         .count  (w_q_count)
     );
 
-    // ==================== AXI HP 读命令队列主控 ====================
     gc_axi_read u_axi_rd (
         .ACLK        (S_AXI_HP_ACLK),
         .ARESETN     (S_AXI_HP_ARESETN),
 
-        // ---- 流 0: 引用读 ----
         .cmd0_valid  (w_rd_cmd_valid),
         .cmd0_addr   (w_rd_cmd_addr),
         .cmd0_ready  (w_rd_cmd_ready),
@@ -345,7 +321,6 @@ module gc_top (
         .data0_valid (w_rd_data_valid),
         .data0_ready (w_rd_data_ready),
 
-        // ---- 流 1: 对象头预取 ----
         .cmd1_valid  (w_hdr_cmd_valid),
         .cmd1_addr   (w_hdr_cmd_addr),
         .cmd1_ready  (w_hdr_cmd_ready),

@@ -1,32 +1,23 @@
-// ============================================================
 // gc_mark_engine.v — BFS 标记引擎 (核心状态机)
 //
-// 对象图 DDR 格式:
-//   对象 k 头 @ obj_base + k*16
-//     [id:4][ref_count:4][ref_array_phys_addr:4][reserved:4]
-//   引用数组 @ ref_array_phys_addr
-//     [ref0][ref1]...[refN-1][0xFFFFFFFF]
+// 对象图 DDR 格式见 csrc/fpga_gc.h
 //
 // 流水:
 //   1) 对象头两笔读并发 (头+4 / 头+8)
 //   2) 引用读边压边收; 引用命令压完后预取下一个对象的对象头
 //   3) 逐引用快路径 2 拍 (读-判-置位-入队)
-// ============================================================
 module gc_mark_engine (
     input  wire        clk,
     input  wire        rst_n,
 
-    // 控制输入
     input  wire [31:0] obj_base,
     input  wire [31:0] obj_count,
     input  wire [31:0] root_count,
     input  wire        start,
 
-    // 根集读取 (同步BRAM)
     output reg  [7:0]  root_rd_addr = 8'd0,
     input  wire [31:0] root_rd_data,
 
-    // BFS队列
     output reg         q_push = 1'b0,
     output reg  [11:0] q_push_data = 12'd0,
     output reg  [11:0] q_push_addr = 12'd0,
@@ -37,7 +28,6 @@ module gc_mark_engine (
     input  wire        q_empty,
     input  wire        q_full,
 
-    // 标记位图 (简单双口BRAM: 读口/写口地址独立)
     output wire [11:0] bm_raddr,            // 读地址 (组合, 1拍后 bm_rdata 有效)
     input  wire [31:0] bm_rdata,
     output reg  [11:0] bm_waddr = 12'd0,    // 写地址
@@ -61,7 +51,6 @@ module gc_mark_engine (
     input  wire        hdr_data_valid,
     output wire        hdr_data_ready,
 
-    // 状态输出
     output reg         done = 1'b0,
     output reg  [31:0] marked_count = 32'd0,
     output reg  [31:0] cycles = 32'd0,
@@ -72,13 +61,11 @@ module gc_mark_engine (
     output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 4096
 
 
-    // 引擎空闲 (S_IDLE): 位图读口在空闲时借给软件探针使用
     output wire        engine_idle
 );
 
     localparam [11:0] Q_MAX = 12'd4000;
 
-    // ==================== 状态编码 ====================
     localparam [4:0]
         S_IDLE       = 5'd0,
         S_CLR_BM     = 5'd1,
@@ -122,7 +109,6 @@ module gc_mark_engine (
     reg [31:0] cycles_r;
     reg [31:0] marked_r;
     reg [11:0] clr_ptr;
-    // 投机预取
     reg [11:0] pf_obj = 12'd0;
     reg        pf_valid = 1'b0;    // 已弹出且头命令已压入, 只等取回
     reg        pf_tried = 1'b0;    // 本对象已经发起过预取 (防重复弹队列)
@@ -142,7 +128,6 @@ module gc_mark_engine (
                            (state == S_PF_G2)  |
                            ((state == S_REFS_LOOP) & ~refs_done & rd_data_valid);
 
-    // ==================== 对象头预取 ====================
     // 独立状态机提前最多 PD 个对象读头, 结果放入 PD 深暂存环
     localparam integer PD = 4;                      // 暂存环深度 (2 的幂)
 
@@ -219,7 +204,6 @@ module gc_mark_engine (
             q_pop    <= 1'b0;
             issue_ok <= 1'b0;
 
-            // ---- 侦察兵: 弹队列 + 在流 1 上发两笔头读 ----
             case (sc_state)
                 SC_IDLE: if (pf_room && !q_empty) begin
                     q_pop    <= 1'b1;
@@ -247,7 +231,6 @@ module gc_mark_engine (
                 default: sc_state <= SC_IDLE;
             endcase
 
-            // ---- 填暂存环 + 描述符入队 ----
             if (hdr_data_valid && hdr_data_ready) begin
                 if (!hdr_second) begin
                     pf_rc[pf_fill_slot] <= hdr_data;
@@ -265,7 +248,6 @@ module gc_mark_engine (
                 end
             end
 
-            // ---- issuer: 描述符 → 引用读命令 (独立于主状态机) ----
             if (iss_pop) begin
                 dq_head      <= dq_head + 3'd1;
                 iss_idx      <= 32'd0;
@@ -286,7 +268,6 @@ module gc_mark_engine (
                 rd_cmd_valid <= 1'b0;
             end
 
-            // ---- 计数: 同拍可能"填好一个 + 取走一个", 用 next 值一次算清 ----
             pf_cnt <= pf_cnt_nxt;
             pf_iss <= pf_iss + (issue_ok ? 3'd1 : 3'd0) - (fill_done ? 3'd1 : 3'd0);
             dq_cnt <= dq_cnt + (fill_done ? 4'd1 : 4'd0) - (iss_pop ? 4'd1 : 4'd0);
@@ -359,7 +340,6 @@ module gc_mark_engine (
                     end
                 end
 
-                // ===== 清位图: 逐拍写0 (4096拍) =====
                 S_CLR_BM: begin
                     bm_waddr <= clr_ptr;
                     bm_wdata <= 32'h0;
@@ -370,7 +350,6 @@ module gc_mark_engine (
                         clr_ptr <= clr_ptr + 12'd1;
                 end
 
-                // ===== 加载根集 =====
                 S_RD_ROOT: begin
                     if (root_idx < root_count) begin
                         root_rd_addr <= root_idx[7:0];
@@ -420,7 +399,6 @@ module gc_mark_engine (
                     state    <= S_RD_ROOT;
                 end
 
-                // ===== BFS 主循环: 从预取暂存环取对象 =====
                 S_POP: begin
                     if (pf_cnt != 3'd0) begin
                         cur_obj      <= pf_id[pf_head];
@@ -436,12 +414,10 @@ module gc_mark_engine (
                     end
                 end
 
-                // ===== 以下状态保留未用 (对象头由预取状态机读) =====
                 S_HDR_P1, S_HDR_P2, S_HDR_P3, S_HDR_G1, S_HDR_G2: begin
                     state <= S_POP;
                 end
 
-                // ===== 阶段2: 只负责"消费"引用数据 (发命令已交给 issuer) =====
                 S_REFS_LOOP: begin
                     if (rd_data_valid && !refs_done) begin
                         ref_val <= rd_data;
@@ -489,7 +465,6 @@ module gc_mark_engine (
                     end
                 end
 
-                // ===== 预取由独立状态机完成 =====
                 S_PF_WAIT, S_PF_H1, S_PF_H2, S_PF_H3, S_PF_G1, S_PF_G2: begin
                     state <= S_POP;      // 不应到达 (保留编码以免改动状态表)
                 end
