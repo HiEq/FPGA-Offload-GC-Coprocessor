@@ -110,10 +110,9 @@ module gc_axi_read #(
     // 组合: 本拍结束后 AR 通道是否空闲
     wire ar_can_load = (~ARVALID) | ar_hs;
 
-    // 仲裁: 两条流都有待发命令时**轮转**, 避免对象头流被引用流饿死 (#3)
+    // 仲裁: 两条流轮转
     reg  last_served = 1'b0;          // 0 = 上次服务的是引用流, 1 = 对象头流
-    // #6: 计数要算上"本拍正在握手的那笔" —— ar_hs 的入账比这里晚一拍,
-    //     否则可以多推一笔 (实测上限会变成 MAXO+1).
+    // 计数包含本拍正在握手的请求 (ar_hs 入账晚一拍)
     wire [PW-1:0] h0nxt = h0cnt + ((ar_hs && !ar_sel) ? 1'b1 : 1'b0);
     wire [PW-1:0] h1nxt = h1cnt + ((ar_hs &&  ar_sel) ? 1'b1 : 1'b0);
     wire [PW-1:0] ho_cnt = h0nxt + h1nxt;

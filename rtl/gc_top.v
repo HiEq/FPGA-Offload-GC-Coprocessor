@@ -7,8 +7,6 @@
 //   S_AXI_HP_* : AXI HP从机, 连接PS的S_AXI_HP0  (读DDR对象图)
 //
 // 时钟: 单一时钟域. S_AXI_HP_ACLK 与 S_AXI_ACLK 都接 FCLK_CLK0 (100MHz).
-//       (旧版 HP 跑 FCLK_CLK1=200MHz, 需要 2FF CDC 同步 rd_done/rd_data;
-//        现在读主控带命令/数据 FIFO, 流式数据无法简单 2FF 跨域, 故统一时钟域.)
 //
 // 内部结构:
 //   gc_regs        AXI-Lite寄存器接口
@@ -41,10 +39,8 @@ module gc_top (
     input  wire        S_AXI_RREADY,
 
     // ---- AXI HP 主机口 (PL 读 DDR 中的对象图) ----
-    // 显式声明成 AXI4 主机 (PROTOCOL=AXI4, HAS_BURST=1, ID_WIDTH=4):
-    // 不加这些属性时 Vivado 只能从信号子集推断, 会得到 AXI4-Lite
-    // (HAS_BURST=0 / ID_WIDTH=0), 此时"多笔未完成读"不在协议契约内.
-    // 全部读用同一个 ARID=0 —— AXI 规定同 ID 必须按序返回, 数据 FIFO 因此仍然正确.
+    // 声明为 AXI4 主机 (PROTOCOL=AXI4, HAS_BURST=1, ID_WIDTH=4)
+    // 全部读使用同一 ARID
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXI_HP_ACLK, ASSOCIATED_BUSIF S_AXI_HP, ASSOCIATED_RESET S_AXI_HP_ARESETN" *)
     (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 S_AXI_HP_ACLK CLK" *)
     input  wire        S_AXI_HP_ACLK,
@@ -134,7 +130,7 @@ module gc_top (
     wire [31:0] w_marked_count, w_cycles;
 
     // ===== AXI HP 写通道桩 =====
-    // 本设计只读DDR, 从不发起写; 但接口声明成完整 AXI4, 必需信号都要有确定值。
+    // 只读 DDR; 接口为完整 AXI4, 写信号绑常量
     assign S_AXI_HP_AWADDR  = 32'h0;
     assign S_AXI_HP_AWID    = 6'h0;
     assign S_AXI_HP_AWLEN   = 4'h0;

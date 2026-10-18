@@ -11,13 +11,8 @@
 #define CFG_SYS_SDRAM_SIZE	0x40000000
 
 /*
- * PetaLinux initramfs image.ub carries a ~101MiB kernel subimage (the
- * initramfs is linked into the kernel Image).  The stock limit is much
- * smaller, so 'bootm' aborts with
- *     "Image too large: increase CONFIG_SYS_BOOTM_LEN"
- * Raise the limit to 256MiB.  Define both the CONFIG_ and CFG_ spellings
- * (U-Boot migrated the symbol to CFG_SYS_BOOTM_LEN) so whichever one the
- * boot code uses gets the bigger value.
+ * image.ub 的 kernel 子镜像约 101 MiB, 默认上限不足.
+ * 上调至 256 MiB; CONFIG_ 与 CFG_ 两种拼写同时定义.
  */
 #ifdef CONFIG_SYS_BOOTM_LEN
 #undef CONFIG_SYS_BOOTM_LEN

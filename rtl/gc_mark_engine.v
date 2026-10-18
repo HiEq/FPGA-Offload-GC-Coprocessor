@@ -1,31 +1,16 @@
 // ============================================================
-// gc_mark_engine.v — BFS标记引擎 (核心状态机)
+// gc_mark_engine.v — BFS 标记引擎 (核心状态机)
 //
-// 对象图DDR格式:
-//   对象k头 @ obj_base + k*16
+// 对象图 DDR 格式:
+//   对象 k 头 @ obj_base + k*16
 //     [id:4][ref_count:4][ref_array_phys_addr:4][reserved:4]
 //   引用数组 @ ref_array_phys_addr
 //     [ref0][ref1]...[refN-1][0xFFFFFFFF]
 //
-// === 三项优化 (2026) ===
-//
-// (1) 对象头两笔读并发 (阶段1)
-//     头+4(ref_count) 和 头+8(ref_addr) 地址互不依赖 → 同时压入 → 1 次往返.
-//
-// (2) 引用读"压入/取回交错" + 对象头投机预取 (阶段2)
-//     引用命令边压边收, 队列满了就先收, 因此 ref_count 不限 (旧版 REF_MAX=64
-//     会静默截断, 已移除). 并且在"当前对象的引用命令全部压完"之后, 立刻从队列
-//     里弹下一个对象、把它的两笔头读也压进去 —— 于是**下一个对象的对象头延迟
-//     被当前对象的引用处理完全掩盖**, 每个对象只剩 1 次往返暴露.
-//     安全性: 预取只在"取回优先、当前无数据可取"时发起, 此刻未取回的命令数
-//     上界是读主控的 MAXO(16) < 命令FIFO容量(80), 所以不会出现"压不进又取不回"
-//     的死锁.
-//
-// (3) 逐引用快路径 (每次未标记引用 2 拍)
-//     位图是读/写地址独立的简单双口 BRAM:
-//       读: 取到引用值的那一拍就摆读地址(组合) → 下一拍 bm_rdata 可用
-//       写: 判定那一拍同时发写地址+脉冲 → 下一拍落盘
-//     于是 取-判-置位-入队 只要 2 拍 (旧版 6 拍), 且读写互不踩.
+// 流水:
+//   1) 对象头两笔读并发 (头+4 / 头+8)
+//   2) 引用读边压边收; 引用命令压完后预取下一个对象的对象头
+//   3) 逐引用快路径 2 拍 (读-判-置位-入队)
 // ============================================================
 module gc_mark_engine (
     input  wire        clk,
@@ -60,8 +45,7 @@ module gc_mark_engine (
     output reg         bm_we = 1'b0,
 
     // DDR读命令队列接口 (→ gc_axi_read 流 0: 引用读)
-    // 注意: addr 必须是组合输出 —— 若用寄存器, 地址会比 iss_idx 慢一拍,
-    //       握手后会以旧地址再发一次 (实测会多读一笔, 把引用流冲错位).
+    // addr 为组合输出, 与 iss_idx 同拍
     output wire [31:0] rd_cmd_addr,
     output reg         rd_cmd_valid = 1'b0,
     input  wire        rd_cmd_ready,
@@ -148,7 +132,7 @@ module gc_mark_engine (
                       (state == S_ROOT_CHK)  ? pending_obj  : 12'd0;
 
     // 引用阶段结束: 本对象 ref_count 笔数据全部取回
-    // (命令由 issuer 独立发射, 与这里的消费解耦 —— 所以不再看"压了几笔")
+    // 命令由 issuer 独立发射, 与消费解耦
     wire refs_done   = (ref_got >= ref_count);
 
     // 只在需要下一笔数据时拉高 ready
@@ -158,10 +142,8 @@ module gc_mark_engine (
                            (state == S_PF_G2)  |
                            ((state == S_REFS_LOOP) & ~refs_done & rd_data_valid);
 
-    // ==================== 对象头预取 ("侦察兵") ====================
-    // 目的: 把 DDR 读延迟从"每对象暴露约 1 次往返"变成"几乎不暴露".
-    // 做法: 独立小状态机提前最多 PD 个对象弹出队列、在流 1 上读它们的头,
-    //       结果放进 PD 深暂存环; 主状态机直接从环里取, 不用等 DDR.
+    // ==================== 对象头预取 ====================
+    // 独立状态机提前最多 PD 个对象读头, 结果放入 PD 深暂存环
     localparam integer PD = 4;                      // 暂存环深度 (2 的幂)
 
     reg [11:0] pf_id [0:PD-1];
@@ -183,7 +165,7 @@ module gc_mark_engine (
     reg        issue_ok   = 1'b0;
 
     // 引用描述符队列: 对象头填好即入队, 由下面的 issuer 独立发读命令.
-    // 这样"发引用读"可以领先主状态机最多 DQD 个对象 —— 引用读延迟就被后续对象的处理盖住了.
+    // 发引用读可领先主状态机 DQD 个对象
     localparam integer DQD = 8;
     reg [31:0] dq_ra  [0:DQD-1];
     reg [31:0] dq_rc  [0:DQD-1];
@@ -201,8 +183,7 @@ module gc_mark_engine (
     wire [2:0] pf_cnt_nxt = pf_cnt + (fill_done ? 3'd1 : 3'd0) - (take_ok ? 3'd1 : 3'd0);
 
     // 对象头合法性: ref_count 不可能超过对象上限 4096 (超过 = 头被写坏).
-    // 守卫放在"填头"这一拍, 拒绝这个头并把 err_hdr 置起来 —— 避免引擎按一个
-    // 垃圾 ref_count 发出上亿笔读命令而卡死.
+    // 头非法时拒绝并置 err_hdr
     wire [31:0] hdr_rc_raw = pf_rc[pf_fill_slot];
     wire        hdr_rc_bad = (hdr_rc_raw > 32'd4096);
     wire [31:0] hdr_rc_ok  = hdr_rc_bad ? 32'd0 : hdr_rc_raw;
@@ -289,7 +270,7 @@ module gc_mark_engine (
                 dq_head      <= dq_head + 3'd1;
                 iss_idx      <= 32'd0;
                 rd_cmd_valid <= 1'b0;
-                // 这一拍正是"最后一笔命令握手"时, 也要计数 (#4 校验不能少算一笔)
+                // 最后一笔命令握手同样计数
                 if (iss_last) iss_cnt <= iss_cnt + 32'd1;
             end else if (dq_cnt != 4'd0) begin
                 if (iss_idx < dq_rc[dq_head]) begin
@@ -312,8 +293,7 @@ module gc_mark_engine (
             if (take_ok)
                 pf_head <= pf_head + 2'd1;
 
-            // #3: iss_cnt 必须和 con_cnt 一起在 start 时清零 (否则流失步检测跨运行失效).
-            //     它在本块里递增, 所以清零也必须留在本块 —— 放到主状态机会造成多驱动.
+            // iss_cnt 与 con_cnt 同在 start 清零; 清零留在本块以避免多驱动
             if (start) begin
                 iss_cnt <= 32'd0;
                 err_hdr <= 1'b0;      // 同理: err_hdr 只在本块驱动, 清零也放这里
@@ -321,7 +301,7 @@ module gc_mark_engine (
         end
     end
 
-    // 引用流交叉校验 (#4): 消费数绝不能超过发出数
+    // 引用流交叉校验: 消费数 <= 发出数
     reg  [31:0] con_cnt = 32'd0;
     wire        ref_desync = (con_cnt > iss_cnt);
 
@@ -440,8 +420,7 @@ module gc_mark_engine (
                     state    <= S_RD_ROOT;
                 end
 
-                // ===== BFS主循环: 从预取暂存环取一个已经读好的对象 =====
-                // (对象头由下面的"侦察兵"提前 4 个对象读好, 这里不再自己发读命令)
+                // ===== BFS 主循环: 从预取暂存环取对象 =====
                 S_POP: begin
                     if (pf_cnt != 3'd0) begin
                         cur_obj      <= pf_id[pf_head];
@@ -457,7 +436,7 @@ module gc_mark_engine (
                     end
                 end
 
-                // ===== 对象头改由"侦察兵"读: 这些状态已废弃 =====
+                // ===== 以下状态保留未用 (对象头由预取状态机读) =====
                 S_HDR_P1, S_HDR_P2, S_HDR_P3, S_HDR_G1, S_HDR_G2: begin
                     state <= S_POP;
                 end
@@ -491,10 +470,7 @@ module gc_mark_engine (
                     end else if (bm_rdata[ref_val[4:0]]) begin
                         state <= S_REFS_LOOP;                 // 已标记
                     end else if (ref_val == prev_ref) begin
-                        // 相邻重复引用: 位图的写脉冲是寄存器, 要**下一拍**才落盘,
-                        // 而下一个引用的读采样正好落在同一拍边沿, 会读到旧值 ->
-                        // 同一个对象被标记两次、重复入队、marked 多 1 (实测 ~1/3
-                        // 概率的竞态). 用"上一笔标记过的引用值"兜住即可.
+                        // 相邻重复引用: 写脉冲下一拍落盘, 用上一笔标记值兜住
                         state <= S_REFS_LOOP;
                     end else begin
                         prev_ref <= ref_val;
@@ -513,7 +489,7 @@ module gc_mark_engine (
                     end
                 end
 
-                // ===== 投机预取已移到独立的"侦察兵"状态机 (见文件前半部分) =====
+                // ===== 预取由独立状态机完成 =====
                 S_PF_WAIT, S_PF_H1, S_PF_H2, S_PF_H3, S_PF_G1, S_PF_G2: begin
                     state <= S_POP;      // 不应到达 (保留编码以免改动状态表)
                 end

@@ -16,10 +16,7 @@
 //   0x28   BM_DATA        R     位图探针数据 = mem[BM_ADDR] (1 拍延迟后更新)
 //   0x40+  ROOT_LIST[i]   W     根集数组: 0x40 + i*4 = 第i个根对象ID (最多256个)
 //
-// 变更:
-//   - 地址从 8 位扩到 12 位 (#5: 之前 BD 映射 64KB 但只看低 8 位, 高地址会别名)
-//   - 新增 STATUS 寄存器 (#1/#2/#4: 溢出/总线错误/流失步 不再静默)
-//   - 根集范围扩到 256 项 (0x40 ~ 0x43F), 与 root_mem 容量一致
+// 地址译码 12 位; 根集 256 项 (0x40 ~ 0x43F), 与 root_mem 容量一致.
 // ============================================================
 module gc_regs (
     input  wire        ACLK,
@@ -81,12 +78,10 @@ module gc_regs (
     reg        aw_pending = 1'b0;      // 地址已锁存, 等数据
     reg        w_pending  = 1'b0;      // 数据已锁存, 等发响应
 
-    // 消除未使用WSTRB的警告 (全32位写, 不用字节选通)
+    // 未使用 WSTRB (全 32 位写)
     wire _unused_wstrb = &{1'b0, WSTRB};
 
-    // #2: AWREADY 必须是"地址槽空才拉高", 不能靠 !AWREADY 自锁 ——
-    //     旧实现在握手后仍保持 1 拍以上, 流水发 AW 的 master 会把第二笔地址
-    //     当成已接收却没人锁存 → 之后 W 永远等不到 WREADY → 总线挂死.
+    // AWREADY 仅在地址槽为空时拉高
     assign AWREADY = ~aw_pending & ~BVALID;
     assign WREADY  = aw_pending & ~w_pending & ~BVALID;
 
@@ -125,7 +120,7 @@ module gc_regs (
                 case (awaddr_r)
                     12'h000: begin
                         reg_start    <= WDATA[0];
-                        // WDATA[1] 保留 (旧 clear_bm, 引擎每轮 S_CLR_BM 自动清, 此位无效)
+                        // WDATA[1] 未使用 (位图每轮自动清除)
                         reg_clear_q  <= WDATA[2];
                     end
                     12'h004: reg_obj_base   <= WDATA;
