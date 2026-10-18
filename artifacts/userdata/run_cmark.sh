@@ -8,11 +8,11 @@
 #   sh /mnt/userdata/run_cmark.sh              # 默认 4096 8 2
 #   sh /mnt/userdata/run_cmark.sh 2048 5 3     # maxN=2048 trials=5 avg_refs=3
 #
-# 它会:
-#   1. 用 FPGA 引擎标一遍
-#   2. 用优化 C 直接读 DDR (非缓存, 和硬件同内存路径) 标一遍
-#   3. 把图拷进堆内存再标一遍 (模拟 cache 命中, CPU 乐观上界)
-#   四个结果必须都等于已知真值 L, 否则报 MISMATCH
+# 流程:
+#   1. FPGA 引擎标记
+#   2. C 直接读 DDR 标记
+#   3. 图拷入堆内存后标记
+#   结果需等于期望值 L, 否则报 MISMATCH
 #
 # 需要 root (访问 /dev/mem)
 # ============================================================

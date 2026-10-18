@@ -8,8 +8,7 @@
 #       sh /mnt/userdata/run_gc.sh            # default 4096 8 2
 #       sh /mnt/userdata/run_gc.sh 2048 5 3   # maxN=2048 trials=5 avg_refs=3
 #
-#   the log is written next to this script on the SAME partition, so it
-#   survives reboots and can be read from Windows.
+#   the log is written to logs/ next to this script.
 # ============================================================
 DIR=$(cd "$(dirname "$0")" && pwd)
 MAXN=${1:-4096}

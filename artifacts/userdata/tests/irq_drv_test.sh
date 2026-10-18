@@ -8,7 +8,7 @@
 # Run this with the PL freshly configured (done = 0).  Then:
 #   arm        -> count stays 0        (nothing raised it yet)
 #   one GC run -> count becomes 1      (done rose -> IRQ -> handler)
-#   line is auto-disabled by the handler (level-triggered, would storm)
+#   the handler disables the line (level-triggered)
 # ============================================================
 D=${D:-/run/media/USERDATA-mmcblk0p2}
 KO=${1:-$D/ko/fogccc-irq.ko}

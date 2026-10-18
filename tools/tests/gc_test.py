@@ -1,40 +1,18 @@
 #!/usr/bin/env python3
 # ============================================================
-# gc_test.py - FOGCCC reliability + performance sweep  (strict)
+# gc_test.py - FOGCCC reliability + performance sweep
 #
 #   usage: python3 gc_test.py [maxN] [trials] [avg_refs] [--seed N]
-#     maxN     : upper bound of object count per trial (default 4096;
-#                hardware limit is 4096 = 12-bit ids / 4096x32 bitmap)
+#     maxN     : object-count upper bound per trial (default 4096 = hardware limit)
 #     trials   : randomised runs (default 8)
 #     avg_refs : average extra out-degree (default 2)
-#     --seed   : RNG seed.  If omitted one is taken from the clock and PRINTED,
-#                so every run can be replayed exactly:
-#                  python3 gc_test.py 4096 8 2 --seed 12345
+#     --seed   : RNG seed; printed when omitted, so runs can be replayed:
+#                python3 gc_test.py 4096 8 2 --seed 12345
 #
-# WHY THIS TEST CANNOT GIVE A FALSE "OK"
-# --------------------------------------
-# 1) The LIVE region [0,L) is built as a SPANNING TREE from object 0 plus
-#    extra random edges.  Therefore EVERY live object is reachable and the
-#    expected mark count is KNOWN A PRIORI and equals L.
-#    We do NOT merely compare "hardware count == software count"; both are
-#    compared against L, the independently known truth.
-# 2) The GARBAGE region [L,n) only ever points inside itself, so nothing in
-#    it can be reached from the root.  Expected garbage marks = 0.
-# 3) Completion is detected by the CYCLES register CHANGING, not by polling
-#    DONE.  The engine clears DONE on start and sets it at the end, but it
-#    finishes in ~40us while Python polling takes ~100us+, so a DONE poll
-#    cannot distinguish "finished" from "never started" and would happily
-#    read stale MARKED/CYCLES from the previous trial.  CYCLES is latched
-#    only by S_DONE, so a change proves a run completed.
-# 4) A trial is OK only if ALL of these hold:
-#       engine really ran (CYCLES changed)
-#       DONE is set afterwards
-#       HW cycles >= 4096 (the mandatory bitmap-clear time)
-#       hardware marked == L          (against known truth)
-#       software marked == L          (reference must agree with truth)
-#       software marked 0 garbage     (graph sanity)
-#       L > 0                         (no degenerate graph)
-#    Any failure is reported by name, never as OK.
+# 判据:
+#   1) 活跃区 [0,L): 对象 0 的生成树加随机边, 期望标记数 = L
+#   2) 垃圾区 [L,n): 只指向自身, 期望标记数 = 0
+#   3) 完成判定: 读 CYCLES 变化, 不轮询 DONE
 # ============================================================
 import mmap, os, struct, time, random, sys
 
