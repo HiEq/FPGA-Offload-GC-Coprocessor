@@ -315,8 +315,7 @@ function Render {
 
 # ================================================================ main loop
 try { [Console]::CursorVisible = $false } catch {}
-# 让 Ctrl+C 作为普通按键被读取: 否则 PowerShell 会直接中断脚本, 而且没法用它
-# 把板子 shell 从 '>' 续行态(PS2)里救出来
+# Ctrl+C 作为普通按键读取, 用于退出板端 PS2 续行态
 try { [Console]::TreatControlCAsInput = $true } catch {}
 try { [Console]::Clear() } catch {}
 
@@ -374,7 +373,7 @@ try {
                     $sp.Write($kb.ToString())
                 }
             } catch {
-                # 原来这里是空的 catch{}, 键盘读失败时完全无声 —— 加一次可见的报错
+                # 键盘读取失败时报告一次
                 if (-not $script:kbErrShown) {
                     $script:kbErrShown = $true
                     Write-Host ""
@@ -420,14 +419,12 @@ try {
             if ($cl.Length -gt 0) {
                 $script:lastLine = $cl
                 if ($cl -match '[#$]\s*$') { $script:promptOk = $true }
-                # 看到 '>' 说明板子进了 PS2 续行态(命令没写完) —— 此时绝不能再注入,
-                # 否则会在坏的输入上继续叠加, 越弄越乱
+                # '>' 为 PS2 续行态, 此时不注入按键
                 elseif ($cl -match '^\s*>\s*$') { $script:promptOk = $false }
             }
         }
 
-        # --- raw -> dashboard, once Linux / the shell is really up.  No key must
-        #     become live before that, so autoboot can never be interrupted. ---
+        # --- raw -> dashboard once the shell is up; keys stay inactive before that ---
         if ($script:phase -eq 'raw' -and ($now - $script:lastRxAt).TotalSeconds -gt 10) {
             # 10 s of serial silence => the board is already booted (or off), so it
             # cannot still be inside the ~3 s U-Boot autoboot window.  Unlock keys,

@@ -120,8 +120,8 @@ static uint32_t build_graph(uint32_t n, int avg_refs, uint32_t *used_bytes) {
 
 /* ============================================================
  * C 标记: base 是图的起始字节地址, ref_ptr_mode:
- *   0 = 头里的 h[2] 是**物理地址**(GRAPH_BASE 起), 需要减去 GRAPH_BASE
- *   1 = 头里的 h[2] 已经是本缓冲区内的绝对地址 (缓存副本, 已修好)
+ *   0 = 头部 h[2] 为物理地址, 需减去 GRAPH_BASE
+ *   1 = 头部 h[2] 已为本缓冲区内的地址
  * 返回标记数
  * ============================================================ */
 static uint32_t c_mark(uint32_t n, const uint8_t *base, int already_fixed) {

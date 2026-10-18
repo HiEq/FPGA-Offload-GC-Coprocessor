@@ -2,7 +2,7 @@
 // fpga_gc.h — FOGCCC PS端驱动头文件
 // 平台: Xilinx Zynq-7000 XC7Z100
 //
-// 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
+// 编译: PetaLinux SDK 交叉编译
 //       $CC -O2 -o test_main fpga_gc.c test_main.c
 // 运行: sudo ./test_main
 // ============================================================
@@ -13,7 +13,7 @@
 #include <stddef.h>
 
 // ==================== XC7Z100 物理地址 ====================
-// ⚠️ 根据你的Vivado Block Design实际分配的地址修改
+// 地址取自 Vivado Block Design 的 PS7 配置
 #define FPGA_BASE_ADDR   0x43C00000UL  // AXI-Lite GP0 基地址
 #define GRAPH_DDR_ADDR   0x1E000000UL  // 对象图存放的DDR物理地址
 #define MAP_SIZE         4096          // 寄存器映射大小 (4KB)
@@ -41,7 +41,7 @@
 
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
-#define CTRL_CLEAR_BM    (1U << 1)   // [已废弃] 位图由引擎每轮自动清, 写此位无效
+#define CTRL_CLEAR_BM    (1U << 1)   // 未使用: 位图由引擎每轮自动清除
 #define CTRL_CLEAR_Q     (1U << 2)   // 清BFS队列
 #define CTRL_DONE        (1U << 31)  // 完成标志
 
@@ -61,7 +61,7 @@
 //   │ [ref0][ref1]...[refN-1][0xFFFFFFFF] │
 //   └──────────────────────────────────────┘
 //
-//   引擎地址计算 (已修正):
+//   引擎地址计算:
 //     1. 读头+4 获取 ref_count
 //     2. 读头+8 获取 ref_array_phys_addr
 //     3. 用 ref_array_phys_addr + j*4 读引用

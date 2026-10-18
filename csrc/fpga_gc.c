@@ -100,8 +100,7 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
     memset(base, 0, GRAPH_MAP_SIZE);
 
     uint32_t HDR_BASE  = 0x0000;   // 对象头起始偏移
-    // 引用数组必须紧跟在"全部对象头"之后!
-    // 原来硬编码 0x1000, 当 n > 256 时 (n*16 > 0x1000) 引用数组会覆盖对象头.
+    // 引用数组位于全部对象头之后, 按 4 KiB 对齐
     uint32_t REF_BASE  = (HDR_BASE + (uint32_t)n * 16 + 0xFFFu) & ~0xFFFu;
 
     // 随机数种子 (固定, 保证可重复性)
@@ -113,9 +112,7 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
     uint32_t  cur_off    = REF_BASE;
 
     for (int i = 0; i < n; i++) {
-        // 每个对象都要有出边, 包括根对象.
-        // 旧代码给对象0判了 rc=0, 只要根没有出边, BFS 第一步就停,
-        // 1000 个对象的图也只标记 1 个 —— 性能对比完全失去意义.
+        // 每个对象至少一条出边, 包括根对象
         int rc = rand() % (avg_refs * 2 + 1);
         if (i == 0 && rc == 0) rc = avg_refs;   // 根至少有一条出边
         ref_counts[i] = rc;

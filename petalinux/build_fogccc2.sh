@@ -12,11 +12,11 @@
 # 用法:  wsl -e bash <工程根>/petalinux/build_fogccc2.sh
 # ============================================================
 set -e
-set -o pipefail     # 关键: 否则 petalinux-build 失败会被 tee 吞掉, 后面步骤会照着跑
+set -o pipefail     # build 失败时中止
 
 PLNX_ROOT="$HOME/xilinx"
 PROJ="$PLNX_ROOT/fogccc2_linux"
-# 路径从脚本位置推导, 不写死用户名
+# 路径由脚本位置推导
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 XSA="$ROOT/vivado/fogccc_proj/system.xsa"
 BIT="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
@@ -62,13 +62,12 @@ grep -q 'CONFIG_python3=y' project-spec/configs/rootfs_config \
     || { echo "!!! 丢失: python3 (板子上跑不了测试脚本)"; fail=1; }
 grep -q 'pl_graph' project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi \
     || { echo "!!! 丢失: device-tree reserved-memory pl_graph"; fail=1; }
-# 层路径必须能解析. 复制 PetaLinux 工程时 SDKBASEMETAPATH 会一起被复制过来,
-# 指向旧工程; 旧工程一旦删掉, 构建就会崩在 gen-machineconf / HDF_URI 上.
+# SDKBASEMETAPATH 必须指向存在的目录
 SDK=$(sed -n 's/^SDKBASEMETAPATH = "\(.*\)"/\1/p' build/conf/bblayers.conf)
 if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
     echo "!!! SDKBASEMETAPATH 指向的目录不存在: '$SDK'"
     echo "    两个办法:"
-    echo "      a) 建软链接: ln -s fogccc2_linux \$HOME/xilinx/fogccc_linux   (零重编)"
+    echo "      a) 建软链接: ln -s fogccc2_linux \$HOME/xilinx/fogccc_linux   "
     echo "      b) sed 改成 $PROJ/components/yocto, 然后全量重编 1-3 小时"
     echo "    注意 b) 会改 build/conf, 触发 gen-machineconf —— 本机安装里没有这个工具, 会失败"
     fail=1
@@ -81,8 +80,8 @@ fi
 echo "手工配置完好"
 
 echo "=== Step 3: 构建 ==="
-# 复制来的工程带着旧路径的 build/tmp, Yocto 会拒绝 (TMPDIR has changed location).
-# 删掉让 BitBake 重建; sstate 缓存仍在, 不会真从零编.
+# build/tmp 携带旧路径, Yocto 会拒绝; 删除后由 sstate 缓存重建
+
 rm -rf build/tmp
 date
 petalinux-build 2>&1 | tee "$PLNX_ROOT/fogccc2_build.log"

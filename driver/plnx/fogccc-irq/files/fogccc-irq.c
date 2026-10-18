@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * fogccc_irq.c - interrupt-driven completion for the FOGCCC GC engine
+ * fogccc_irq.c - completion interrupt for the FOGCCC GC engine
  *
- * gc_top.irq_o = done is wired to ps7_0/IRQ_F2P[0], i.e. GIC SPI 61.
- * The line is LEVEL sensitive and stays high until the engine is started
- * again, so the handler disables it at once; userspace re-arms with
- * write("arm") after DONE has been cleared by a new run.
- *
- * The PL interrupt has no device tree node, so nothing has mapped it yet and
- * 32 + hwirq is NOT a valid virq either.  The module looks up the GIC's irq
- * domain (arm,cortex-a9-gic) and calls irq_create_mapping(dom, 61); override
- * with irq=N if the numbering ever changes.
+ * Event   : gc_top.irq_o (done) -> ps7_0/IRQ_F2P[0] -> GIC SPI 61
+ * Level   : level high, held until the engine is restarted
+ * Mapping : no device tree node; the module resolves the GIC irq domain
+ *           (arm,cortex-a9-gic) and allocates SPI 29 / hwirq 61.
+ *           Module parameter irq=N overrides the mapping.
  *
  *   /dev/fogccc_irq
- *     read()        -> "<count> <armed>\n"
+ *     read()        -> "<count> <armed> <virq>\n"
  *     write("arm")  -> enable_irq()
  *     write("dis")  -> disable_irq_nosync()
  *
- * Nothing here touches the PL registers: the existing /dev/mem driver keeps
- * owning the graph and control registers.
+ * The module does not access PL registers; graph and control registers
+ * remain with the /dev/mem interface.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -45,10 +41,7 @@ static int virq;
 static atomic_t irq_count = ATOMIC_INIT(0);
 static atomic_t armed     = ATOMIC_INIT(0);
 
-/*
- * The PL interrupt has no device tree node, so nothing has created an irq
- * descriptor for SPI 61 yet.  Look up the GIC's irq domain and map it.
- */
+/* Resolve the GIC irq domain and allocate SPI 61. */
 static int fogccc_map_virq(void)
 {
 	struct device_node *np;
@@ -76,12 +69,12 @@ static int fogccc_map_virq(void)
 	fwspec.param_count = 3;
 	fwspec.param[0]    = 0;                    /* GIC_SPI */
 	/*
-	 * The DT cell carries the SPI *number*, not the GIC interrupt ID:
+	 * The DT cell carries the SPI number, not the GIC interrupt ID;
 	 * gic_irq_domain_translate() adds 32.  IRQ_F2P[0] is GIC ID 61
 	 * (ISPENDR1 bit 29), i.e. SPI number 29.
 	 */
 	fwspec.param[1]    = FOGCCC_SPI - 32;      /* 61 -> 29 -> hwirq 61 */
-	fwspec.param[2]    = IRQ_TYPE_LEVEL_HIGH;  /* done is a level line */
+	fwspec.param[2]    = IRQ_TYPE_LEVEL_HIGH;  /* level line */
 
 	ret = irq_domain_alloc_irqs(dom, 1, NUMA_NO_NODE, &fwspec);
 	of_node_put(np);
@@ -104,7 +97,7 @@ static irqreturn_t fogccc_irq_handler(int irqno, void *dev_id)
 {
 	atomic_inc(&irq_count);
 	atomic_set(&armed, 0);
-	/* level-triggered: without this the same line re-fires forever */
+	/* level-triggered: mask the line after the first event */
 	disable_irq_nosync(irqno);
 	pr_info("fogccc: irq fired (#%d), line disabled\n",
 		atomic_read(&irq_count));
@@ -184,7 +177,7 @@ static int __init fogccc_init(void)
 	}
 	pr_info("fogccc: using virq %d (hwirq %lu)\n", virq, (unsigned long)d->hwirq);
 
-	/* requested enabled, then masked; userspace arms it when ready */
+	/* request, then mask; userspace arms with write("arm") */
 	ret = request_irq(virq, fogccc_irq_handler, 0, "fogccc", &fogccc_misc);
 	if (ret) {
 		pr_err("fogccc: request_irq(%d) failed: %d\n", virq, ret);

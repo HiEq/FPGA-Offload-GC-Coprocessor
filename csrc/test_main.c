@@ -25,10 +25,9 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 // ============================================================
 // Test 1: 正确性 + 性能 (FPGA vs C vs CPython)
 //
-// 三个数都是实测:
-//   FPGA   : CYCLES 寄存器 / 100MHz  (引擎真实耗时, 不含驱动/睡眠开销)
-//   C      : fpga_gc_sw_mark(), 纯 C 的同一套 BFS
-//   CPython: py_mark.py 用 Python 遍历同一张 DDR 图 (独立进程, 独立实现)
+//   FPGA   : CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
+//   C      : fpga_gc_sw_mark() 的 C BFS
+//   CPython: py_mark.py, 独立进程遍历同一块 DDR
 // ============================================================
 #define PY_MARK_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_mark.py"
 

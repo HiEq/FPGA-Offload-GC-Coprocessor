@@ -1,13 +1,12 @@
 #!/bin/sh
 # ============================================================
-# run_repeat.sh - repeated GC / cmark measurements to separate
-#                 "different graph" variance from DDR jitter.
+# run_repeat.sh - repeated GC / cmark measurements
 #
 #   sh run_repeat.sh [N]        (default 10)
 #
-# Group 1: N runs with DIFFERENT seeds      -> graph-to-graph spread
-# Group 2: N cmark runs (its own graphs)    -> C baseline spread
-# Group 3: 5 runs with the SAME seed        -> pure DDR jitter
+# Group 1: N runs, different seeds
+# Group 2: N cmark runs
+# Group 3: 5 runs, same seed
 # ============================================================
 D=$(cd "$(dirname "$0")" && pwd)
 N=${1:-10}
