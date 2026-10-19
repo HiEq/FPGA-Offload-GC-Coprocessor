@@ -501,11 +501,12 @@ FPGA Offload GC Coprocessor for CPython/
 仓库只保留可复现的构建配置。
 `BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
-| Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
-> ⚠️ 下表是 **GitHub Release 资产**的哈希（2026-10-19 用 Releases API 的 `sha256` 复核过），**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+> ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空」修复的比特流（md5 `55414EE5…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同）。
 
+| Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 | --- | --- | --- | --- |
-| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + rootfs 精简 | `04CFEC20A279CFA2F03225481D42D0EF` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `55414EE5CC125325F9BD35FD989FDF16` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 
 > 每个 release 只放自己那一版的 `BOOT.BIN`，加同一份精简 `image.ub`。
