@@ -143,6 +143,7 @@ module gc_mark_engine (
     wire [1:0] pf_iss_slot  = pf_head + pf_cnt[1:0] + pf_iss[1:0];
     wire       pf_room      = ((pf_cnt + pf_iss) < PD[2:0]);
 
+    reg [7:0] sc_tmo = 8'd0;      // SC_POP timeout (lost pop ack)
     localparam [2:0] SC_IDLE = 3'd0, SC_POP = 3'd1, SC_C1 = 3'd2, SC_C2 = 3'd3, SC_C3 = 3'd4;
     reg [2:0]  sc_state   = SC_IDLE;
     reg [11:0] sc_obj     = 12'd0;
@@ -200,6 +201,7 @@ module gc_mark_engine (
             pf_head       <= 2'd0;
             pf_cnt        <= 3'd0;
             pf_iss        <= 3'd0;
+            sc_tmo <= 8'd0;
         end else begin
             q_pop    <= 1'b0;
             issue_ok <= 1'b0;
@@ -207,13 +209,22 @@ module gc_mark_engine (
             case (sc_state)
                 SC_IDLE: if (pf_room && !q_empty) begin
                     q_pop    <= 1'b1;
+                    sc_tmo   <= 8'd0;
                     sc_state <= SC_POP;
                 end
-                SC_POP: if (q_pop_ack) begin
-                    sc_obj             <= q_pop_id;
-                    pf_id[pf_iss_slot] <= q_pop_id;
-                    issue_ok           <= 1'b1;
-                    sc_state           <= SC_C1;
+                SC_POP: begin
+                    sc_tmo <= sc_tmo + 8'd1;
+                    if (q_pop_ack) begin
+                        sc_obj             <= q_pop_id;
+                        pf_id[pf_iss_slot] <= q_pop_id;
+                        issue_ok           <= 1'b1;
+                        sc_state           <= SC_C1;
+                    end else if (sc_tmo >= 8'd63) begin
+                        // CLEAR_Q drops rvalid while we wait (gc_queue's clear
+                        // branch), so the ack never arrives. Give up after 64
+                        // cycles and retry from IDLE instead of hanging forever.
+                        sc_state <= SC_IDLE;
+                    end
                 end
                 SC_C1: begin
                     hdr_cmd_addr  <= obj_base + {20'h0, sc_obj} * 32'd16 + 32'd4;

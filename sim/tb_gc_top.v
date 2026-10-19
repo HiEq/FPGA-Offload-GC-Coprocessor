@@ -659,6 +659,43 @@ module tb_gc_top;
         $display("[TB] T6 bitmap probe OK");
 
         // ============================================================
+        // ---- T-HANG: CLEAR_Q while the prefetcher waits for a pop ack ----
+        // 64-object chain. Mid-run the test clears the queue (CTRL[2]) and holds
+        // q_pop_ack low, which is what CLEAR_Q does to gc_queue: it drops rvalid,
+        // so the ack the prefetcher waits for never arrives. Without a timeout in
+        // SC_POP the prefetcher never returns to IDLE, the main FSM never sees the
+        // queue empty, and DONE never asserts (only a bitstream reload recovered).
+        begin : t_hang
+            integer i;
+            for (i = 0; i < 64; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i < 63) ? 1 : 0;
+                mem[(i*16)/4 + 2] = BASE + ref_base + i*8;
+            end
+            for (i = 0; i < 64; i = i + 1) begin
+                mem[(ref_base + i*8)/4 + 0] = (i < 63) ? (i + 1) : 32'hFFFFFFFF;
+                mem[(ref_base + i*8)/4 + 1] = 32'hFFFFFFFF;
+            end
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        force dut.u_engine.q_pop_ack = 1'b0;
+        axil_wr(R_CTRL, 32'h1);
+        repeat (300) @(negedge clk);
+        axil_wr(R_CTRL, 32'h4);                 // CLEAR_Q
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        release dut.u_engine.q_pop_ack;
+        $display("[TB] T-HANG done=%b after CLEAR_Q mid-pop (expect 1)", rd_val[31]);
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T-HANG DONE never asserted: prefetcher stuck in SC_POP");
+            errors = errors + 1;
+        end
+
         // T7: queue overflow must be reported (STATUS[0]), not silent
         //   Force q_full while starting: the root cannot be enqueued, so
         //   marked stays 0 and err_ovf must latch.
