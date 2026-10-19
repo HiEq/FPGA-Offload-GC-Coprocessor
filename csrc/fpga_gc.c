@@ -130,6 +130,13 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
     uint32_t *ref_offs   = (uint32_t *)malloc(n * sizeof(uint32_t));
     uint32_t  cur_off    = REF_BASE;
 
+    if (!ref_counts || !ref_offs) {          /* OOM must not segfault below */
+        printf("ERROR: out of memory building a %d-object graph\n", n);
+        free(ref_counts);
+        free(ref_offs);
+        return -1;
+    }
+
     for (int i = 0; i < n; i++) {
         // 每个对象至少一条出边, 包括根对象
         int rc = rand() % (avg_refs * 2 + 1);
