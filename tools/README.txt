@@ -52,6 +52,7 @@ FOGCCC 串口控制台 —— 使用说明
     monitor_com5.ps1    控制台后端
     log.bat             查看串口日志
     serial_cmd.ps1      串口发送命令并抓取输出
+    serial-port.ps1     串口自动识别 (CH340)，上面各脚本默认 -Port auto
     logs\               脚本日志输出，已加入 .gitignore
   tests\
     gc_test.py          板级测试，与卡上 run_gc.sh 同一份

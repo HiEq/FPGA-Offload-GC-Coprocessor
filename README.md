@@ -458,3 +458,122 @@ FPGA Offload GC Coprocessor for CPython/
 ```
 
 测试输出同时打印到窗口并写入 `USERDATA` 分区上的 `gc_run_<时间戳>.log`。
+
+## Windows 侧快捷指令
+
+串口脚本默认**自动识别 CH340**：换 USB 口、重装驱动或重启后 COM 号从 COM3 漂到 COM5
+也不用改脚本。机器上只插一根串口线时什么都不用填，插了多根才需要 `-Port COMx`。
+
+| 做什么 | 命令 | 说明 |
+| --- | --- | --- |
+| 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell → 仪表盘（TASK/CPU/MEM/TEMP），键盘直通板子 |
+| 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
+| **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（空密码）、挂载 `/mnt/userdata`、跑 `run_gc.sh`，等到 `PASSED (all invariants)`（最长约 7 分钟）后打印 tail 并存全程日志 |
+| C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
+| 单条命令 | `powershell -ExecutionPolicy Bypass -File tools\serial_cmd.ps1 -Cmd "uname -a"` | 发一条命令并抓回显 |
+| 指定串口 | 上面任意一条加 `-Port COM7` | 只在自动识别失败（多根串口线）时才需要 |
+
+> 串口是**独占**的：同一时刻只能有一个窗口占用 COM 口。跑脚本前先关掉 `fogccc.bat`，
+> 否则会报“拒绝访问/端口被占用”。
+
+## 板上测试命令速查
+
+数据分区在板上挂载于 `/mnt/userdata`（由 `mount_data.sh` 挂载；旧文档中的
+`/run/media/USERDATA-mmcblk0p2` 不再使用）。以下命令均需 root。
+
+### 1. 中断通路验证
+
+```sh
+cd /mnt/userdata
+D=/mnt/userdata sh tests/irq_drv_test.sh
+```
+
+插驱动 → arm → 跑一次 GC → 读计数 → 卸载。期望末行：
+
+```
+VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1' after='<N> 0')
+```
+
+### 2. GC 主测试（FPGA vs CPython）
+
+```sh
+sh run_gc.sh                 # 默认 maxN=4096 trials=8 avg_refs=2
+sh run_gc.sh 512 2 1         # 小规模快速验证
+sh run_gc.sh 2048 5 3
+```
+
+| 参数 | 含义 | 默认 |
+|---|---|---|
+| `maxN` | 每轮对象数上限（硬件上限 4096）| 4096 |
+| `trials` | 随机轮数 | 8 |
+| `avg_refs` | 平均额外出度 | 2 |
+
+期望：`PASSED (all invariants): trials/trials`，并打印相对 CPython 的加速比。
+
+### 3. 三方对比（FPGA / C / CPython）
+
+```sh
+cd /mnt/userdata
+./bin/test_main /mnt/userdata/tests/py_mark.py
+```
+
+必须带 `py_mark.py` 路径：代码里的默认值是历史路径
+`/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，在当前卡片布局下不存在。需要 root。
+
+输出一张三方对比表（三个时间都是实测）：
+
+```
+Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
+```
+
+| 列 | 来源 |
+|---|---|
+| `FPGA us` | `CYCLES` 寄存器 ÷ 100 MHz（引擎耗时，不含驱动里的等待）|
+| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
+| `CPython ms` | `popen` 起 `py_mark.py` 独立进程，独立实现的 Python BFS |
+
+与另外两条命令的分工：`run_gc.sh` 只比 FPGA vs CPython，`run_cmark.sh` 只比 FPGA vs C。
+
+### 4. C 基准（FPGA vs C）
+
+```sh
+sh run_cmark.sh              # 默认 4096 8 2
+sh run_cmark.sh 2048 5 3
+```
+
+打印 `totals:` 与 `per object:` 两组时间；出现 `MISMATCH` 即失败。
+
+### 5. 重复性测试
+
+```sh
+sh run_repeat.sh 10          # 默认 10 次
+```
+
+三组：不同种子 vs CPython、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
+
+### 6. 单独调用
+
+```sh
+python3 gc_test.py 4096 8 2 --seed 12345   # 指定种子可复现
+./bin/test_main                            # 五级 C 测试（需 root）
+insmod ko/fogccc-irq.ko                    # 仅插驱动
+```
+
+### 7. 结果判读
+
+| 关键行 | 含义 |
+|---|---|
+| `PASSED (all invariants)` | 功能正确 |
+| `IRQ_DRIVEN_DONE_OK` | 中断通路正常 |
+| `REPEAT_DONE` | 重复性测试完成 |
+| `MISMATCH` / `FAIL` / `FAILED` | 失败 |
+
+日志：`/mnt/userdata/logs/gc_run_<日期>_<时间>.log`。
+
+### 8. 常见问题
+
+- `insmod: already loaded` → 先 `rmmod fogccc_irq`
+- 打不开 `/dev/mem` → 必须是 root
+- 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）
+- `run_gc.sh` 找不到 `gc_test.py` → 脚本按自身目录找文件，整个目录要一起放在 `/mnt/userdata`
+- `run_cmark.sh` 报找不到 `cmark` → 板上无 gcc，不能现场编译，直接用卡上的可执行文件
