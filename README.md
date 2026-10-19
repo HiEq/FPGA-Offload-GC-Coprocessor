@@ -230,7 +230,7 @@ python3 python/benchmark.py
 | 0x1C | Q_TAIL | R | 队列尾指针 |
 | 0x20 | STATUS | R | [0]=队列溢出 [1]=AXI 读错误 [2]=引用流失步 [3]=对象头非法（`ref_count>4096`）（每次 start 清零） |
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0~4095，只在引擎空闲时有效） |
-| 0x28 | BM_DATA | R | 位图探针数据 = `mem[BM_ADDR]`，1 拍后更新；软件用它逐对象读回标记 |
+| 0x28 | BM_DATA | R | 位图探测数据 = `mem[BM_ADDR]`（**2 拍**：BRAM 1 拍 + 探针寄存器 1 拍；两次读数之间不要改 BM_ADDR）|
 | 0x40+ | ROOT_LIST | W | 根集对象 ID 数组（0x40~0x43F，最多 256 个） |
 
 ## 关键设计参数
