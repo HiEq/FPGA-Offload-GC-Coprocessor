@@ -63,20 +63,20 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段�
 
 ### 构建工具链版本
 
-| 环节 | 工具 / 库 | 版本 | 怎么取的 |
+| 环节 | 工具 / 库 | 版本 |
 | --- | --- | --- | --- |
-| PL 位流、JTAG | Vivado（含 `xsdb` / `hw_server`） | **2026.1**（SW Build 6511674，2026-06-16） | `vivado -version` |
-| 板卡系统 | PetaLinux | **2026.1**（SDK `release-S06060014`，metadata `3bcef3b6`） | `~/xilinx/petalinux/settings.sh`、SDK `version-*` |
-| 交叉编译 | gcc | **13.4.0**（`arm-amd-linux-gnueabi-gcc`） | `$CC --version` |
-| 交叉编译 | gcc 目标选项 | `-mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -mthumb`（SDK 的 `$CC` 已内含） | `echo $CC` |
-| 构建工具 | GNU Make | **4.3** | `make --version` |
-| 构建工具 | CMake | SDK 自带 **3.28.3** —— **本仓构建不使用 CMake** | `cmake --version` |
-| 构建主机 | Ubuntu（WSL2） | **22.04.5 LTS** | `/etc/os-release` |
-| 目标 rootfs | glibc | **2.39**（`2.39+git0+ce65d944e3`） | 镜像 manifest + sysroot 的 `lib/libc.so.6` |
-| 目标 rootfs | BusyBox / OpenSSL | **1.36.1** / **3.2.6** | 镜像 manifest |
-| 目标 rootfs | Python | **3.12.12**（`python3-core` / `python3-ctypes` 等） | 镜像 manifest |
-| 内核 | linux-xlnx | **6.18.10+git+v2026.1** | `build/tmp/work/.../linux-xlnx/` |
-| Bootloader | u-boot-xlnx | **2026.01-xilinx-v2026.1+git** | `build/tmp/work/.../u-boot-xlnx/` |
+| PL 位流、JTAG | Vivado（含 `xsdb` / `hw_server`） | **2026.1**（SW Build 6511674，2026-06-16） |
+| 板卡系统 | PetaLinux | **2026.1**（SDK `release-S06060014`，metadata `3bcef3b6`） |
+| 交叉编译 | gcc | **13.4.0**（`arm-amd-linux-gnueabi-gcc`） |
+| 交叉编译 | gcc 目标选项 | `-mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -mthumb`（SDK 的 `$CC` 已内含） |
+| 构建工具 | GNU Make | **4.3** |
+| 构建工具 | CMake | SDK 自带 **3.28.3** —— **本仓构建不使用 CMake** |
+| 构建主机 | Ubuntu（WSL2） | **22.04.5 LTS** |
+| 目标 rootfs | glibc | **2.39**（`2.39+git0+ce65d944e3`） |
+| 目标 rootfs | BusyBox / OpenSSL | **1.36.1** / **3.2.6** |
+| 目标 rootfs | Python | **3.12.12**（`python3-core` / `python3-ctypes` 等） |
+| 内核 | linux-xlnx | **6.18.10+git+v2026.1** |
+| Bootloader | u-boot-xlnx | **2026.01-xilinx-v2026.1+git** |
 
 1. **本仓不用 CMake**（全仓没有 `CMakeLists.txt`）：交叉编译就是 `make` + SDK 的 `$CC`，
    只链 `-lrt` 与 libc，没有任何第三方 C 依赖。
