@@ -31,6 +31,7 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出，不入库 |
+| `tests/gc_probe.py` | CPython `gc.collect()` 探针，`test_main` 的主对照 |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证 |
 | `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同图恢复/换图恢复） |
 | `tests/abort_sweep.py` | abort 相位扫描（0–480 µs），`--delays` 可重复单点 |

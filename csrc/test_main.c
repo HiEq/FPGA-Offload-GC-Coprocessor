@@ -8,10 +8,11 @@
 //
 // 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
 //       $CC -O2 -o test_main fpga_gc.c test_main.c
-// 运行: sudo ./test_main  [py_bfs.py 路径]
+// 运行: sudo ./test_main  [gc_probe.py 路径]
 // ============================================================
 #include "fpga_gc.h"
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -23,39 +24,39 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 }
 
 // ============================================================
-// Test 1: 正确性 + 性能 (FPGA vs C vs Python)
+// Test 1: 正确性 + 性能 (FPGA vs C vs CPython)
 //
 //   FPGA   : CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
-//   C      : fpga_gc_sw_mark() 的 C BFS
-//   Python : py_bfs.py 独立进程遍历同一块 DDR (普通 Python 脚本, 不是 CPython 的 gc)
+//   C      : fpga_gc_sw_mark() 的 C BFS (也是 marked 的独立 oracle)
+//   CPython: tests/gc_probe.py 起一个独立进程, 在同样的对象数下跑 gc.collect()
+//            (含 mark+sweep, 是整个解释器堆的完整回收 -> 只能当上界)
 // ============================================================
-#define PY_BFS_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py"
+#define GC_PROBE_DEFAULT  "/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py"
+#define GC_PROBE_FALLBACK "/mnt/userdata/tests/gc_probe.py"
 
-// 让 py_bfs.py 标记同一张图, 返回毫秒 (失败返回 -1)
-static double py_bfs_mark_ms(const char *py, int n, uint32_t paddr,
-                              uint32_t root, uint32_t *count_out) {
+// 让 CPython 在同一对象数下做一次完整回收, 返回毫秒 (失败返回 -1)
+static double cpython_gc_ms(const char *probe, int n, uint32_t *freed_out) {
     char cmd[512];
-    if (count_out) *count_out = 0;
-    snprintf(cmd, sizeof cmd, "python3 '%s' %d 0x%08X %u 2>/dev/null",
-             py, n, (unsigned)paddr, (unsigned)root);
+    if (freed_out) *freed_out = 0;
+    snprintf(cmd, sizeof cmd, "python3 '%s' %d 2>/dev/null", probe, n);
     FILE *p = popen(cmd, "r");
     if (!p) return -1.0;
     double ms = -1.0;
-    unsigned pc = 0;
-    if (fscanf(p, "%lf %u", &ms, &pc) != 2) ms = -1.0;
+    unsigned freed = 0;
+    if (fscanf(p, "%lf %u", &ms, &freed) != 2) ms = -1.0;
     pclose(p);
-    if (count_out) *count_out = pc;
+    if (freed_out) *freed_out = freed;
     return ms;
 }
 
 static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     printf("\n");
     printf("=============================================================\n");
-    printf("  Test 1: correctness + speed (FPGA vs C vs Python)\n");
+    printf("  Test 1: correctness + speed (FPGA vs C vs CPython)\n");
     printf("=============================================================\n");
     printf("%-8s %-8s %-11s %-11s %-13s %-8s %-9s\n",
-           "Objects", "marked", "FPGA us", "C us", "Python ms",
-           "vs C", "vs Python");
+           "Objects", "marked", "FPGA us", "C us", "CPython ms",
+           "vs C", "vs CPython");
     printf("-------- -------- ----------- ----------- ------------- "
            "-------- ---------\n");
 
@@ -88,15 +89,16 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         uint32_t fpga_count = fpga_gc_mark(dev, &cycles);
         double hw_us = cycles * 0.01;          // 100 MHz -> 10 ns/cycle
 
-        // ---- py_bfs 参照 (独立进程, 独立实现) ----
-        uint32_t py_count = 0;
-        double py_ms = py_bfs_mark_ms(py_path, n, dev->graph_paddr,
-                                       roots[0], &py_count);
+        // ---- CPython 参照: 同对象数下一次完整的 gc.collect() ----
+        // 它的返回值是"回收了多少不可达对象", 和硬件的 marked 不是一回事,
+        // 所以只取时间; marked 的正确性由 C BFS (sw_count) 做独立 oracle.
+        uint32_t py_freed = 0;
+        double py_ms = cpython_gc_ms(py_path, n, &py_freed);
+        (void)py_freed;
 
         // ---- 结果 ----
-        // py_ms < 0 means the baseline could not run; one that DID run must agree.
         int py_ok = (py_ms >= 0.0);
-        int match = (fpga_count == sw_count) && (!py_ok || py_count == fpga_count);
+        int match = (fpga_count == sw_count);
         char cbuf[16], pbuf[16], nbuf[16];
         if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);
         else           snprintf(cbuf, sizeof cbuf, "n/a");
@@ -140,10 +142,10 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     if (best_py_x > 0) {
         printf("\n  >>> %d objects marked in %.1f us (%.1f ns/obj)\n",
                best_marked, best_hw_us, best_hw_us * 1000.0 / best_marked);
-        printf("  >>> Python needs %.2f ms for the same graph\n", best_py_ms);
-        printf("  >>> FPGA is %.0fx FASTER than Python\n", best_py_x);
+        printf("  >>> CPython needs %.2f ms for the same graph\n", best_py_ms);
+        printf("  >>> FPGA is %.0fx FASTER than CPython\n", best_py_x);
     } else if (best_n > 0) {
-        printf("\n  (Python baseline unavailable: %s not found?)\n", py_path);
+        printf("\n  (CPython probe unavailable: %s not found?)\n", py_path);
     }
 
     return all_pass;
@@ -318,8 +320,11 @@ int main(int argc, char **argv) {
     printf("|  Platform: Xilinx Zynq-7000 XC7Z100        |\n");
     printf("+--------------------------------------------+\n");
     (void)argc;
-    // 可选参数: py_bfs 参照脚本路径
-    const char *py_path = (argc > 1) ? argv[1] : PY_BFS_DEFAULT;
+    // 可选参数: CPython 探针脚本路径
+    const char *py_path = (argc > 1) ? argv[1] : GC_PROBE_DEFAULT;
+    // udev 没自动挂载时, 同一分区通常手动挂在 /mnt/userdata
+    if (argc <= 1 && access(py_path, R_OK) != 0 && access(GC_PROBE_FALLBACK, R_OK) == 0)
+        py_path = GC_PROBE_FALLBACK;
 
     // 初始化FPGA
     fpga_gc_t dev;

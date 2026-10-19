@@ -86,6 +86,7 @@ card: all
 	@cp -f tools/tests/abort_test.py   artifacts/userdata/tests/abort_test.py
 	@cp -f tools/tests/done_race_test.py artifacts/userdata/tests/done_race_test.py
 	@cp -f tools/tests/abort_sweep.py  artifacts/userdata/tests/abort_sweep.py
+	@cp -f python/gc_probe.py          artifacts/userdata/tests/gc_probe.py
 	@cp -f csrc/py_bfs.py              artifacts/userdata/tests/py_bfs.py
 	@cp -f python/fogccc.py            artifacts/userdata/py/fogccc.py
 	@cp -f driver/fogccc_irq.c         driver/plnx/fogccc-irq/files/fogccc-irq.c
