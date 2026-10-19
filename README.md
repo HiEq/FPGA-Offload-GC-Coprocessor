@@ -223,7 +223,7 @@ python3 python/benchmark.py
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE 并清 DONE；**仿真未验证**，驱动暂不使用） [31]=done |
+| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE 并清 DONE；仿真 `T-ABORT` 已红→绿验证，板上未单独测；驱动超时路径会写它） [31]=done |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量 |
@@ -295,6 +295,8 @@ python3 python/benchmark.py
 > 只有 **每对象周期** 是可比的。
 > Ver4 列用当前比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
 > 240,007 拍 / 13,497 个活跃对象 = **17.8 拍/对象**（扣清位图后 **15.4**），加速比 **220.8~279.3x**。
+> 出处：提交 `cc09f3e`、bitstream md5 `3E79AF835DBDF53F5D2CDC23A0DA1D86`、
+> 2026-10-19 板测日志 `tools/logs/board_verify_20261019_153604.log`（随机图，种子打印在日志里）[确定]。
 
 #### 测量口径
 
