@@ -61,10 +61,7 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段�
 | 时序（本板） | WNS +1.854 ns ／ WHS +0.052 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
-### 构建工具链版本（要复现就照这个配）
-
-> 下面每一行都是**从构建产物或工具本身读出来的**（2026-10-19 在构建机 WSL 里实测），
-> 不是从文档抄的；「怎么取的」列写了依据，方便别人自己复核。
+### 构建工具链版本
 
 | 环节 | 工具 / 库 | 版本 | 怎么取的 |
 | --- | --- | --- | --- |
@@ -81,23 +78,14 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段�
 | 内核 | linux-xlnx | **6.18.10+git+v2026.1** | `build/tmp/work/.../linux-xlnx/` |
 | Bootloader | u-boot-xlnx | **2026.01-xilinx-v2026.1+git** | `build/tmp/work/.../u-boot-xlnx/` |
 
-复现时真正会踩的五个坑：
-
 1. **本仓不用 CMake**（全仓没有 `CMakeLists.txt`）：交叉编译就是 `make` + SDK 的 `$CC`，
-   只链 `-lrt` 与 libc，没有任何第三方 C 依赖。所以「CMake 版本」对复现不构成约束 ——
-   上表那一行只是 SDK 自带版本，供对照。
-2. **交叉前缀别照抄根 `Makefile` 的提示**：`Makefile` 里写的是
-   `make CROSS=arm-linux-gnueabihf-`，但 **PetaLinux 2026.1 的 SDK 没有这个三元组**
-   （实测 `arm-linux-gnueabihf-gcc: NOT FOUND`），它提供的是 `arm-amd-linux-gnueabi-gcc`。
-   按「Quick Start §3」那样先 `source environment-setup-...` 再用 `$CC` 最稳。
-3. **忘了 `source` 会静默编出 x86 的 `.so`**（构建主机上是 Ubuntu 的 gcc 11.4.0），
-   拷到板上才报 `Exec format error`。判据：`file libfogccc.so` 必须写 `ARM, EABI5`。
-4. **Python 侧只用标准库**：`fogccc.py` / `gc_test.py` / `py_mark.py` 只 import
-   `ctypes` / `mmap` / `struct` / `time` / `random` / `sys`。本 rootfs **明确没装 numpy**
-   （`petalinux/project-spec/configs/rootfs_config` 里 `CONFIG_python3-numpy is not set`），
-   所以脚本不要引第三方包；板上的 Python 是 **3.12.12**，按 3.12 写就够。
-5. **glibc 在 sysroot 与镜像里是同一套 2.39+**，所以交叉编出来的 `.so` 在板上一定能加载；
-   换 SDK 版本时这两个版本必须一起动，否则会出现「编得过、板上加载失败」。
+   只链 `-lrt` 与 libc，没有任何第三方 C 依赖。
+2. **忽略 `source` 会静默编出 x86 的 `.so`**（构建主机上是 Ubuntu 的 gcc 11.4.0），
+3. **Python 侧只用标准库**：`fogccc.py` / `gc_test.py` / `py_mark.py` 只 import
+   `ctypes` / `mmap` / `struct` / `time` / `random` / `sys`。本 rootfs 未使用numpy；
+   板上的 Python 是 **3.12.12**
+4. **glibc 在 sysroot 与镜像里是同一套 2.39+**，所以交叉编出来的 `.so` 在板上一定能加载；
+   换 SDK 版本时这两个版本必须一起动，否则会出现板上加载失败。
 
 > 口径说明：Python / 内核 / libc 的版本读自 **PetaLinux 工程的构建产物**
 > （`build/tmp/deploy/images/<machine>/petalinux-image-minimal-<machine>.manifest`
