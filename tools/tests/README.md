@@ -8,6 +8,8 @@
 | `gc_test.py` | 功能 + 性能（板级） | 卡上 `run_gc.sh` 调用的同一份；`--seed N` 可复现 |
 | `irq_drv_test.sh` | 功能（验收级） | 中断端到端：`done` → GIC SPI 61 → 内核 handler |
 | `run_cmark_sweep.ps1` | 数据采集 | 72 次参数扫描，C 基线数据来源 |
+| `abort_test.py` | 功能（板级） | `CTRL[3]` abort：T1 基线 / T2 控制组（不写 abort 必须跑完）/ T3 abort 后 `DONE` 必须始终为 0 / T4 同图恢复 / T5 **换一张不同规模的图**（危险路径：上一轮残留会被多标） |
+| `done_race_test.py` | 功能（板级） | `START` 是 posted write 的 stale-DONE 竞态（AGENTS gap 9）+ 连续换图跑（P3 用驱动同样的"读回 + `usleep(1)` + 轮询"顺序，每轮必须返回本轮自己的 `L`） |
 
 ## 用法
 

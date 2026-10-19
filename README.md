@@ -253,6 +253,12 @@ python3 python/benchmark.py
 | 位图 | 4096×32 = 128 Kb | 对象 x 的状态 = `mem[x]` 的第 `x%32` 位 |
 | 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满 |
 
+> **起跑排空（`run_start` flush）**：一次运行可能在命令还没发完、AR 还在途、数据还没被消费时就结束
+> （或被 abort）。这些残留如果留到下一轮，会被当成新一轮的数据：顺序错位、`STATUS[2]`（消费>发出）
+> 误报，甚至多标对象。所以 `gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
+> 并把在途响应逐拍丢掉，直到两条流的在途计数归零才开始发新命令。
+> 板级证据：`tools/tests/done_race_test.py` 的 P3（修前每轮 `STATUS=0x4`、有一轮标了 964/768）。
+
 ## Object Graph DDR Format
 
 ```
@@ -325,6 +331,8 @@ python3 python/benchmark.py
 | **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
 | **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
+| **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
+| **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0`（驱动只写 `START`，这条才是真实路径） |
 | **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
 
