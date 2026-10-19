@@ -94,6 +94,13 @@ module gc_mark_engine (
         S_DONE       = 5'd23,
         S_ROOT_CHK   = 5'd24;   // #5: 根节点查位图去重
 
+    // 25 个编码里 12 个在用, 13 个保留 (S_POP_WAIT / S_HDR_P1..P3 / S_HDR_G1..G2 /
+    // S_REFS_PUSHW / S_PF_WAIT / S_PF_H1..H3 / S_PF_G1..G2)。保留是有意的:
+    // 删掉它们只省 1 个触发器 (全设计 18,214 个里的 1 个) 和几个综合已经删掉的
+    // 译码 LUT, 却要重排编码、改 TB 里的数字常量, 等于把已经板级验证过的 FSM
+    // 重新证一遍。收益 ~0, 风险不为 0, 所以不动。
+    // (case 里保留这些分支只是为了让 `default` 之外的状态名可读, 不可达。)
+
     reg [4:0]  state = 5'd0;
 
     assign engine_idle = (state == S_IDLE);
@@ -165,7 +172,12 @@ module gc_mark_engine (
 
     assign hdr_data_ready = ~dq_full;   // 描述符快满时先别收新的头
 
-    wire       fill_done  = hdr_data_valid && hdr_data_ready && hdr_second;
+    // !abort: on the abort cycle the read engine flushes at the next edge, so a
+    // beat can still be presented in the same cycle. Ignoring it here closes the
+    // 1-cycle race that used to latch err_hdr (board: 1 occurrence in 5 repeats
+    // of the 3 us abort phase).
+    wire       hdr_hs     = hdr_data_valid && hdr_data_ready && !abort;
+    wire       fill_done  = hdr_hs && hdr_second;
     wire       take_ok    = pf_take && (pf_cnt != 3'd0);
     wire [2:0] pf_cnt_nxt = pf_cnt + (fill_done ? 3'd1 : 3'd0) - (take_ok ? 3'd1 : 3'd0);
 
@@ -243,7 +255,7 @@ module gc_mark_engine (
                 default: sc_state <= SC_IDLE;
             endcase
 
-            if (hdr_data_valid && hdr_data_ready) begin
+            if (hdr_hs) begin
                 if (!hdr_second) begin
                     pf_rc[pf_fill_slot] <= hdr_data;
                     hdr_second <= 1'b1;
@@ -462,7 +474,7 @@ module gc_mark_engine (
                 end
 
                 S_REFS_LOOP: begin
-                    if (rd_data_valid && !refs_done) begin
+                    if (rd_data_valid && !refs_done && !abort) begin
                         ref_val <= rd_data;
                         ref_got <= ref_got + 32'd1;
                         con_cnt <= con_cnt + 32'd1;
