@@ -1,0 +1,1 @@
+savedcmd_Module.symvers :=  /home/hieq/xilinx/fogccc2_linux/build/tmp/work-shared/zynq-generic-7z100/kernel-build-artifacts/scripts/mod/modpost -M -m -b        -o Module.symvers -T modules.order -i /home/hieq/xilinx/fogccc2_linux/build/tmp/work-shared/zynq-generic-7z100/kernel-build-artifacts/Module.symvers -e 

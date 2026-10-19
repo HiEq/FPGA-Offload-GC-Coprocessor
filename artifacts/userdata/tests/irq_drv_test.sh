@@ -1,7 +1,7 @@
 #!/bin/sh
 # ============================================================
 # irq_drv_test.sh - prove the PL completion really raises IRQ_F2P[0]
-# (GIC SPI 61 -> Linux virq 93) and that the kernel driver services it.
+# (GIC SPI 61 -> a Linux virq the driver maps, 44 on the current image)
 #
 #   sh irq_drv_test.sh [ko_path]
 #
