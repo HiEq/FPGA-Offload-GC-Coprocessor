@@ -464,3 +464,16 @@ The agent must comply with the last phrase and ask one comparison question after
 ## 9. One-line summary
 
 Compilation is the starting gun. The reward is "I predicted it" or "I caught it."
+
+---
+
+## 10. Repository hygiene
+
+- The repository carries the **current** design only. Prototype and historical
+  artefacts (old RTL archives, old boot images, one-off test scripts) stay on the
+  local machine; the numbers they produced live in the README's tables.
+- Release assets are limited to what a stranger needs to boot and self-test:
+  the boot-image pair, the two card zips, and the kernel module that matches the
+  published image. Nothing else is attached.
+- A file has one home. Card-side copies are generated (`make card`), not edited
+  by hand; if two copies of a file ever disagree, that is a bug.

@@ -146,7 +146,6 @@ FPGA-Offload-GC-Coprocessor/
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物 + SHA256SUMS（二进制清单）
 ├── .github/workflows/      CI: lint + gcc -Werror + SHA256SUMS 校验
-├── legacy/original-v1/     优化前 RTL 存档 (tag v1-original)
 ├── AGENTS.md               本项目对 AI 参与者的工程约束
 ├── petalinux/BUILD_GUIDE.md 构建步骤
 └── README.md               本文件
@@ -532,21 +531,24 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
 > `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `FA816025…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同；已用串口推到板上并重启验证）。
 
-| Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
+| 资产 | 放到哪 | 大小 | md5 |
 | --- | --- | --- | --- |
-| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `FA816025BE38E2AEFD19297C953F0DA5` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
-| [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,704 B | `FA816025BE38E2AEFD19297C953F0DA5` |
+| `image.ub` | BOOT 分区根目录 | 43,213,279 B | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,506 B | `883149F0CD82A79E4EE4A647838674D9` |
 
-> 每个 release 只放自己那一版的 `BOOT.BIN`，加同一份精简 `image.ub`。
-> **v3（Ver3）的启动镜像不再提供**：它的优化已全部包含在 v4 里，
-> 只保留 git 标签 `v3-optimized` 和性能表中的数据。
+**开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
 
-> **两个 release 的 `image.ub` 完全相同** —— 优化只动了 PL 侧（RTL + 比特流），
-> PS7 的 20 条 `CONFIG.PCW_*` 参数（`FCLK0=100MHz` / `FCLK1=200MHz` / `DDR 533.33MHz` …）
-> 一个字都没改，所以设备树和内核是同一份。
+1. BOOT 分区：放 `BOOT.BIN`、`image.ub`，再解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）
+2. USERDATA 分区：解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `cmark` / `bin/test_main` / `py/` / `tests/` / `ko/`）
+3. 插卡上电；登录后在 USERDATA 里 `sh run_gc.sh 4096 8 2` 自检
+
+> `card-userdata.zip` 里的 `ko/fogccc-irq.ko` 与本镜像的内核严格配对
+> （`vermagic=6.18.10-xilinx-g4f7afe14f724`）；换内核就要重新 build 模块。
 >
-> 但 **`BOOT.BIN` 必须配对**：跑 Ver1 就用 `v1-original` 里那块，别拿 v4 的（那是新设计的比特流）。
-> v1 是 18,582,708 B，v4 是 18,582,704 B；大小相近但内容不同，一律用 md5 区分。
+> **历史版本**：`v1-original` 的 Release、标签和 RTL 存档都已移除（原型机内容不再发布）；
+> Ver1 的性能数据仍保留在上面的性能表里。v3 的启动镜像同样不提供，只保留 `v3-optimized` 标签和数据。
 
 ## TF 卡布局
 
