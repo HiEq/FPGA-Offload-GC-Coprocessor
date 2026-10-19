@@ -1,4 +1,4 @@
-# FOGCCC — FPGA Offload GC Coprocessor for CPython
+# FOGC² — FPGA Offload GC Coprocessor for CPython
 
 [![Platform](https://img.shields.io/badge/Platform-Xilinx%20Zynq--7000%20XC7Z100-blue)](#platform)
 [![RTL](https://img.shields.io/badge/RTL-Verilog%202001-green)](#rtl)
