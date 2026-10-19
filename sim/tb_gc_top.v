@@ -671,7 +671,61 @@ module tb_gc_top;
         $display("[TB] T-ID version=%h (expect 00040000)", rd_val);
         if (rd_val !== 32'h0004_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
-        // ---- T-REG: an unmapped register read must answer SLVERR ----
+        // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
+        begin : t_ab_gen
+            integer i;
+            for (i = 0; i < 32; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = 1;
+                mem[(i*16)/4 + 2] = BASE + ref_base + i*8;
+                mem[(ref_base + i*8)/4 + 0] = (i < 31) ? (i + 1) : 32'hFFFFFFFF;
+                mem[(ref_base + i*8)/4 + 1] = 32'hFFFFFFFF;
+            end
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd32);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        force dut.u_engine.q_pop_ack = 1'b0;      // hang the prefetcher, like T-HANG
+        axil_wr(R_CTRL, 32'h1);
+        repeat (200) @(negedge clk);
+        $display("[TB] T-ABORT state while hung = %0d", dut.u_engine.state);
+        axil_wr(R_CTRL, 32'h8);                   // CTRL[3] = abort
+        repeat (10) @(negedge clk);
+        $display("[TB] T-ABORT state after abort = %0d (expect 0 = S_IDLE)", dut.u_engine.state);
+        if (dut.u_engine.state !== 5'd0) begin
+            $display("[TB][FAIL] T-ABORT engine still in state %0d after abort", dut.u_engine.state);
+            errors = errors + 1;
+        end
+        release dut.u_engine.q_pop_ack;
+        begin : t_ab_b
+            integer i;
+            for (i = 0; i < 3; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = 1;
+                mem[(i*16)/4 + 2] = BASE + ref_base + i*8;
+                mem[(ref_base + i*8)/4 + 0] = (i < 2) ? (i + 1) : 32'hFFFFFFFF;
+                mem[(ref_base + i*8)/4 + 1] = 32'hFFFFFFFF;
+            end
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd3);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-ABORT marked=%0d after abort+restart (expect 3)", rd_val);
+        if (rd_val !== 32'd3) begin
+            $display("[TB][FAIL] T-ABORT marked=%0d != 3 (not reusable after abort)", rd_val);
+            errors = errors + 1;
+        end
+// ---- T-REG: an unmapped register read must answer SLVERR ----
         rresp_seen = 1'b0;
         axil_rd(12'h03C, rd_val);
         $display("[TB] T-REG unmapped read(0x03C): rresp_seen=%b (expect 1)", rresp_seen);
