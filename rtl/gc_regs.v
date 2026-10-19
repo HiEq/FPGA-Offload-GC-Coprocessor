@@ -56,7 +56,8 @@ module gc_regs (
     reg        aw_pending = 1'b0;      // 地址已锁存, 等数据
     reg        w_pending  = 1'b0;      // 数据已锁存, 等发响应
 
-    wire _unused_wstrb = &{1'b0, WSTRB};
+    // Byte enables: each 8-bit lane is either written or held.
+    wire [31:0] wmask = {{8{WSTRB[3]}}, {8{WSTRB[2]}}, {8{WSTRB[1]}}, {8{WSTRB[0]}}};
 
     // AWREADY 仅在地址槽为空时拉高
     assign AWREADY = ~aw_pending & ~BVALID;
@@ -97,10 +98,10 @@ module gc_regs (
                         // WDATA[1] 未使用 (位图每轮自动清除)
                         reg_clear_q  <= WDATA[2];
                     end
-                    12'h004: reg_obj_base   <= WDATA;
-                    12'h008: reg_obj_count  <= WDATA;
-                    12'h00C: reg_root_count <= WDATA;
-                    12'h024: reg_bm_addr    <= WDATA[11:0];
+                    12'h004: reg_obj_base   <= (reg_obj_base   & ~wmask) | (WDATA & wmask);
+                    12'h008: reg_obj_count  <= (reg_obj_count  & ~wmask) | (WDATA & wmask);
+                    12'h00C: reg_root_count <= (reg_root_count & ~wmask) | (WDATA & wmask);
+                    12'h024: reg_bm_addr    <= (reg_bm_addr & ~wmask[11:0]) | (WDATA[11:0] & wmask[11:0]);
                     default: begin
                         if ((awaddr_r >= 12'h040) && (awaddr_r < 12'h440)) begin
                             root_wr_addr <= awaddr_r[9:2] - 8'h10;   // (addr>>2) - 16
@@ -137,6 +138,7 @@ module gc_regs (
             end
 
             if (ARREADY && !RVALID) begin
+                RRESP <= 2'b00;   // OKAY unless the case overrides it (unmapped -> SLVERR)
                 case (araddr_r)
                     12'h000: RDATA <= {reg_done, 28'h0, reg_clear_q, 1'b0, reg_start};
                     12'h004: RDATA <= reg_obj_base;
@@ -149,10 +151,10 @@ module gc_regs (
                     12'h020: RDATA <= {28'h0, err_hdr, err_ref, err_rd, err_ovf};
                     12'h024: RDATA <= {20'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
-                    default: RDATA <= 32'hDEADBEEF;
+                    default: begin RDATA <= 32'hDEADBEEF; RRESP <= 2'b10; end   // SLVERR
                 endcase
                 RVALID  <= 1'b1;
-                RRESP   <= 2'b00;
+                // (RRESP already set above)
                 ARREADY <= 1'b0;
             end
 

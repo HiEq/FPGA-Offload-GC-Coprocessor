@@ -39,6 +39,10 @@ module tb_gc_top;
     wire        m_awready;
     reg  [31:0] m_wdata   = 32'h0;
     reg  [3:0]  m_wstrb   = 4'hF;
+
+    // RRESP monitor: latches if the slave ever answers with a non-OKAY read response.
+    reg rresp_seen = 1'b0;
+    always @(posedge clk) if (dut.S_AXI_RVALID && dut.S_AXI_RRESP !== 2'b00) rresp_seen <= 1'b1;
     reg         m_wvalid  = 1'b0;
     wire        m_wready;
     wire [1:0]  m_bresp;
@@ -659,6 +663,15 @@ module tb_gc_top;
         $display("[TB] T6 bitmap probe OK");
 
         // ============================================================
+        // ---- T-REG: an unmapped register read must answer SLVERR ----
+        rresp_seen = 1'b0;
+        axil_rd(12'h030, rd_val);
+        $display("[TB] T-REG unmapped read(0x030): rresp_seen=%b (expect 1)", rresp_seen);
+        if (!rresp_seen) begin
+            $display("[TB][FAIL] T-REG unmapped read returned OKAY (should be SLVERR)");
+            errors = errors + 1;
+        end
+
         // ---- T-HANG: CLEAR_Q while the prefetcher waits for a pop ack ----
         // 64-object chain. Mid-run the test clears the queue (CTRL[2]) and holds
         // q_pop_ack low, which is what CLEAR_Q does to gc_queue: it drops rvalid,
