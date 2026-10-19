@@ -101,6 +101,10 @@ FOGCCC/
 
 ## Quick Start
 
+> 串口侧不用手填端口：`tools\` 里的脚本默认**自动识别 CH340**（换 USB 口、重装驱动或重启后
+> COM 号从 COM3 漂到 COM5 也不受影响），只有机器上插了多根串口线时才需要 `-Port COMx`。
+> 完整清单见下面的「Windows 侧快捷指令」。
+
 ### 1. 生成比特流 (PC 端)
 
 ```powershell
@@ -131,8 +135,8 @@ cat /sys/class/fpga_manager/fpga0/state
 source ~/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi
 $CC -O2 -o test_main csrc/fpga_gc.c csrc/test_main.c
 
-# 拷到 USERDATA 分区后，在板上运行（需要 root）
-cd /run/media/USERDATA-mmcblk0p2
+# 拷到 USERDATA 分区后，在板上运行（需要 root；数据分区由 mount_data.sh 挂到 /mnt/userdata）
+cd /mnt/userdata
 sudo ./bin/test_main
 ```
 
@@ -170,7 +174,7 @@ $CC -O2 -shared -fPIC -o libfogccc.so csrc/fpga_gc.c
 
 ```bash
 # 板上（把 libfogccc.so + fogccc.py 放到卡上 py/ 目录后）
-cd /run/media/USERDATA-mmcblk0p2/py
+cd /mnt/userdata/py
 python3 fogccc.py        # 三方对账：FPGA / C / 位图读回 + STATUS
 ```
 
@@ -453,7 +457,7 @@ FPGA Offload GC Coprocessor for CPython/
 ② 板子上电
    出现 linux login:
 ③ root  + 回车                    (空密码)
-④ 板子会自动挂到 /run/media/USERDATA-mmcblk0p2；要用 /mnt/userdata 就先 mkdir -p 再 mount
+④ 数据分区在 /mnt/userdata（BOOT 里的 mount_data.sh 负责挂；没挂上就 mkdir -p /mnt/userdata && mount /dev/mmcblk0p2 /mnt/userdata）
 ⑤ sh /mnt/userdata/run_gc.sh
 ```
 

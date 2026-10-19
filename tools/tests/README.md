@@ -15,6 +15,6 @@
 powershell -ExecutionPolicy Bypass -File .\tools\tests\run_cmark_sweep.ps1
 ```
 
-板上运行：`sh /run/media/USERDATA-mmcblk0p2/tests/irq_drv_test.sh`
+板上运行：`cd /mnt/userdata && D=/mnt/userdata sh tests/irq_drv_test.sh`（脚本内默认路径仍是旧值，所以要显式传 `D`）
 
 > 卡上 `USERDATA/tests/` 是板级脚本（`irq_drv_test.sh`、`py_mark.py`），与本目录为两份，不要互相覆盖。

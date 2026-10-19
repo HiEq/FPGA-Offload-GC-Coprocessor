@@ -17,7 +17,7 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 
 ## `userdata/` → USERDATA 分区
 
-FAT32，卷标 `USERDATA`。板子启动后挂载于 `/run/media/USERDATA-mmcblk0p2`。
+FAT32，卷标 `USERDATA`。板子启动后由 BOOT 分区里的 `mount_data.sh` 挂到 `/mnt/userdata`。
 
 | 路径 | 说明 |
 |---|---|

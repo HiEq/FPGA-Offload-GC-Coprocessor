@@ -31,7 +31,7 @@ logs/
                     位于仓库 tools/，需要时再拷入
 
 常用命令（板上）
-  cd /run/media/USERDATA-mmcblk0p2
+  cd /mnt/userdata
   sh run_gc.sh 4096 8 2
   sh run_cmark.sh 4096 8 2
   sh run_repeat.sh 10
