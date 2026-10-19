@@ -188,11 +188,11 @@ def main():
         verdict = "OK" if ok else "FAIL:" + ",".join(fails)
 
         speed = (sw_s * 1e6 / hw_us) if hw_us > 0 else 0.0
-        rows.append(dict(t=t, n=n, live=L, garb=n - L, cyc=hw_cyc, hw_us=hw_us,
+        rows.append(dict(t=t, n=n, live=L, garb=n - L, cyc=hw_cyc, hw_us=hw_us, build=t_build,
                          sw_ms=sw_s * 1000, speed=speed, hw=hw_mkd, sw=sw_mkd,
                          g=sw_garb, exp=L, ok=ok, verdict=verdict))
-        print("  [%2d/%2d] N=%4d exp=%4d | HW %9.2f us (%d cyc) | SW %8.2f ms | %6.1fx | %s"
-              % (t, trials, n, L, hw_us, hw_cyc, sw_s * 1000, speed, verdict))
+        print("  [%2d/%2d] N=%4d exp=%4d | HW %9.2f us (%d cyc) | SW %8.2f ms | %6.1fx | build %6.1f ms | %s"
+              % (t, trials, n, L, hw_us, hw_cyc, sw_s * 1000, speed, t_build * 1000, verdict))
 
     task(96, "summarising")
 
@@ -223,6 +223,8 @@ def main():
     print("  seed                  : %d   (replay: --seed %d)" % (seed, seed))
     print("  PASSED (all invariants): %d/%d" % (nok, len(rows)))
     print("  total HW cycles        : %d  (= %.2f us @100MHz)" % (tot_cyc, tot_hw))
+    print("  end-to-end note        : graph build+write (Python) %.1f ms avg vs HW %.3f ms avg"
+          % (1000.0 * sum(r["build"] for r in rows) / len(rows), tot_hw / len(rows)))
     print("  total SW (Python)      : %.2f ms" % tot_sw)
     if sp:
         print("  speedup min/avg/max    : %.1fx / %.1fx / %.1fx"

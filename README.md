@@ -5,7 +5,7 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-FPGA 异步垃圾回收协处理器原型 —— 将 CPython GC 的**标记阶段（Mark Phase）** 卸载到 FPGA 硬件，指针追逐由硬件完成。
+FPGA 垃圾回收协处理器原型 —— 将 GC 的**标记阶段（Mark Phase）** 卸载到 FPGA 硬件，指针追逐由硬件完成（当前是同步的 stop-the-world 卸载，不是异步 GC，见下方"范围"）。
 
 > **范围**：当前实现是 **stop-the-world 的 mark offload**（软件写 START、轮询 DONE），不做并发/增量标记；
 > `python/fogccc.py` 用 ctypes 驱动的是**合成对象图**，尚未接入 CPython 的 `gc` 模块与 `PyObject` 布局。
@@ -334,6 +334,21 @@ python3 python/benchmark.py
 - 原始串口记录：`tools/logs/board_test_main_20261019.txt`、`tools/logs/board_verify_*.log`、
   `tools/logs/cmark_sweep*.log`。
 
+#### 端到端成本（为什么上面的加速比只是上界）
+
+`FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
+`gc_test.py 4096 3 2 --seed 424242` 在板上实测（2026-10-19，bitstream `EC59DFAA…`）：
+
+| 阶段 | 时间 |
+| --- | --- |
+| 构图 + 写 DDR（Python，含 1 MB memset 与引用数组）| **134.5 ms / 图** |
+| 同图 Python BFS（oracle）| 68.5 ms / 图 |
+| 硬件标记（引擎）| **0.289 ms / 图**（N≈1127–2799）|
+
+⇒ 单次卸载的端到端成本由构图主导（约 **465×** 标记时间）。只有对象图**常驻 DDR、能反复复用**时，
+"把标记卸载到 PL"才可能划算。这里用的是 Python 构图，C 侧批量写会快得多，但同样不计入 `FPGA us`
+（`test_main` 的构图走 `fpga_gc_build_graph()`，也没有单独计时）。
+
 ### 仿真回归
 
 `sim\run_sim.bat` 一次跑完下面全部检查：
@@ -521,11 +536,11 @@ FPGA Offload GC Coprocessor for CPython/
 `BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
 > ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
-> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `AACF188A…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同）。
+> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `442B4400…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同；已用串口推到板上并重启验证）。
 
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 | --- | --- | --- | --- |
-| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `AACF188A3F62BEAB1999DBBB6B6066B8` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `442B44006C2AED144B1F8778AA18C63E` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 
 > 每个 release 只放自己那一版的 `BOOT.BIN`，加同一份精简 `image.ub`。
@@ -556,7 +571,7 @@ FPGA Offload GC Coprocessor for CPython/
 ① 双击 tools/fogccc.bat
 ② 板子上电
    出现 linux login:
-③ root  + 回车                    (空密码)
+③ root  + 回车 → 密码 root
 ④ 数据分区 p2 每次开机由 udev 按卷标挂在 /run/media/USERDATA-mmcblk0p2，直接 cd 进去就能用
    （仓库脚本走 /mnt/userdata：sh /mnt/boot/mount_data.sh 或手动 mount；两条路径是同一个分区，写哪边都一样）
 ⑤ sh <上面任一条路径>/run_gc.sh
