@@ -225,6 +225,11 @@ uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 
     uint8_t  *marked = (uint8_t *)calloc(n, 1);
     uint32_t *queue  = (uint32_t *)malloc(n * 4);
+    if (!marked || !queue) {                 /* OOM must not segfault below */
+        free(marked); free(queue);
+        printf("ERROR: out of memory for the software BFS (n=%d)\n", n);
+        return 0xFFFFFFFF;
+    }
     uint32_t  head = 0, tail = 0, count = 0;
 
     // 入队根对象

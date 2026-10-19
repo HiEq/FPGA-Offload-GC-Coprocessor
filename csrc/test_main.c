@@ -248,6 +248,14 @@ static int test_repeat(fpga_gc_t *dev) {
         uint32_t cycles = 0;
         uint32_t count = fpga_gc_mark(dev, &cycles);
 
+        // 0xFFFFFFFF is the documented timeout sentinel (fpga_gc.h). Without
+        // this check, 100 timeouts are "100 identical runs" and the test passes.
+        if (count == 0xFFFFFFFF) {
+            printf("  Run %d: FPGA TIMEOUT (mark returned 0xFFFFFFFF)\n", i);
+            pass = 0;
+            continue;
+        }
+
         if (i == 0) {
             ref_count = count;
         } else if (count != ref_count) {
@@ -295,7 +303,8 @@ static int test_dup_roots(fpga_gc_t *dev) {
     uint32_t c3 = fpga_gc_mark(dev, NULL);
     uint32_t st3 = fpga_gc_status(dev);
 
-    int pass = (c1 == c3) && (c1 > 1) && (st1 == 0) && (st3 == 0);
+    int pass = (c1 == c3) && (c1 > 1) && (st1 == 0) && (st3 == 0)
+               && (c1 != 0xFFFFFFFF) && (c3 != 0xFFFFFFFF);   /* timeout sentinel */
     printf("  roots={0}      -> marked=%u  STATUS=0x%X\n", c1, st1);
     printf("  roots={0,0,0}  -> marked=%u  STATUS=0x%X\n", c3, st3);
     printf("  %s (duplicate roots must not double count, expect %u == %u)\n",
