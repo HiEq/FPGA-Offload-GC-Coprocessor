@@ -286,7 +286,7 @@ python3 python/benchmark.py
 | 总 HW cycles   | 1,804,791                       | 557,091                         | **484,034**                       | 240,007                         |
 | 活跃对象合计   | ~20,010                         | 14,441                          | 12,449                            | 13,497                          |
 | 每对象周期     | **90.2**                        | 38.6                            | **38.9**（扣清位图 36.3）         | **15.4**（扣清位图）            |
-| vs CPython     | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
+| vs `py_mark.py`     | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
@@ -299,8 +299,11 @@ python3 python/benchmark.py
 - `FPGA us` = `CYCLES` / 100 MHz，不含驱动 `usleep`。
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
 - `CPython ms`：`py_mark.py` 独立进程（`test_main` 经 `popen` 调用）。
-- **vs CPython = 完整 `gc.collect()`（标记 + 清扫）÷ 只做标记的硬件时间**，非同阶段对比，只能视为上界。
+- **与 CPython 只能比出上界**：`gc.collect()` 含标记+清扫，硬件只做标记，非同阶段。
 - 原始串口记录：`tools/logs/board_verify_*.log`、`tools/logs/cmark_sweep*.log`。
+- **真实 CPython 基线**（`python/benchmark.py`，板上实测 2026-10-19，原始输出 `tools/logs/board_benchmark_20261019.txt`）：
+  `gc.collect()` 在 4000 对象上 **16.04 ms**（2000 对象 11.72 ms，1000 对象 9.61 ms）；同规模硬件约 **0.4 ms** ⇒ **约 36~42×**。
+  表中 `220.8~279.3x` 是对 `py_mark.py`（Python BFS 逐条读 `/dev/mem`）算的，不是 CPython 的 GC。
 
 ### 仿真回归
 
