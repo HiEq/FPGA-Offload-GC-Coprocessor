@@ -71,7 +71,7 @@ foreach ($sw in $sweeps) {
     $mark = "SWEEP_" + $maxN + "_" + $trials + "_" + $avg + "_DONE"
     Write-Host ("`n===== cmark maxN=" + $maxN + " trials=" + $trials + " avg_refs=" + $avg + " =====")
     SendLine ("cd /mnt/userdata && ./cmark " + $maxN + " " + $trials + " " + $avg + " && echo " + $mark)
-    if (PumpUntil $mark 300000) { Write-Host ("`n[" + $mark + " ok]") } else { Write-Host ("`n[" + $mark + " TIMEOUT]") }
+    if (PumpUntil $mark 300000) { Write-Host ("`n[" + $mark + " ok]") } else { Write-Host ("`n[" + $mark + " TIMEOUT]"); $fail++ }
     Pump 1200
 }
 
@@ -79,3 +79,5 @@ $sp.Close()
 $out = "$PSScriptRoot\..\logs\cmark_sweep.log"
 [System.IO.File]::WriteAllText($out, $sb.ToString())
 Write-Host "`n=== transcript: $out ==="
+if ($fail -gt 0) { Write-Host ("SWEEP FAILED: " + $fail + " step(s) did not reach their DONE marker"); exit 1 }
+exit 0

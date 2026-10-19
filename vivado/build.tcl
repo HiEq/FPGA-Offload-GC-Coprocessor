@@ -179,7 +179,7 @@ foreach s [get_bd_addr_segs -quiet] {
 }
 if {$gc_seg ne ""} {
     set_property offset 0x43C00000 $gc_seg
-    set_property range  64K        $gc_seg
+    set_property range  4K         $gc_seg   ;# 12-bit decode: only 4 KB is real
     puts "INFO: gc_top @ 0x43C00000 (64KB) seg=[get_property PATH $gc_seg]"
 } else {
     puts "WARNING: gc_top address segment not found!"
