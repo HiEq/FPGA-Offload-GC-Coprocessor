@@ -56,4 +56,4 @@ dmesg | tail               # "fogccc: irq fired (#1), line disabled"
 
 - 覆盖：virq 映射（hwirq 61）、`request_irq`、`arm` 后单次触发、
   处理函数关线、`rmmod`。
-- 不覆盖：中断丢失率、多中断源、DMA 并发。产品路径轮询 `CYCLES`，中断不参与。
+- 不覆盖：中断丢失率、多中断源、DMA 并发。产品路径轮询 `CTRL.DONE`（`fpga_gc_mark()` 的实现），中断不参与。

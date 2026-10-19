@@ -5,7 +5,10 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段（Mark Phase）** 卸载到 FPGA 硬件，指针追逐由硬件完成。
+FPGA 异步垃圾回收协处理器原型 —— 将 CPython GC 的**标记阶段（Mark Phase）** 卸载到 FPGA 硬件，指针追逐由硬件完成。
+
+> **范围**：当前实现是 **stop-the-world 的 mark offload**（软件写 START、轮询 DONE），不做并发/增量标记；
+> `python/fogccc.py` 用 ctypes 驱动的是**合成对象图**，尚未接入 CPython 的 `gc` 模块与 `PyObject` 布局。
 
 ## 架构概览
 
@@ -395,7 +398,7 @@ SPI 编号 = ID − 32）。
   （仍慢 1.1~1.7x）
 - avg_refs 越大硬件越占优（**3.4x**）
 
-> 主对比仍用 CPython；`cmark` 只作参考。
+> 主对比是 `py_mark.py`（**Python 实现的 BFS**，逐条读 `/dev/mem`），不是 CPython 的 GC 本体；`cmark` 只作参考。
 
 ## Debug & Monitoring
 
