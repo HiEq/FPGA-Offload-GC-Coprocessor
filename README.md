@@ -231,7 +231,7 @@ python3 python/benchmark.py
 | 0x14 | CYCLES | R | 硬件周期计数 |
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
-| 0x20 | STATUS | R | [0]=队列溢出 [1]=AXI 读错误 [2]=引用流失步 [3]=对象头非法（`ref_count>4096`）（每次 start 清零） |
+| 0x20 | STATUS | R | [0]=队列溢出（**防御性**：对象数上限 4096 = 队列深度，正常路径不可达）[1]=AXI 读错误 [2]=引用失步 [3]=坏对象头（`ref_count>4096`）；除 [1] 按 start 清零外，其余每次 start 清零 |
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0~4095，只在引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据 = `mem[BM_ADDR]`（**2 拍**：BRAM 1 拍 + 探针寄存器 1 拍；两次读数之间不要改 BM_ADDR）|
 | 0x40+ | ROOT_LIST | W | 根集对象 ID 数组（0x40~0x43F，最多 256 个） |
