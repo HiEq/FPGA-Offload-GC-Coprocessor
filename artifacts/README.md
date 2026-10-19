@@ -32,6 +32,9 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出，不入库 |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证 |
+| `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同图恢复/换图恢复） |
+| `tests/abort_sweep.py` | abort 相位扫描（0–480 µs），`--delays` 可重复单点 |
+| `tests/done_race_test.py` | `START` posted-write 的 stale-DONE 实验 + 连续换图回归 |
 | `tests/py_bfs.py` | CPython 基准，`test_main` 经 popen 调用 |
 | `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定，含 STATUS 与位图探针 |
 
@@ -42,8 +45,8 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 | 文件 | 说明 |
 |---|---|
 | `csrc/cmark.c` | 板上无 gcc，无法编译 |
-| `tools/gic_dump.py`、`tools/gic_irq_test.py` | GIC 诊断，可用 JTAG 读取同样寄存器 |
-| `tools/irq_loss_test.sh` | 诊断用途，非验收 |
+| `tools/debug/gic_dump.py`、`tools/debug/gic_irq_test.py` | GIC 诊断，可用 JTAG 读取同样寄存器 |
+| `tools/debug/irq_loss_test.sh` | 诊断用途，非验收 |
 
 ## 注意
 
