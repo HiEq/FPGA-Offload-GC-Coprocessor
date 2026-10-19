@@ -492,6 +492,8 @@ FPGA Offload GC Coprocessor for CPython/
 `BOOT.BIN` 虽然仓库里有，Release 里也一并提供，做到**开箱即用**。
 
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
+> ⚠️ 下表是 **GitHub Release 资产**的哈希（2026-10-19 用 Releases API 的 `sha256` 复核过），**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+
 | --- | --- | --- | --- |
 | [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + rootfs 精简 | `04CFEC20A279CFA2F03225481D42D0EF` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |

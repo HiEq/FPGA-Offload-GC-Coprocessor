@@ -124,3 +124,38 @@ sudo umount /mnt/boot
 # JTAG 调试:
 D:\AMDDesignTools\2026.1\Vivado\bin\xsdb.bat -eval "connect; targets"
 ```
+
+## 从零构建（不依赖已有的 PetaLinux 工程）
+
+`build_fogccc2.sh` 假设工程目录已存在（复制旧工程时还会踩 `SDKBASEMETAPATH` 的绝对路径坑）。
+在一台**干净机器**上，先做下面几步再跑它：
+
+```bash
+# 1. 建工程（PetaLinux 2026.1）
+petalinux-create -t project --template zynq --name fogccc2_linux
+cd fogccc2_linux
+
+# 2. 用本仓的 XSA 生成硬件平台
+petalinux-config --get-hw-description=<path-to>/system.xsa    # 交互界面里直接 Save & Exit
+```
+
+```bash
+# 3. 把本仓的 BSP 内容放进工程
+cp -a <repo>/petalinux/project-spec/meta-user        project-spec/
+cp -a <repo>/driver/plnx/fogccc-irq                  project-spec/meta-user/recipes-modules/
+```
+
+```bash
+# 4. 构建 + 打包
+petalinux-build
+petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
+                       --fpga images/linux/system.bit \
+                       --u-boot --force
+```
+
+注意两点：
+
+- **不要复制整棵旧工程**：`build/conf/bblayers.conf` 里的 `SDKBASEMETAPATH` 是绝对路径，复制后仍指向旧工程。
+  从零 `petalinux-create` 就没有这个问题。
+- `build_fogccc2.sh` 的 `VENDOR_FSBL` 默认取 `artifacts/zynq_fsbl.elf`（见脚本里的 `${VENDOR_FSBL:-...}`），
+  要换 FSBL 时显式传 `VENDOR_FSBL=<elf>`。
