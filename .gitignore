@@ -1,0 +1,89 @@
+# Vivado 工程生成目录 (由 vivado/build.tcl 重新生成)
+vivado/fogccc_proj/
+
+# Vivado 日志/临时
+vivado/nlviewcommon.logfile
+vivado/*.log
+vivado/*.jou
+
+# 编译产物
+*.o
+*.so
+*.bit
+*.ko
+*.dcp
+*.ltx
+
+# 构建产物: image.ub 有 106MB, 超过 GitHub 单文件 100MB 限制, 不入库
+# (可由 PetaLinux 重新生成; BOOT.BIN 等小件仍然入库)
+artifacts/image.ub
+
+# 运行日志
+artifacts/gc_run_*.log
+tools/com5.log
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# OS 文件
+.DS_Store
+Thumbs.db
+
+# 本地排错笔记 (不推送)
+# AGENT_NOTES_pitfalls.md  (2026-10-19: now published -- the absolute paths were removed)
+
+# xsim 仿真运行产物 (只保留 tb_gc_top.v / run_sim.bat 这两个源文件)
+sim/xsim.dir/
+sim/*.log
+sim/*.jou
+sim/*.pb
+sim/*.wdb
+sim/xsim_*.backup.*
+
+# board / serial transcripts
+tools/*.log
+
+# 工具日志 (统一放 tools/logs/)
+tools/logs/*
+!tools/logs/.gitkeep
+# 例外：板级验证日志入库，README 里的数字可复核
+!tools/logs/board_verify_*.log
+!tools/logs/cmark_sweep*.log
+!tools/logs/board_run.log
+tools/__pycache__/
+
+# 本地存档: 改造前的 XSA/bitstream (17 MB, 不入库)
+vivado/artifacts_before_axi_fix/
+
+# 卡镜像里的 Python 绑定必须随卡发布 (板上没有 gcc 不能现编)
+!artifacts/userdata/py/libfogccc.so
+
+# ============================================================
+# 第三方 / 可再生成的启动产物 —— **不入库**（MIT 不覆盖它们，见 NOTICE）
+#
+#   * zynq_fsbl.elf  Xilinx 的 FSBL 二进制（厂商代码，许可证不属于本仓）
+#   * BOOT.BIN       FSBL + U-Boot(GPL-2.0+) + bitstream 的打包产物
+#   * system.dtb     PetaLinux 生成物（源在 driver/ 与 petalinux/ 的 dtsi）
+#
+# 这三样都能用 petalinux/build_fogccc2.sh 重新生成；
+# 要对外发布二进制就走 GitHub Release，并各自保留上游许可证。
+# 注意：boot.scr 是 mkimage 对**本仓自己的启动脚本**打的包，内容不是厂商代码，保留入库。
+# ============================================================
+artifacts/BOOT.BIN
+artifacts/zynq_fsbl.elf
+artifacts/system.dtb
+
+# vivado batch 在仓库根目录留下的日志（不只 vivado/ 子目录）
+vivado*.jou
+vivado*.log
+
+# Vivado 运行目录（batch 在仓库根留下的）
+.Xil/
+
+# 内核模块编译中间产物（driver/plnx/... 下）
+driver/**/*.cmd
+driver/**/Module.symvers
+driver/**/modules.order
+driver/**/*.mod
+driver/**/*.mod.c

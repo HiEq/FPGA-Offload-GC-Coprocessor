@@ -1,0 +1,50 @@
+# NOTICE —— 许可证边界与第三方组件
+
+本仓库**主体**以 **MIT** 发布（见 `LICENSE`）。但下面两部分**不属于 MIT 范围**，
+请勿把它们当成 MIT 代码再分发。
+
+## 1. 内核模块：GPL-2.0（与本仓其余部分不同）
+
+| 文件 | 许可证 |
+| --- | --- |
+| `driver/fogccc_irq.c` | `SPDX-License-Identifier: GPL-2.0` |
+| `driver/plnx/fogccc-irq/files/fogccc-irq.c` | `SPDX-License-Identifier: GPL-2.0` |
+
+它们是要编进 Linux 内核的模块（Linux 内核是 GPL-2.0），所以按 GPL-2.0 分发。
+仓库里同时提供了**完整源码**，因此发 `.ko` 二进制是合规的；但**不要**把这两份文件
+标注成 MIT。
+
+## 2. 不在仓库里的第三方启动产物
+
+下面这些由 AMD/Xilinx 的 PetaLinux 流程生成，属于各自的上游许可证，
+**已被 `.gitignore` 排除，不入库**：
+
+| 产物 | 是什么 | 许可证归属 |
+| --- | --- | --- |
+| `zynq_fsbl.elf` | Xilinx First Stage Boot Loader | Xilinx/AMD 的许可 |
+| `BOOT.BIN` | FSBL + U-Boot + 位流的打包镜像 | 混合：FSBL(Xilinx) + U-Boot(GPL-2.0+) + 本仓 RTL 的位流 |
+| `image.ub` | 内核 + initramfs 的 FIT 镜像 | 内核 GPL-2.0；rootfs 各包各自许可 |
+| `system.dtb` | 设备树二进制（PetaLinux 生成） | 本仓 dtsi + 工具生成节点，属构建产物 |
+
+重新生成：`petalinux/build_fogccc2.sh`（步骤见 `petalinux/BUILD_GUIDE.md`）。
+
+> **为什么 BOOT.BIN 不能以 MIT 发布**：它把 U-Boot（GPL-2.0+）和 Xilinx 的 FSBL
+> 一起打包了。MIT 只能覆盖本仓库作者写的代码，不能替别人写的代码换许可证。
+
+保留入库的是：`boot.scr`（`mkimage` 对**本仓自己的启动脚本**打的包，内容是自己的）、
+`artifacts/userdata/**`（本仓源码的产物，见下）。
+
+## 3. 本仓里没有厂商源码
+
+- `rtl/` 是本项目自己写的 RTL；`legacy/original-v1/` 是同一作者的历史版本。
+- `vivado/build.tcl` 里只有 **IP 配置参数**（`CONFIG.PCW_*` 之类），不含 AMD 的
+  源代码、头文件或文档正文 —— 这是用 Tcl 实例化 IP 的标准做法。
+- 仓库里没有拷贝 AMD 的示例设计、参考设计或文档段落。
+
+## 4. 如果要把二进制放到 GitHub Release
+
+| 产物 | 建议 |
+| --- | --- |
+| `system_wrapper.bit`、`test_main`、`libfogccc.so`、`cmark` | 可以（本仓源码的产物，MIT）|
+| `fogccc-irq.ko` | 可以，但必须**同时**提供对应源码（本仓已有 `driver/fogccc_irq.c`）|
+| `BOOT.BIN` / `image.ub` / `zynq_fsbl.elf` | 不要以 MIT 名义发布；如确需提供，单独说明上游许可证 |

@@ -1,0 +1,38 @@
+
+  generating ssh ECDSA host key...
+  generating ssh ED25519 host key...
+done.
+Starting rpcbind daemon...done.
+starting statd: done
+Starting internet superserver: inetd.
+NFS daemon support not enabled in kernel
+Starting syslogd/klogd: done
+Starting tcf-agent: OK
+
+********************************************************************************************
+The PetaLinux source code and images provided/generated are for demonstration purposes only.
+Please refer to https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/2741928025/Moving+from+PetaLinux+to+Production+Deployment
+for more details.
+********************************************************************************************
+PetaLinux 2026.1+release-S06060014 linux ttyPS0
+
+linux login: mount -t vfat /dev/mmcblk0p2 /mnt/userdata
+Password: 
+
+Login incorrect
+linux login: ls -l /mnt/userdata/cmark
+Password: 
+
+Login incorrect
+linux login: sh /mnt/userdata/run_gc.sh
+Password: 
+Login timed out after 60 seconds.
+
+********************************************************************************************
+The PetaLinux source code and images provided/generated are for demonstration purposes only.
+Please refer to https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/2741928025/Moving+from+PetaLinux+to+Production+Deployment
+for more details.
+********************************************************************************************
+PetaLinux 2026.1+release-S06060014 linux ttyPS0
+
+linux login: 

@@ -1,0 +1,34 @@
+/*
+ * FOGCCC board device-tree additions.
+ *
+ * NOTE: the first line is mandatory -- it pulls in the PetaLinux generated
+ * system-conf.dtsi (chosen/bootargs, memory, aliases, ...).  Removing it
+ * silently drops the kernel command line.
+ */
+/include/ "system-conf.dtsi"
+
+/ {
+    /* carve the PL object-graph window out of Linux's memory.
+     * The AXI HP port is NOT cache coherent with the PS, so this region
+     * must never be handed out to the kernel allocator. 32 MiB @0x1E000000 */
+    reserved-memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+
+        pl_graph: pl_graph@1e000000 {
+            reg = <0x1e000000 0x02000000>;
+            no-map;   /* non-coherent PL window: also keep the kernel from mapping it */
+        };
+    };
+};
+
+/* 修复 U-Boot 串口时钟配置 */
+&uart0 {
+    clock-frequency = <100000000>;
+    status = "okay";
+};
+
+&uart1 {
+    status = "disabled";
+};

@@ -1,0 +1,100 @@
+
+root@linux:~# root
+-sh: root: command not found
+root@linux:~# mkdir -p /mnt/userdata
+root@linux:~# mount -t vfat /dev/mmcblk0p2 /mnt/userdata
+root@linux:~# ls /mnt/userdata
+'System Volume Information'   gc_run_20180309_123730.log   run_cmark.sh
+ cmark			      gc_run_20180309_123909.log   run_gc.sh
+ cmark.c		      gc_test.py		   test_fpga
+root@linux:~# sh /mnt/userdata/run_gc.sh
+==========================================================
+ FOGCCC on-board test
+   script : /mnt/userdata/gc_test.py
+   params : maxN=4096  trials=8  avg_refs=2
+   log    : /mnt/userdata/gc_run_20180309_124524.log
+==========================================================
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
+====================================================================================
+@@TASK 5 trial 1/8  N=2049  (expect 1536)
+  [ 1/ 8] N=2049 exp=1536 | HW    594.48 us (59448 cyc) | SW    72.76 ms |  122.4x | OK
+@@TASK 15 trial 2/8  N=3148  (expect 2361)
+  [ 2/ 8] N=3148 exp=2361 | HW    896.29 us (89629 cyc) | SW   112.07 ms |  125.0x | OK
+@@TASK 26 trial 3/8  N=529  (expect 396)
+  [ 3/ 8] N= 529 exp= 396 | HW    181.59 us (18159 cyc) | SW    18.82 ms |  103.6x | FAIL:HW!=(397 vs 396)
+@@TASK 36 trial 4/8  N=532  (expect 399)
+  [ 4/ 8] N= 532 exp= 399 | HW    181.89 us (18189 cyc) | SW    18.24 ms |  100.3x | OK
+@@TASK 47 trial 5/8  N=4048  (expect 3036)
+  [ 5/ 8] N=4048 exp=3036 | HW   1149.69 us (114969 cyc) | SW   144.80 ms |  125.9x | OK
+@@TASK 58 trial 6/8  N=3579  (expect 2684)
+  [ 6/ 8] N=3579 exp=2684 | HW   1018.79 us (101879 cyc) | SW   128.13 ms |  125.8x | OK
+@@TASK 68 trial 7/8  N=3408  (expect 2556)
+  [ 7/ 8] N=3408 exp=2556 | HW    967.30 us (96730 cyc) | SW   121.71 ms |  125.8x | OK
+@@TASK 79 trial 8/8  N=1965  (expect 1473)
+  [ 8/ 8] N=1965 exp=1473 | HW    580.88 us (58088 cyc) | SW    70.41 ms |  121.2x | FAIL:HW!=(1474 vs 1473)
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+ trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
+ --------------------------------------------------------------------------------------------
+     1   2049   1536    513        59448     594.48     72.76   122.4x   1536   1536  OK
+     2   3148   2361    787        89629     896.29    112.07   125.0x   2361   2361  OK
+     3    529    396    133        18159     181.59     18.82   103.6x    397    396  FAIL:HW!=(397 vs 396)
+     4    532    399    133        18189     181.89     18.24   100.3x    399    399  OK
+     5   4048   3036   1012       114969    1149.69    144.80   125.9x   3036   3036  OK
+     6   3579   2684    895       101879    1018.79    128.13   125.8x   2684   2684  OK
+     7   3408   2556    852        96730     967.30    121.71   125.8x   2556   2556  OK
+     8   1965   1473    492        58088     580.88     70.41   121.2x   1474   1473  FAIL:HW!=(1474 vs 1473)
+ --------------------------------------------------------------------------------------------
+  trials                : 8
+  PASSED (all invariants): 6/8
+  total HW cycles        : 557091  (= 5570.91 us @100MHz)
+  total SW (Python)      : 686.94 ms
+  speedup min/avg/max    : 100.3x / 120.9x / 125.9x
+  N range                : 529 .. 4048
+
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done
+
+==========================================================
+ done.  log saved on the card: /mnt/userdata/gc_run_20180309_124524.log
+==========================================================
+root@linux:~# sh /mnt/userdata/run_cmark.sh
+==========================================================
+ FOGCCC  C-mark baseline
+   dir    : /mnt/userdata
+   params : maxN=4096  trials=8  avg_refs=2
+==========================================================
+======================================================================
+ FOGCCC  C-mark baseline   maxN=4096  trials=8  avg_refs=2
+ graph @ 0x1E000000   regs @ 0x43C00000
+ C-uncached = same uncached DDR path as the PL engine (fairest)
+ C-cached   = heap copy, what an in-process GC would see (CPU upper bound)
+======================================================================
+ trial      N      L     garb       HW cyc      HW us   C-unc us    HW/Cun C-cac us    HW/Cca  mkd(HW/Cu/Cc)
+ --------------------------------------------------------------------------------------------
+     1   1013    759    254        30780     307.80    415.308     1.35x   300.492     0.98x  759/759/759 OK
+     2   2379   1784    595        67988     679.88    958.764     1.41x   726.624     1.07x  1784/1784/1784 OK
+     3   2333   1749    584        67212     672.12    929.574     1.38x   629.406     0.94x  1749/1749/1749 OK
+     4    739    554    185        23650     236.50    285.012     1.21x   170.724     0.72x  555/554/554 **MISMATCH**
+     5   3465   2598    867        98332     983.32   1426.938     1.45x  1027.956     1.05x  2599/2598/2598 **MISMATCH**
+     6   4051   3038   1013       114904    1149.04   1667.430     1.45x  1190.532     1.04x  3039/3038/3038 **MISMATCH**
+     7   2703   2027    676        77187     771.87   1078.770     1.40x   733.530     0.95x  2027/2027/2027 OK
+     8   2995   2246    749        85217     852.17   1196.124     1.40x   816.516     0.96x  2246/2246/2246 OK
+ --------------------------------------------------------------------------------------------
+ totals: HW 5652.70 us | C-uncached 7957.920 ms | C-cached 5595.780 ms   (live objects 14755)
+ speedup HW vs C-uncached : 1.4x
+ speedup HW vs C-cached   : 1.0x
+ per object: HW 38.3 cyc | C-uncached 539 ns | C-cached 379 ns
+======================================================================
+root@linux:~# 

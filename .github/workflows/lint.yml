@@ -1,0 +1,50 @@
+name: lint
+
+# Scope: this workflow only checks that the sources PARSE (shell, Python,
+# PowerShell). It does not run xsim, Vivado or anything that needs a licence,
+# so a green run is not evidence that the design works - see README's
+# "测量口径" and AGENTS.md's evidence ladder.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shell syntax (bash -n)
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            bash -n "$f" || { echo "SYNTAX FAIL: $f"; fail=1; }
+          done < <(git ls-files '*.sh')
+          exit $fail
+
+      - name: python syntax (py_compile)
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            python3 -m py_compile "$f" || { echo "PY FAIL: $f"; fail=1; }
+          done < <(git ls-files '*.py')
+          exit $fail
+
+      - name: powershell parse
+        shell: pwsh
+        run: |
+          $bad = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $err = $null; $tok = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tok, [ref]$err)
+            if ($err.Count -gt 0) {
+              Write-Host "PARSE FAIL: $($_.FullName)"
+              $err | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Message)" }
+              $bad++
+            }
+          }
+          if ($bad -gt 0) { exit 1 }
+          Write-Host "all PowerShell files parse"

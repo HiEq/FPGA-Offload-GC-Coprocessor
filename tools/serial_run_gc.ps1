@@ -1,0 +1,110 @@
+﻿param([string]$Port = "auto")
+
+$ErrorActionPreference = 'Stop'
+
+# Port auto-detection + shared plumbing live in serial-session.ps1, which in
+# turn dot-sources serial-port.ps1. This script used to carry its own copy of
+# the open/pump/send/ANSI-strip code; keeping one copy stops the two variants
+# from drifting again.
+. (Join-Path $PSScriptRoot 'serial-session.ps1')
+
+# logs directory
+$logDir = Join-Path $PSScriptRoot 'logs'
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
+$stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+$outFile = "$PSScriptRoot\logs\board_verify_$stamp.log"
+
+$s = New-BoardSerialSession -Port $Port
+Write-Host ("opened {0} @ {1}" -f $s.Port, $s.Baud)
+
+# Thin wrappers so the body below reads like the original script.
+function SendLine([string]$text) {
+    Write-Host ("> " + $text)
+    Write-BoardSerialLine -Session $s -Text $text
+}
+function Cmd([string]$text, [int]$waitMs) {
+    [void](Invoke-BoardSerialCommand -Session $s -Text $text -WaitMs $waitMs -Echo -WarnOnTimeout)
+}
+
+# ================= 1) login =================
+Write-Host "--- 1) login ---"
+Read-BoardSerial -Session $s -Ms 500
+$s.Sp.Write("`r")
+Read-BoardSerial -Session $s -Ms 1200
+
+$loggedIn = $false
+for ($try = 1; $try -le 3; $try++) {
+    if ($s.Sb.ToString() -match '#\s*$') { $loggedIn = $true; break }
+    Write-Host ("  attempt " + $try + ": sending user root")
+    $s.Sp.Write("root`n")
+    Read-BoardSerial -Session $s -Ms 2500
+    if ($s.Sb.ToString() -match 'Password:') {
+        Write-Host "  password prompt -> sending empty password"
+        $s.Sp.Write("`n")
+        Read-BoardSerial -Session $s -Ms 2500
+    }
+    if (Read-BoardSerialUntil -Session $s -Pattern '#\s*$' -MaxMs 15000) { $loggedIn = $true; break }
+}
+Write-Host ("  logged in = " + $loggedIn)
+if (-not $loggedIn) {
+    Write-Host "  LOGIN FAILED, tail:"
+    Get-BoardSerialTail -Session $s -Lines 15 | ForEach-Object { "  | " + $_ }
+    Close-BoardSerialSession -Session $s
+    [System.IO.File]::WriteAllText($outFile, $s.Sb.ToString())
+    exit 2
+}
+Read-BoardSerial -Session $s -Ms 400
+
+# ================= 1b) host time sync =================
+# The board has no RTC and no network, so its clock falls back to 2018-03-09 on
+# every power-up. Push the host's UTC time in, so run_gc.sh writes its
+# gc_run_*.log files under a real date.
+Write-Host "--- 1b) host time sync ---"
+$hostUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
+Cmd "date -s '$hostUtc'" 8000
+Cmd "date" 8000
+
+# ================= 2) mount + check =================
+Write-Host "--- 2) mount + verify files ---"
+Cmd "mkdir -p /mnt/userdata" 8000
+Cmd "mount -t vfat /dev/mmcblk0p2 /mnt/userdata" 8000
+Cmd "df -h /mnt/userdata | tail -2" 8000
+Cmd "md5sum /mnt/userdata/cmark" 15000
+Cmd "ls -l /mnt/boot/BOOT.BIN 2>/dev/null || ls -l /run/media/*/BOOT.BIN 2>/dev/null || echo no-boot-mount" 10000
+Cmd "cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpga-manager" 8000
+
+# ================= 3) run_gc.sh =================
+Write-Host "--- 3) run_gc.sh ---"
+# Only output produced from here on may satisfy the verdict pattern: the buffer
+# still holds the whole session, and an old 'FAILED' line used to report
+# finished=True a couple of seconds after the run started.
+$from = $s.Sb.Length
+SendLine "sh /mnt/userdata/run_gc.sh"
+$done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback' -MaxMs 420000 -From $from
+Write-Host ("  finished = " + $done)
+if ($done) {
+    $new = $s.Sb.ToString($from, $s.Sb.Length - $from)
+    $ml  = ($new -split "`r?`n") | Where-Object { $_ -match 'PASSED \(all invariants\)|FAILED|Traceback' } | Select-Object -First 1
+    Write-Host ("  verdict line: " + ((ConvertFrom-Ansi $ml).Trim()))
+}
+Read-BoardSerial -Session $s -Ms 3000
+
+Close-BoardSerialSession -Session $s
+[System.IO.File]::WriteAllText($outFile, $s.Sb.ToString())
+Write-Host ("transcript: " + $outFile)
+
+Write-Host "--- tail ---"
+Get-BoardSerialTail -Session $s -Lines 30 | ForEach-Object { "  | " + $_ }
+
+# Exit code is evidence: before this, the one-click acceptance script returned 0
+# even when the board run failed, and only a human reading the log could tell.
+if (-not $done) {
+    Write-Host "RESULT: FAIL (no verdict line within the timeout)"
+    exit 1
+}
+if ($ml -match 'FAILED|Traceback') {
+    Write-Host ("RESULT: FAIL (" + (ConvertFrom-Ansi $ml).Trim() + ")")
+    exit 1
+}
+Write-Host "RESULT: PASS"
+exit 0

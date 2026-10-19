@@ -1,0 +1,18 @@
+fogccc-irq
+==========
+
+PetaLinux 用户模块 recipe。
+
+构成
+  fogccc-irq.bb             recipe
+  files/fogccc-irq.c        模块源码（与 driver/fogccc_irq.c 相同）
+  files/Makefile            模块 Makefile，由 Yocto module bbclass 使用
+  files/COPYING             GPL-2.0
+
+构建
+  cp -r driver/plnx/fogccc-irq project-spec/meta-user/recipes-modules/
+  petalinux-build -c fogccc-irq
+
+说明
+  模块不使用设备树节点：PL 中断无对应 DT 描述，virq 由模块内部映射
+  （GIC SPI 61 -> hwirq 61），可通过模块参数 irq=N 覆盖。
