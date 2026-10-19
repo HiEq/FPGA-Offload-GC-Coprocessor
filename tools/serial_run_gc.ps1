@@ -33,14 +33,23 @@ $s.Sp.Write("`r")
 Read-BoardSerial -Session $s -Ms 1200
 
 $loggedIn = $false
+# The shipped image sets CONFIG_imagefeature-empty-root-password=y, but an image
+# rebuilt without it would ask for a password; try empty first, then "root".
+$passwords = @('', 'root', 'root')
 for ($try = 1; $try -le 3; $try++) {
-    if ($s.Sb.ToString() -match '#\s*$') { $loggedIn = $true; break }
+    $tail = $s.Sb.ToString()
+    if ($tail.Length -gt 400) { $tail = $tail.Substring($tail.Length - 400) }
+    if ($tail -match '#\s*$') { $loggedIn = $true; break }
     Write-Host ("  attempt " + $try + ": sending user root")
     $s.Sp.Write("root`n")
     Read-BoardSerial -Session $s -Ms 2500
-    if ($s.Sb.ToString() -match 'Password:') {
-        Write-Host "  password prompt -> sending empty password"
-        $s.Sp.Write("`n")
+    $tail = $s.Sb.ToString()
+    if ($tail.Length -gt 400) { $tail = $tail.Substring($tail.Length - 400) }
+    if ($tail -match 'Password:') {
+        $pw = $passwords[$try - 1]
+        if ($pw) { Write-Host "  password prompt -> sending 'root'" }
+        else     { Write-Host "  password prompt -> sending empty password" }
+        $s.Sp.Write($pw + "`n")
         Read-BoardSerial -Session $s -Ms 2500
     }
     if (Read-BoardSerialUntil -Session $s -Pattern '#\s*$' -MaxMs 15000) { $loggedIn = $true; break }
@@ -79,15 +88,16 @@ Write-Host "--- 3) run_gc.sh ---"
 # still holds the whole session, and an old 'FAILED' line used to report
 # finished=True a couple of seconds after the run started.
 $from = $s.Sb.Length
-SendLine "sh /mnt/userdata/run_gc.sh"
-$done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback' -MaxMs 420000 -From $from
+SendLine "sh /mnt/userdata/run_gc.sh; echo RUN_GC_RC=$?"
+$done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' -MaxMs 420000 -From $from
 Write-Host ("  finished = " + $done)
-if ($done) {
-    $new = $s.Sb.ToString($from, $s.Sb.Length - $from)
-    $ml  = ($new -split "`r?`n") | Where-Object { $_ -match 'PASSED \(all invariants\)|FAILED|Traceback' } | Select-Object -First 1
-    Write-Host ("  verdict line: " + ((ConvertFrom-Ansi $ml).Trim()))
-}
+# Let the shell print the exit-code line that follows the summary.
 Read-BoardSerial -Session $s -Ms 3000
+$new   = $s.Sb.ToString($from, $s.Sb.Length - $from)
+$lines = ($new -split "`r?`n")
+$ml    = $lines | Where-Object { $_ -match 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' } | Select-Object -First 1
+if ($ml) { Write-Host ("  verdict line: " + ((ConvertFrom-Ansi $ml).Trim())) }
+$rcLine = $lines | Where-Object { $_ -match 'RUN_GC_RC=\d+' } | Select-Object -Last 1
 
 Close-BoardSerialSession -Session $s
 [System.IO.File]::WriteAllText($outFile, $s.Sb.ToString())
@@ -102,8 +112,20 @@ if (-not $done) {
     Write-Host "RESULT: FAIL (no verdict line within the timeout)"
     exit 1
 }
-if ($ml -match 'FAILED|Traceback') {
+if ($ml -match 'FAILED|Traceback|no trials completed') {
     Write-Host ("RESULT: FAIL (" + (ConvertFrom-Ansi $ml).Trim() + ")")
+    exit 1
+}
+# "PASSED (all invariants): 7/8" is a failure; only n == n counts.
+if ($ml -match 'PASSED \(all invariants\):\s*(\d+)/(\d+)') {
+    if ($Matches[1] -ne $Matches[2]) {
+        Write-Host ("RESULT: FAIL (partial: " + $Matches[1] + "/" + $Matches[2] + ")")
+        exit 1
+    }
+}
+# The board's own exit code is the last word.
+if ($rcLine -match 'RUN_GC_RC=(\d+)' -and $Matches[1] -ne '0') {
+    Write-Host ("RESULT: FAIL (run_gc.sh exit " + $Matches[1] + ")")
     exit 1
 }
 Write-Host "RESULT: PASS"

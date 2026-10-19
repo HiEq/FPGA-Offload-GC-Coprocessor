@@ -5,9 +5,9 @@
 
 | 文件 | 来源 | 谁引用它 |
 | --- | --- | --- |
-| `board_benchmark_20261019.txt` | `python/benchmark.py`（板上 CPython `gc.collect()` 基线） | README「测量口径」的 36–42× |
+| `board_benchmark_20261019.txt` | `python/benchmark.py`（板上 CPython `gc.collect()` 基线，10–4000 梯度） | README「测量口径」的整堆/增量拆分 |
 | `board_test_main_20261019.txt` | `./bin/test_main`（FPGA / C / CPython 三方表） | README 主表 |
-| `board_verify_20261019_153604.log` | `tools/serial_run_gc.ps1`（最终位流上的 8/8 回归） | README 性能表的 Ver4 出处 |
+| `board_verify_20261019_153604.log` | `tools/serial_run_gc.ps1`（8/8 回归，209,802 拍 / 11,585 对象） | README 性能表的 Ver4 说明 |
 | `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1`（72 次参数扫描） | README 的 C 基线表 |
 | `cmark_sweep_verify_20261017_124925.log` | 同一轮的原始串口输出（含复跑） | 同上 |
 

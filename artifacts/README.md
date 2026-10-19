@@ -36,7 +36,7 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 | `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同图恢复/换图恢复） |
 | `tests/abort_sweep.py` | abort 相位扫描（0–480 µs），`--delays` 可重复单点 |
 | `tests/done_race_test.py` | `START` posted-write 的 stale-DONE 实验 + 连续换图回归 |
-| `tests/py_bfs.py` | CPython 基准，`test_main` 经 popen 调用 |
+| `tests/py_bfs.py` | Python BFS 参照（独立 oracle；**不是** `test_main` 调用的脚本）|
 | `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定，含 STATUS 与位图探针 |
 
 日志不在本目录，`run_gc.sh` 写入卡上 `logs/`。

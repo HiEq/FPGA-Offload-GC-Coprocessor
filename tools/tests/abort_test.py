@@ -203,6 +203,7 @@ def main():
     task(45, "T3 abort mid-run")
     wr(R_CTRL, CTRL_START)
     time.sleep(0.0002)
+    done_pre = bool(rr(R_CTRL) & CTRL_DONE)  # did the run already finish in 200 us?
     st_pre = rr(R_STATUS)                   # was the flag already set before the abort?
     wr(R_CTRL, CTRL_ABORT)                  # CTRL[3]
     st_post = rr(R_STATUS)                  # ... and immediately after it?
@@ -213,6 +214,9 @@ def main():
         if rr(R_CTRL) & CTRL_DONE:
             done_seen = True; break
     st = rr(R_STATUS); mkd_stale = rr(R_MARKED); cyc_stale = rr(R_CYCLES)
+    print("   T3: already DONE before the abort = %s (N must be large enough)" % done_pre)
+    if done_pre:
+        fails.append("T3 inconclusive: the run finished within 200 us (increase N)")
     print("   T3: STATUS before abort = 0x%X, right after = 0x%X"
           % (st_pre, st_post))
     print("   T3: DONE after abort = %s (%d reads in %.1f ms)"

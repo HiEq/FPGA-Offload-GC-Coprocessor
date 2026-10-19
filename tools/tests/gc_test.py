@@ -22,6 +22,7 @@ GRAPH_SIZE = 0x100000          # 1 MiB
 
 R_CTRL, R_OBJ_BASE, R_OBJ_COUNT, R_ROOT_COUNT = 0x00, 0x04, 0x08, 0x0C
 R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18, 0x1C, 0x40, 0x20
+R_BM_ADDR, R_BM_DATA = 0x24, 0x28
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 HDR_BASE  = 0x0000
@@ -139,11 +140,15 @@ def main():
         mkd0 = rr(R_MARKED)
         t0 = time.time()
         wr(R_CTRL, CTRL_START)
-        # completion = CYCLES changed (only S_DONE latches it)
+        # START is a posted write: read CTRL once to flush it, then poll DONE.
+        # (Polling CYCLES alone mis-reported NO-RUN when two runs happened to
+        # produce the same cycle count.)
+        rd_ctrl_flush = rr(R_CTRL)
+        time.sleep(0.0002)
         ran = False
         deadline = t0 + 3.0
         while time.time() < deadline:
-            if rr(R_CYCLES) != cyc0:
+            if rr(R_CTRL) & CTRL_DONE:
                 ran = True; break
             time.sleep(0.0002)
         hw_wall = time.time() - t0
@@ -174,6 +179,18 @@ def main():
         sw_mkd  = len(q)
         sw_garb = sum(1 for x in q if x >= L)
 
+        # ---------- bitmap readback: compare the SET, not just the count ----------
+        # MARKED can be right while the bitmap holds the wrong objects.
+        bm_bad = 0
+        for o in range(n):
+            wr(R_BM_ADDR, o)
+            rr(R_BM_ADDR)
+            hb = (rr(R_BM_DATA) >> (o & 31)) & 1
+            if hb != marked[o]:
+                bm_bad += 1
+                if bm_bad <= 3:
+                    print("      bitmap mismatch obj %d hw=%d sw=%d" % (o, hb, marked[o]))
+
         # ---------- STRICT verdict ----------
         fails = []
         if L <= 0:               fails.append("DEGENERATE")
@@ -184,6 +201,7 @@ def main():
         if hw_mkd != L:          fails.append("HW!=(%d vs %d)" % (hw_mkd, L))
         if sw_mkd != L:          fails.append("SW!=(%d vs %d)" % (sw_mkd, L))
         if sw_garb != 0:         fails.append("GARBAGE=%d" % sw_garb)
+        if bm_bad != 0:          fails.append("BITMAP=%d" % bm_bad)
         ok = (len(fails) == 0)
         verdict = "OK" if ok else "FAIL:" + ",".join(fails)
 

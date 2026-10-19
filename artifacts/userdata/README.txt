@@ -9,7 +9,7 @@ FOGCCC USERDATA 分区说明
   cmark             C 基线二进制，交叉编译动态链接
 
 bin/
-  test_main         板级 C 测试套件：正确性 / 周期图 / 100 次重复一致性
+  test_main         板级 C 测试套件：正确性 / 周期图 / 100 次重复 / 重复根
 
 ko/
   fogccc-irq.ko     IRQ_F2P[0] 内核模块，仅 tests/irq_drv_test.sh 使用

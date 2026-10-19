@@ -35,7 +35,7 @@ FOGCCC 串口控制台 —— 使用说明
 【上板流程】
   1. 双击 fogccc.bat，板子上电前启动
   2. 板子上电，等待 linux login:
-  3. 登录 root，密码为空
+  3. 登录 root，密码为空（CONFIG_imagefeature-empty-root-password=y）
   4. 挂载并运行：
         mkdir -p /mnt/userdata
         mount /dev/mmcblk0p2 /mnt/userdata
