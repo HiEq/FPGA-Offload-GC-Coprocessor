@@ -223,7 +223,7 @@ python3 python/benchmark.py
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [31]=done |
+| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE 并清 DONE；**仿真未验证**，驱动暂不使用） [31]=done |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量 |

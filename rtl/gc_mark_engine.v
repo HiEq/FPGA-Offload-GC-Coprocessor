@@ -14,6 +14,7 @@ module gc_mark_engine (
     input  wire [31:0] obj_count,
     input  wire [31:0] root_count,
     input  wire        start,
+    input  wire        abort,        // 1-cycle: leave any state, clear done
 
     output reg  [7:0]  root_rd_addr = 8'd0,
     input  wire [31:0] root_rd_data,
@@ -286,7 +287,7 @@ module gc_mark_engine (
                 pf_head <= pf_head + 2'd1;
 
             // iss_cnt 与 con_cnt 同在 start 清零; 清零留在本块以避免多驱动
-    if (start && (state == S_IDLE)) begin   // only when the FSM accepts the start
+    if ((start && (state == S_IDLE)) || abort) begin   // only when the FSM accepts the start
                 iss_cnt <= 32'd0;
                 err_hdr <= 1'b0;      // 同理: err_hdr 只在本块驱动, 清零也放这里
             end
@@ -334,7 +335,10 @@ module gc_mark_engine (
             if (state != S_IDLE && state != S_DONE)
                 cycles_r <= cycles_r + 32'd1;
 
-            case (state)
+            if (abort) begin
+                state <= S_IDLE;
+                done  <= 1'b0;
+            end else case (state)
 
                 S_IDLE: begin
                     cycles_r <= 32'h0;

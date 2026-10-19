@@ -663,10 +663,18 @@ module tb_gc_top;
         $display("[TB] T6 bitmap probe OK");
 
         // ============================================================
+        // ---- T-ID / T-ABORT: MAGIC+VERSION, and abort must leave a reusable engine ----
+        axil_rd(12'h030, rd_val);
+        $display("[TB] T-ID magic=%h (expect 47434343)", rd_val);
+        if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
+        axil_rd(12'h034, rd_val);
+        $display("[TB] T-ID version=%h (expect 00040000)", rd_val);
+        if (rd_val !== 32'h0004_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+
         // ---- T-REG: an unmapped register read must answer SLVERR ----
         rresp_seen = 1'b0;
-        axil_rd(12'h030, rd_val);
-        $display("[TB] T-REG unmapped read(0x030): rresp_seen=%b (expect 1)", rresp_seen);
+        axil_rd(12'h03C, rd_val);
+        $display("[TB] T-REG unmapped read(0x03C): rresp_seen=%b (expect 1)", rresp_seen);
         if (!rresp_seen) begin
             $display("[TB][FAIL] T-REG unmapped read returned OKAY (should be SLVERR)");
             errors = errors + 1;

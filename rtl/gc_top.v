@@ -118,7 +118,7 @@ module gc_top (
 );
 
     wire [31:0] w_obj_base, w_obj_count, w_root_count;
-    wire        w_start, w_clear_q;
+    wire        w_start, w_clear_q, w_abort;
     wire        w_done;
     wire [31:0] w_marked_count, w_cycles;
 
@@ -218,6 +218,7 @@ module gc_top (
         .reg_obj_count     (w_obj_count),
         .reg_root_count    (w_root_count),
         .reg_start         (w_start),
+        .reg_abort         (w_abort),
         .reg_clear_q       (w_clear_q),
         .reg_done          (w_done),
         .reg_marked_count  (w_marked_count),
@@ -249,6 +250,7 @@ module gc_top (
         .obj_count      (w_obj_count),
         .root_count     (w_root_count),
         .start          (w_start),
+        .abort          (w_abort),
         .root_rd_addr   (root_rd_addr),
         .root_rd_data   (root_rd_data),
         .q_push         (w_q_push),

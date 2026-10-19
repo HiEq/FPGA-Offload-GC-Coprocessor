@@ -26,6 +26,7 @@ module gc_regs (
     output reg         RVALID,
     input  wire        RREADY,
 
+    output reg         reg_abort,
     output reg  [31:0] reg_obj_base,
     output reg  [31:0] reg_obj_count,
     output reg  [31:0] reg_root_count,
@@ -73,6 +74,7 @@ module gc_regs (
             reg_obj_count  <= 32'h0;
             reg_root_count <= 32'h0;
             reg_start      <= 1'b0;
+            reg_abort      <= 1'b0;
             reg_clear_q    <= 1'b0;
             reg_bm_addr    <= 12'h0;
             root_wr_addr   <= 8'h0;
@@ -82,6 +84,7 @@ module gc_regs (
         end else begin
             // 单周期脉冲默认清零
             reg_start    <= 1'b0;
+            reg_abort    <= 1'b0;
             reg_clear_q  <= 1'b0;
             root_we      <= 1'b0;
 
@@ -97,6 +100,7 @@ module gc_regs (
                         reg_start    <= WDATA[0];
                         // WDATA[1] 未使用 (位图每轮自动清除)
                         reg_clear_q  <= WDATA[2];
+                        reg_abort    <= WDATA[3];   // 1 = abort the running mark
                     end
                     12'h004: reg_obj_base   <= (reg_obj_base   & ~wmask) | (WDATA & wmask);
                     12'h008: reg_obj_count  <= (reg_obj_count  & ~wmask) | (WDATA & wmask);
@@ -151,6 +155,8 @@ module gc_regs (
                     12'h020: RDATA <= {28'h0, err_hdr, err_ref, err_rd, err_ovf};
                     12'h024: RDATA <= {20'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
+                    12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic
+                    12'h034: RDATA <= 32'h0004_0000;  // version 4.0
                     default: begin RDATA <= 32'hDEADBEEF; RRESP <= 2'b10; end   // SLVERR
                 endcase
                 RVALID  <= 1'b1;
