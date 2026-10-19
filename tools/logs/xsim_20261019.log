@@ -1,0 +1,276 @@
+# xsim transcript for tb_gc_top (all checks incl. T-MAXFAN / T-ROOTCLAMP)
+# command: sim\run_sim.bat (Vivado 2026.1 xsim)
+# date: 2026-10-19
+#
+
+****** xsim v2026.1 (64-bit)
+  **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+  **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+  **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+  **** Start of session at: Mon Oct 19 22:12:13 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/tb_sim/xsim_script.tcl
+# xsim {tb_sim} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+[TB] 澶嶄綅鍚?DONE=0 OK (#4)
+[TB] 鍥? N=300, 娲昏穬=250, 瀛ゅ矝=50
+[TB] 瀵勫瓨鍣ㄩ厤缃畬鎴?
+[TB] 宸插啓鍏?START
+[TB] DONE 宸叉媺浣? 寮曟搸寮€濮嬭繍琛?
+[EV0] AR addr=1e000000 hi=1 hw=0 hr=0
+[EV1] AR addr=1e000008 hi=0 hw=0 hr=0
+[EV2] R  data=0000000300000000 hfifo[0]=x dw=0 dr=0
+[EV3] R  data=000000001e002000 hfifo[0]=x dw=0 dr=0
+[EV4] AR addr=1e002000 hi=0 hw=0 hr=0
+[EV5] AR addr=1e002000 hi=1 hw=1 hr=0
+[EV6] AR addr=1e002008 hi=0 hw=2 hr=0
+[EV7] R  data=0000000800000008 hfifo[0]=0 dw=0 dr=0
+[EV8] R  data=0000000800000008 hfifo[1]=1 dw=1 dr=0
+[EV9] R  data=ffffffff00000022 hfifo[2]=0 dw=2 dr=1
+[EV10] GET data=00000008 obj=0 dr=1 dw=2
+[EV11] GET data=00000022 obj=0 dr=2 dw=3
+[EV12] AR addr=1e000080 hi=1 hw=3 hr=3
+[EV13] AR addr=1e000088 hi=0 hw=3 hr=3
+[EV14] AR addr=1e000220 hi=1 hw=3 hr=3
+[EV15] AR addr=1e000228 hi=0 hw=3 hr=3
+[EV16] R  data=0000000000000008 hfifo[3]=x dw=3 dr=3
+[EV17] R  data=000000001e0023b8 hfifo[3]=x dw=3 dr=3
+[EV18] R  data=0000000200000022 hfifo[3]=x dw=3 dr=3
+[EV19] R  data=000000001e002574 hfifo[3]=x dw=3 dr=3
+[EV20] AR addr=1e002570 hi=1 hw=3 hr=3
+[EV21] AR addr=1e002578 hi=0 hw=4 hr=3
+[EV22] R  data=0000002affffffff hfifo[3]=1 dw=3 dr=3
+[EV23] R  data=ffffffff00000037 hfifo[4]=0 dw=4 dr=3
+[EV24] GET data=00000037 obj=34 dr=4 dw=5
+[EV25] AR addr=1e0002a0 hi=1 hw=5 hr=5
+[EV26] AR addr=1e0002a8 hi=0 hw=5 hr=5
+[EV27] AR addr=1e000370 hi=1 hw=5 hr=5
+[EV28] AR addr=1e000378 hi=0 hw=5 hr=5
+[EV29] R  data=000000020000002a hfifo[5]=x dw=5 dr=5
+[EV30] R  data=000000001e002604 hfifo[5]=x dw=5 dr=5
+[EV31] AR addr=1e002600 hi=1 hw=5 hr=5
+[EV32] R  data=0000000700000037 hfifo[5]=x dw=5 dr=5
+[EV33] AR addr=1e002608 hi=0 hw=6 hr=5
+[EV34] R  data=000000001e0026f8 hfifo[5]=1 dw=5 dr=5
+[EV35] AR addr=1e0026f8 hi=0 hw=7 hr=5
+[EV36] AR addr=1e0026f8 hi=1 hw=8 hr=5
+[EV37] AR addr=1e002700 hi=0 hw=9 hr=5
+[EV38] R  data=00000032ffffffff hfifo[5]=1 dw=5 dr=5
+[EV39] AR addr=1e002700 hi=1 hw=10 hr=6
+[EV40] R  data=ffffffff0000003f hfifo[6]=0 dw=6 dr=5
+[EV41] AR addr=1e002708 hi=0 hw=11 hr=7
+[EV42] GET data=0000003f obj=42 dr=6 dw=7
+[EV43] AR addr=1e002708 hi=1 hw=12 hr=7
+[EV44] AR addr=1e002710 hi=0 hw=13 hr=7
+[EV45] R  data=0000004c0000003f hfifo[7]=0 dw=7 dr=7
+[EV46] R  data=0000004c0000003f hfifo[8]=1 dw=8 dr=7
+[EV47] R  data=0000006600000059 hfifo[9]=0 dw=9 dr=8
+[EV48] GET data=0000004c obj=55 dr=8 dw=9
+[EV49] R  data=0000006600000059 hfifo[10]=1 dw=10 dr=8
+[EV50] AR addr=1e000320 hi=1 hw=14 hr=11
+[EV51] R  data=0000008000000073 hfifo[11]=0 dw=11 dr=9
+[EV52] GET data=00000059 obj=55 dr=9 dw=11
+[EV53] AR addr=1e000328 hi=0 hw=14 hr=12
+[EV54] R  data=0000008000000073 hfifo[12]=1 dw=12 dr=9
+[EV55] R  data=ffffffff0000008d hfifo[13]=0 dw=13 dr=10
+[EV56] GET data=00000066 obj=55 dr=10 dw=13
+[EV57] GET data=00000073 obj=55 dr=11 dw=14
+[EV58] AR addr=1e0003f0 hi=1 hw=14 hr=14
+[EV59] GET data=00000080 obj=55 dr=12 dw=14
+[EV60] AR addr=1e0003f8 hi=0 hw=14 hr=14
+[EV61] R  data=0000000200000032 hfifo[14]=x dw=14 dr=13
+[EV62] GET data=0000008d obj=55 dr=13 dw=14
+[EV63] R  data=000000001e002694 hfifo[14]=x dw=14 dr=13
+[EV64] AR addr=1e0004c0 hi=1 hw=14 hr=14
+[EV65] AR addr=1e0004c8 hi=0 hw=14 hr=14
+[EV66] AR addr=1e002690 hi=1 hw=14 hr=14
+[EV67] R  data=000000070000003f hfifo[14]=x dw=14 dr=14
+[EV68] AR addr=1e002698 hi=0 hw=15 hr=14
+[EV69] R  data=000000001e002788 hfifo[14]=1 dw=14 dr=14
+[EV70] AR addr=1e000590 hi=1 hw=16 hr=14
+[EV71] AR addr=1e000598 hi=0 hw=16 hr=14
+[EV72] AR addr=1e002788 hi=0 hw=16 hr=14
+[EV73] R  data=000000040000004c hfifo[14]=1 dw=14 dr=14
+[EV74] AR addr=1e002788 hi=1 hw=17 hr=14
+[EV75] R  data=000000001e002860 hfifo[14]=1 dw=14 dr=14
+[EV76] AR addr=1e002790 hi=0 hw=18 hr=14
+[EV77] R  data=0000003affffffff hfifo[14]=1 dw=14 dr=14
+[EV78] AR addr=1e002790 hi=1 hw=19 hr=15
+[EV79] R  data=ffffffff00000047 hfifo[15]=0 dw=15 dr=14
+[EV80] AR addr=1e000660 hi=1 hw=20 hr=16
+[EV81] GET data=00000047 obj=50 dr=15 dw=16
+[EV82] AR addr=1e002798 hi=0 hw=20 hr=16
+[EV83] R  data=0000000100000059 hfifo[16]=0 dw=16 dr=16
+[EV84] R  data=000000001e00295c hfifo[16]=0 dw=16 dr=16
+[EV85] AR addr=1e000668 hi=0 hw=21 hr=16
+[EV86] R  data=0000005400000047 hfifo[16]=0 dw=16 dr=16
+[EV87] AR addr=1e002798 hi=1 hw=21 hr=17
+[EV88] R  data=0000005400000047 hfifo[17]=1 dw=17 dr=16
+[EV89] AR addr=1e0027a0 hi=0 hw=22 hr=18
+[EV90] R  data=0000006e00000061 hfifo[18]=0 dw=18 dr=17
+[EV91] GET data=00000054 obj=63 dr=17 dw=18
+[EV92] AR addr=1e002860 hi=0 hw=23 hr=19
+[EV93] R  data=0000006e00000061 hfifo[19]=1 dw=19 dr=17
+[EV94] AR addr=1e002860 hi=1 hw=24 hr=20
+[EV95] R  data=0000000600000066 hfifo[20]=0 dw=20 dr=18
+[EV96] GET data=00000061 obj=63 dr=18 dw=20
+[EV97] AR addr=1e002868 hi=0 hw=25 hr=20
+[EV98] R  data=000000880000007b hfifo[20]=0 dw=20 dr=18
+[EV99] AR addr=1e002868 hi=1 hw=26 hr=21
+[EV100] GET data=0000006e obj=63 dr=19 dw=21
+[EV101] AR addr=1e002958 hi=1 hw=27 hr=21
+[EV102] R  data=000000001e002a3c hfifo[21]=1 dw=21 dr=20
+[EV103] GET data=0000007b obj=63 dr=20 dw=21
+[EV104] R  data=000000880000007b hfifo[21]=1 dw=21 dr=20
+[EV105] AR addr=1e000730 hi=1 hw=28 hr=22
+[EV106] R  data=ffffffff00000095 hfifo[22]=0 dw=22 dr=21
+[EV107] GET data=00000088 obj=63 dr=21 dw=22
+[EV108] AR addr=1e000738 hi=0 hw=28 hr=23
+[EV109] R  data=0000006100000054 hfifo[23]=0 dw=23 dr=21
+[EV110] R  data=0000006100000054 hfifo[24]=1 dw=24 dr=22
+[EV111] GET data=00000095 obj=63 dr=22 dw=24
+[EV112] AR addr=1e002a38 hi=1 hw=28 hr=25
+[EV113] R  data=0000007b0000006e hfifo[25]=0 dw=25 dr=22
+[EV114] AR addr=1e002a40 hi=0 hw=29 hr=26
+[EV115] R  data=0000007b0000006e hfifo[26]=1 dw=26 dr=23
+[EV116] GET data=00000054 obj=63 dr=23 dw=26
+[EV117] AR addr=1e002a40 hi=1 hw=30 hr=27
+[EV118] R  data=00000061ffffffff hfifo[27]=1 dw=27 dr=23
+[EV119] AR addr=1e002a48 hi=0 hw=31 hr=28
+[EV120] AR addr=1e002a48 hi=1 hw=32 hr=28
+[EV121] AR addr=1e002a50 hi=0 hw=33 hr=28
+[EV122] R  data=0000000300000073 hfifo[28]=1 dw=28 dr=24
+[EV123] GET data=00000061 obj=76 dr=24 dw=28
+[EV124] R  data=000000001e002b20 hfifo[28]=1 dw=28 dr=24
+[EV125] GET data=0000006e obj=76 dr=25 dw=28
+[EV126] R  data=0000006effffffff hfifo[28]=1 dw=28 dr=25
+[EV127] R  data=000000880000007b hfifo[29]=0 dw=29 dr=26
+[EV128] GET data=0000007b obj=76 dr=26 dw=29
+[EV129] R  data=000000880000007b hfifo[30]=1 dw=30 dr=26
+[EV130] AR addr=1e000800 hi=1 hw=34 hr=31
+[EV131] R  data=000000a200000095 hfifo[31]=0 dw=31 dr=27
+[EV132] GET data=00000061 obj=76 dr=27 dw=31
+[EV133] AR addr=1e002b20 hi=0 hw=34 hr=32
+[EV134] R  data=000000a200000095 hfifo[32]=1 dw=32 dr=27
+[EV135] AR addr=1e000808 hi=0 hw=35 hr=33
+[EV136] R  data=ffffffff000000af hfifo[33]=0 dw=33 dr=27
+[EV137] AR addr=1e002b20 hi=1 hw=35 hr=34
+[EV138] AR addr=1e002b28 hi=0 hw=36 hr=34
+[EV139] GET data=0000006e obj=89 dr=28 dw=34
+[EV140] R  data=0000000000000080 hfifo[34]=0 dw=34 dr=29
+[EV141] GET data=0000007b obj=102 dr=29 dw=34
+[EV142] R  data=000000880000007b hfifo[34]=0 dw=34 dr=29
+[EV143] AR addr=1e0008d0 hi=1 hw=37 hr=35
+[EV144] R  data=000000001e002c28 hfifo[35]=1 dw=35 dr=30
+[EV145] GET data=00000088 obj=102 dr=30 dw=35
+[EV146] AR addr=1e0008d8 hi=0 hw=37 hr=35
+[EV147] R  data=000000880000007b hfifo[35]=1 dw=35 dr=30
+[EV148] R  data=ffffffff00000095 hfifo[36]=0 dw=36 dr=31
+[EV149] GET data=00000095 obj=102 dr=31 dw=36
+[EV150] GET data=000000a2 obj=102 dr=32 dw=37
+[EV151] AR addr=1e0003a0 hi=1 hw=37 hr=37
+[EV152] GET data=000000af obj=102 dr=33 dw=37
+[EV153] AR addr=1e0003a8 hi=0 hw=37 hr=37
+[EV154] R  data=000000050000008d hfifo[37]=x dw=37 dr=34
+[EV155] GET data=0000007b obj=102 dr=34 dw=37
+[EV156] R  data=000000001e002cf4 hfifo[37]=x dw=37 dr=34
+[EV157] GET data=00000088 obj=115 dr=35 dw=37
+[EV158] AR addr=1e002cf0 hi=1 hw=37 hr=37
+[EV159] R  data=000000020000003a hfifo[37]=x dw=37 dr=36
+[EV160] GET data=00000095 obj=115 dr=36 dw=37
+[EV161] AR addr=1e002cf8 hi=0 hw=38 hr=37
+[EV162] R  data=000000001e002724 hfifo[37]=1 dw=37 dr=36
+[EV163] AR addr=1e002cf8 hi=1 hw=39 hr=37
+[EV164] AR addr=1e002d00 hi=0 hw=40 hr=37
+[EV165] AR addr=1e000470 hi=1 hw=41 hr=37
+[EV166] AR addr=1e002d00 hi=1 hw=41 hr=37
+[EV167] AR addr=1e000478 hi=0 hw=42 hr=37
+[EV168] AR addr=1e002720 hi=1 hw=42 hr=37
+[EV169] R  data=00000095ffffffff hfifo[37]=1 dw=37 dr=37
+[EV170] R  data=000000af000000a2 hfifo[38]=0 dw=38 dr=37
+[EV171] AR addr=1e002728 hi=0 hw=43 hr=39
+[EV172] R  data=000000af000000a2 hfifo[39]=1 dw=39 dr=38
+[EV173] GET data=000000a2 obj=141 dr=38 dw=39
+[EV174] R  data=000000c9000000bc hfifo[40]=0 dw=40 dr=38
+[EV175] AR addr=1e000540 hi=1 hw=44 hr=41
+[EV176] R  data=0000000700000047 hfifo[41]=1 dw=41 dr=39
+[EV177] GET data=000000af obj=141 dr=39 dw=41
+[EV178] AR addr=1e000548 hi=0 hw=44 hr=41
+[EV179] R  data=000000c9000000bc hfifo[41]=1 dw=41 dr=39
+[EV180] R  data=000000001e002818 hfifo[42]=1 dw=42 dr=40
+[EV181] GET data=000000bc obj=141 dr=40 dw=42
+[EV182] R  data=00000042ffffffff hfifo[42]=1 dw=42 dr=40
+[EV183] GET data=000000c9 obj=141 dr=41 dw=43
+[EV184] AR addr=1e000610 hi=1 hw=44 hr=43
+[EV185] R  data=ffffffff0000004f hfifo[43]=0 dw=43 dr=42
+[EV186] GET data=00000042 obj=141 dr=42 dw=43
+[EV187] AR addr=1e002818 hi=0 hw=44 hr=44
+[EV188] AR addr=1e000618 hi=0 hw=45 hr=44
+[EV189] R  data=0000000400000054 hfifo[44]=0 dw=44 dr=42
+[EV190] AR addr=1e002818 hi=1 hw=45 hr=44
+[EV191] R  data=000000001e0028f0 hfifo[44]=0 dw=44 dr=42
+[EV192] AR addr=1e002820 hi=0 hw=46 hr=44
+[EV193] GET data=0000004f obj=58 dr=43 dw=44
+[EV194] AR addr=1e002820 hi=1 hw=47 hr=44
+[EV195] AR addr=1e002828 hi=0 hw=48 hr=44
+[EV196] AR addr=1e002828 hi=1 hw=49 hr=44
+[EV197] R  data=0000000100000061 hfifo[44]=0 dw=44 dr=44
+[EV198] R  data=0000005c0000004f hfifo[44]=0 dw=44 dr=44
+[EV199] AR addr=1e0006e0 hi=1 hw=50 hr=45
+[EV200] R  data=000000001e0029ec hfifo[45]=1 dw=45 dr=44
+[TB] DONE @cycles=0 | scout st=0 pf_cnt=0 pf_iss=0 pf_head=2 dq_cnt=0 dq_head=2 iss_idx=0 qh=250 qt=250
+[TB] DONE detail | cur=77 ref_count=5 ref_got=5 pf_rc=0,5,6,3 pf_id=64,77,38,51 dq_rc=0,5,4,1
+[TB] STATUS=0 OK (鏃犳孩鍑?鎬荤嚎閿欒/娴佸け姝?
+[TB] HW: marked=250 q_tail=250 cycles=6940
+[TB] 浣嶅浘缁熻: 娲昏穬=250 鏈熸湜=250
+[TB] ===== T1: two consecutive runs =====
+[TB] T1 run1: marked=2 (expect 2)
+[TB] T1 run2: marked=2 (expect 2)
+[TB] ===== T2: duplicate root =====
+[MON] t=200000000 st=1 cur=1 qh=0 qt=0 ARV=0 ARA=1e000018 cw=49 cr=49 dw=49 dr=49 hw=49 hr=49 drdy=0 dval=0
+[TB] T2 duplicate-root: marked=1 (expect 1)
+[TB] ===== T3: pipelined AW (back-to-back writes) =====
+[TB] T3 pipelined-AW OK
+[TB] ===== T4: corrupt ref_count guard =====
+[TB] T4 marked=1 (expect 1)
+[TB] T4 err_hdr=1 OK (闈炴硶澶磋鎷掑苟涓婃姤)
+[TB] ===== T5: 12-bit register address =====
+[TB] T5 root60: marked=1 (expect 1)
+[TB] ===== T6: bitmap readback =====
+[TB] T6 probe[60]=10000000 (bit28=1) bram=10000000
+[TB] T6 bitmap probe OK
+[TB] T-ID magic=47434343 (expect 47434343)
+[TB] T-ID version=00040000 (expect 00040000)
+[TB] T-ABORT queue fill = 8 when the stall is applied
+[TB] T-ABORT state while hung = 7
+[TB] T-ABORT state after abort = 0 (expect 0 = S_IDLE)
+[TB] T-ABORT status right after abort = 00000000 (expect 0)
+[TB] T-ABORT2 queue count before START = 0 (expect the aborted run's leftovers)
+[MON] t=400000000 st=1 cur=4 qh=0 qt=0 ARV=0 ARA=1e002098 cw=84 cr=84 dw=84 dr=84 hw=84 hr=84 drdy=0 dval=0
+[TB] T-ABORT2 marked=1 after abort+START without CLEAR_Q (expect 1)
+[TB] T-ABORT2 internals: qcount=0 pf_cnt=0 dq_cnt=0 iss=0 con=0 marked_r=0 err_ref=0
+[TB] T-ABORT2 status=00000000 (expect 0)
+[TB] T-ABORT marked=3 after abort+restart (expect 3)
+[TB] T-REG unmapped read(0x03C): rresp_seen=1 (expect 1)
+[TB] T-HANG done=1 after CLEAR_Q mid-pop (expect 1)
+[TB] ===== T7: queue overflow -> STATUS[0] =====
+[TB] T7 STATUS=00000001 (expect bit0=1)
+[TB] T7b bitmap[0]=00000000 (expect 0: nothing was enqueued)
+[TB] ===== T8: AXI RRESP error -> STATUS[1] =====
+[TB] T8 STATUS=0000000a (expect bit1=1)
+[TB] T8b STATUS=00000000 (expect bit1=0)
+[MON] t=600000000 st=1 cur=0 qh=0 qt=0 ARV=0 ARA=1e000008 cw=87 cr=87 dw=87 dr=87 hw=87 hr=87 drdy=0 dval=0
+[TB] T-MAXFAN marked=300 (expect 300, ref_count=4095)
+[TB] T-MAXFAN STATUS=00000000 (expect 0)
+[MON] t=800000000 st=6 cur=299 qh=4 qt=121 ARV=0 ARA=1e000038 cw=86 cr=86 dw=86 dr=86 hw=86 hr=86 drdy=0 dval=0
+[TB] T-ROOTCLAMP marked=256 (expect 256, root_count=0xFFFFFFFF)
+[TB] #6 鏈畬鎴愯浜嬪姟浠庢湭瓒呰繃 8 OK
+[TB] AXI 鍗忚妫€鏌?OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 瀵归綈, VALID 绋冲畾)
+
+[TB] ==================== PASS ====================
+$finish called at time : 823460 ns : File "C:/Users/wwwmt/Desktop/FOGCCC2/sim/tb_gc_top.v" Line 1036
+exit
+INFO: [Common 17-206] Exiting xsim at Mon Oct 19 22:12:15 2026...

@@ -355,7 +355,7 @@ rdata  <= hi_sel ? RDATA[63:32] : RDATA[31:0];
   release 正文里带中文时尤其要查
 
 ### F26. 私有仓库的 Release 附件**不能**用 `/releases/download/...` 下
-- **现象**：`curl https://github.com/HiEq/FOGCCC/releases/download/v1-original/BOOT.BIN` → **HTTP 404**；
+- **现象**：`curl https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/download/v1-original/BOOT.BIN` → **HTTP 404**（当时仓库是私有的）；
   但 `GET /repos/.../releases` 里附件明明在、大小也对
 - **根因**：那是**网页登录态**的下载路径，私有仓库拿 `Authorization: Bearer <token>` 访问它一律 404
 - **修法**：走 API 资产端点 —— `GET https://api.github.com/repos/<owner>/<repo>/releases/assets/<asset_id>`
