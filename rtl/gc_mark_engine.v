@@ -299,6 +299,19 @@ module gc_mark_engine (
                 pf_cnt  <= 3'd0;
                 pf_iss  <= 3'd0;
                 pf_head <= 2'd0;
+                // The prefetch FSM and the issuer must go back to their idle
+                // shape as well. An abort landing between SC_C1 and SC_C3 used to
+                // leave sc_state mid-sequence (and hdr_cmd_valid asserted), so the
+                // next run sometimes never reached DONE -- observed as a single
+                // "recovery no DONE" in abort_sweep.py at a 3 us abort.
+                sc_state      <= SC_IDLE;
+                sc_tmo        <= 8'd0;
+                hdr_cmd_valid <= 1'b0;
+                hdr_second    <= 1'b0;
+                dq_head       <= 3'd0;
+                iss_idx       <= 32'd0;
+                rd_cmd_valid  <= 1'b0;
+                q_pop         <= 1'b0;
             end
         end
     end

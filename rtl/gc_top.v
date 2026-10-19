@@ -337,6 +337,7 @@ module gc_top (
         .data1_ready (w_hdr_data_ready),
 
         .run_start   (w_start),
+        .abort       (w_abort),     // drop the abandoned run's in-flight reads too
         .err         (w_rd_err),
 
         .ARADDR      (S_AXI_HP_ARADDR),
