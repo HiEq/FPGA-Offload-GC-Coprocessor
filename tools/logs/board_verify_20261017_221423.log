@@ -1,0 +1,78 @@
+
+root@linux:/mnt/userdata# mkdir -p /mnt/userdata
+root@linux:/mnt/userdata# mount -t vfat /dev/mmcblk0p2 /mnt/userdata
+mount: mounting /dev/mmcblk0p2 on /mnt/userdata failed: Device or resource busy
+root@linux:/mnt/userdata# df -h /mnt/userdata | tail -2
+Filesystem                Size      Used Available Use% Mounted on
+/dev/mmcblk0p2          116.0G    368.0K    116.0G   0% /run/media/USERDATA-mmcblk0p2
+root@linux:/mnt/userdata# md5sum /mnt/userdata/cmark
+849b7323b62c248a0d25fcae3ca439e0  /mnt/userdata/cmark
+root@linux:/mnt/userdata# ls -l /mnt/boot/BOOT.BIN 2>/dev/null || ls -l /run/mediia/*/BOOT.BIN 2>/dev/null || echo no-boot-mount
+-rwxrwx---    1 root     disk      18582704 Oct 17  2026 /run/media/BOOT-mmcblk0p1/BOOT.BIN
+root@linux:/mnt/userdata# cat /sys/class/fpga_manager/fpga0/state 2>/dev/null ||  echo no-fpga-manager
+operating
+root@linux:/mnt/userdata# sh /mnt/userdata/run_gc.sh
+==========================================================
+ FOGCCC on-board test
+   script : /mnt/userdata/gc_test.py
+   params : maxN=4096  trials=8  avg_refs=2
+   log    : /mnt/userdata/logs/gc_run_20180309_123713.log
+==========================================================
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   seed=180610902   (replay exactly: --seed 180610902)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
+====================================================================================
+@@TASK 5 trial 1/8  N=1679  (expect 1259)
+  [ 1/ 8] N=1679 exp=1259 | HW    234.47 us (23447 cyc) | SW    59.36 ms |  253.2x | OK
+@@TASK 15 trial 2/8  N=3840  (expect 2880)
+  [ 2/ 8] N=3840 exp=2880 | HW    488.57 us (48857 cyc) | SW   135.53 ms |  277.4x | OK
+@@TASK 26 trial 3/8  N=2345  (expect 1758)
+  [ 3/ 8] N=2345 exp=1758 | HW    309.35 us (30935 cyc) | SW    83.06 ms |  268.5x | OK
+@@TASK 36 trial 4/8  N=816  (expect 612)
+  [ 4/ 8] N= 816 exp= 612 | HW    131.96 us (13196 cyc) | SW    29.13 ms |  220.8x | OK
+@@TASK 47 trial 5/8  N=3215  (expect 2411)
+  [ 5/ 8] N=3215 exp=2411 | HW    413.97 us (41397 cyc) | SW   114.15 ms |  275.7x | OK
+@@TASK 58 trial 6/8  N=3814  (expect 2860)
+  [ 6/ 8] N=3814 exp=2860 | HW    485.40 us (48540 cyc) | SW   135.57 ms |  279.3x | OK
+@@TASK 68 trial 7/8  N=1088  (expect 816)
+  [ 7/ 8] N=1088 exp= 816 | HW    161.66 us (16166 cyc) | SW    38.72 ms |  239.5x | OK
+@@TASK 79 trial 8/8  N=1202  (expect 901)
+  [ 8/ 8] N=1202 exp= 901 | HW    174.69 us (17469 cyc) | SW    42.12 ms |  241.1x | OK
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+ trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
+ --------------------------------------------------------------------------------------------
+     1   1679   1259    420        23447     234.47     59.36   253.2x   1259   1259  OK
+     2   3840   2880    960        48857     488.57    135.53   277.4x   2880   2880  OK
+     3   2345   1758    587        30935     309.35     83.06   268.5x   1758   1758  OK
+     4    816    612    204        13196     131.96     29.13   220.8x    612    612  OK
+     5   3215   2411    804        41397     413.97    114.15   275.7x   2411   2411  OK
+     6   3814   2860    954        48540     485.40    135.57   279.3x   2860   2860  OK
+     7   1088    816    272        16166     161.66     38.72   239.5x    816    816  OK
+     8   1202    901    301        17469     174.69     42.12   241.1x    901    901  OK
+ --------------------------------------------------------------------------------------------
+  trials                : 8
+  seed                  : 180610902   (replay: --seed 180610902)
+  PASSED (all invariants): 8/8
+  total HW cycles        : 240007  (= 2400.07 us @100MHz)
+  total SW (Python)      : 637.65 ms
+  speedup min/avg/max    : 220.8x / 256.9x / 279.3x
+  N range                : 816 .. 3840
+
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done
+
+==========================================================
+ done.  log saved on the card: /mnt/userdata/logs/gc_run_20180309_123713.log
+==========================================================
+root@linux:/mnt/userdata# 

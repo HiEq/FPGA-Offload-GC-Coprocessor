@@ -47,6 +47,10 @@ tools/*.log
 # 工具日志 (统一放 tools/logs/)
 tools/logs/*
 !tools/logs/.gitkeep
+# 例外：板级验证日志入库，README 里的数字可复核
+!tools/logs/board_verify_*.log
+!tools/logs/cmark_sweep*.log
+!tools/logs/board_run.log
 tools/__pycache__/
 
 # 本地存档: 改造前的 XSA/bitstream (17 MB, 不入库)

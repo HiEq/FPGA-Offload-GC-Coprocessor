@@ -61,6 +61,8 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段�
 | 时序（本板） | WNS +1.854 ns ／ WHS +0.052 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
+> 资源与时序数字来自 `vivado/build.tcl` 的实现报告；`fogccc_proj/` 不入库，可用该脚本重新生成。
+
 ### 构建工具链版本
 
 | 组件 | 版本 |
@@ -286,6 +288,14 @@ python3 python/benchmark.py
 > 只有 **每对象周期** 是可比的。
 > Ver4 列用当前比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
 > 240,007 拍 / 13,497 个活跃对象 = **17.8 拍/对象**（扣清位图后 **15.4**），加速比 **220.8~279.3x**。
+
+#### 测量口径
+
+- `FPGA us` = `CYCLES` / 100 MHz，不含驱动 `usleep`。
+- `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
+- `CPython ms`：`py_mark.py` 独立进程（`test_main` 经 `popen` 调用）。
+- **vs CPython = 完整 `gc.collect()`（标记 + 清扫）÷ 只做标记的硬件时间**，非同阶段对比，只能视为上界。
+- 原始串口记录：`tools/logs/board_verify_*.log`、`tools/logs/cmark_sweep*.log`。
 
 ### 仿真回归
 

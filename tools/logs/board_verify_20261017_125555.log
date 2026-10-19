@@ -1,0 +1,75 @@
+
+root@linux:~# mkdir -p /mnt/userdata
+root@linux:~# mount -t vfat /dev/mmcblk0p2 /mnt/userdata
+root@linux:~# df -h /mnt/userdata | tail -2
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  116G  984K  116G   1% /mnt/userdata
+root@linux:~# md5sum /mnt/userdata/cmark
+d7ec32043e7a7adaee9b5b43280b1043  /mnt/userdata/cmark
+root@linux:~# ls -l /mnt/boot/BOOT.BIN 2>/dev/null || ls -l /run/media/*/BOOT.BINN 2>/dev/null || echo no-boot-mount
+-rwxrwx--- 1 root disk 18582708 Oct 17  2026 /run/media/BOOT-mmcblk0p1/BOOT.BIN
+root@linux:~# cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpgaa-manager
+operating
+root@linux:~# sh /mnt/userdata/run_gc.sh
+==========================================================
+ FOGCCC on-board test
+   script : /mnt/userdata/gc_test.py
+   params : maxN=4096  trials=8  avg_refs=2
+   log    : /mnt/userdata/gc_run_20180309_123519.log
+==========================================================
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x00000000
+====================================================================================
+@@TASK 5 trial 1/8  N=3296  (expect 2472)
+  [ 1/ 8] N=3296 exp=2472 | HW    423.05 us (42305 cyc) | SW   115.88 ms |  273.9x | OK
+@@TASK 15 trial 2/8  N=1842  (expect 1381)
+  [ 2/ 8] N=1842 exp=1381 | HW    256.68 us (25668 cyc) | SW    64.54 ms |  251.5x | OK
+@@TASK 26 trial 3/8  N=4015  (expect 3011)
+  [ 3/ 8] N=4015 exp=3011 | HW    510.44 us (51044 cyc) | SW   141.55 ms |  277.3x | OK
+@@TASK 36 trial 4/8  N=2958  (expect 2218)
+  [ 4/ 8] N=2958 exp=2218 | HW    381.60 us (38160 cyc) | SW   103.52 ms |  271.3x | OK
+@@TASK 47 trial 5/8  N=3219  (expect 2414)
+  [ 5/ 8] N=3219 exp=2414 | HW    412.73 us (41273 cyc) | SW   113.30 ms |  274.5x | OK
+@@TASK 58 trial 6/8  N=921  (expect 690)
+  [ 6/ 8] N= 921 exp= 690 | HW    142.60 us (14260 cyc) | SW    31.89 ms |  223.7x | OK
+@@TASK 68 trial 7/8  N=1204  (expect 903)
+  [ 7/ 8] N=1204 exp= 903 | HW    174.38 us (17438 cyc) | SW    41.51 ms |  238.0x | OK
+@@TASK 79 trial 8/8  N=3099  (expect 2324)
+  [ 8/ 8] N=3099 exp=2324 | HW    397.76 us (39776 cyc) | SW   107.92 ms |  271.3x | OK
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+ trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
+ --------------------------------------------------------------------------------------------
+     1   3296   2472    824        42305     423.05    115.88   273.9x   2472   2472  OK
+     2   1842   1381    461        25668     256.68     64.54   251.5x   1381   1381  OK
+     3   4015   3011   1004        51044     510.44    141.55   277.3x   3011   3011  OK
+     4   2958   2218    740        38160     381.60    103.52   271.3x   2218   2218  OK
+     5   3219   2414    805        41273     412.73    113.30   274.5x   2414   2414  OK
+     6    921    690    231        14260     142.60     31.89   223.7x    690    690  OK
+     7   1204    903    301        17438     174.38     41.51   238.0x    903    903  OK
+     8   3099   2324    775        39776     397.76    107.92   271.3x   2324   2324  OK
+ --------------------------------------------------------------------------------------------
+  trials                : 8
+  PASSED (all invariants): 8/8
+  total HW cycles        : 269924  (= 2699.24 us @100MHz)
+  total SW (Python)      : 720.10 ms
+  speedup min/avg/max    : 223.7x / 260.2x / 277.3x
+  N range                : 921 .. 4015
+
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done
+
+==========================================================
+ done.  log saved on the card: /mnt/userdata/gc_run_20180309_123519.log
+==========================================================
+root@linux:~# 
