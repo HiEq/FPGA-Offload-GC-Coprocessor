@@ -18,6 +18,7 @@
 
         pl_graph: pl_graph@1e000000 {
             reg = <0x1e000000 0x02000000>;
+            no-map;   /* non-coherent PL window: also keep the kernel from mapping it */
         };
     };
 };

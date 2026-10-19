@@ -45,7 +45,8 @@ def benchmark_full_gc(iterations: int = 50):
     print("-" * 55)
 
     for n in sizes:
-        build_object_graph(n)
+        objs = build_object_graph(n)     # keep a reference: without it the graph is
+                                         # garbage before the timed collect
 
         times = []
         for _ in range(iterations):
@@ -77,7 +78,8 @@ def benchmark_mark_phase(iterations: int = 50):
     print("-" * 30)
 
     for n in sizes:
-        build_object_graph(n)
+        objs = build_object_graph(n)     # keep a reference: without it the graph is
+                                         # garbage before the timed collect
 
         times = []
         for _ in range(iterations):

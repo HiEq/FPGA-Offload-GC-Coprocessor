@@ -21,7 +21,7 @@ GRAPH_BASE = 0x1E000000
 GRAPH_SIZE = 0x100000          # 1 MiB
 
 R_CTRL, R_OBJ_BASE, R_OBJ_COUNT, R_ROOT_COUNT = 0x00, 0x04, 0x08, 0x0C
-R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST = 0x10, 0x14, 0x18, 0x1C, 0x40
+R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18, 0x1C, 0x40, 0x20
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 HDR_BASE  = 0x0000
@@ -70,6 +70,7 @@ def main():
     print("=" * 84)
 
     rows = []
+    skipped = 0
     for t in range(1, trials + 1):
         lo = min(maxN, max(64, maxN // 8))
         n  = rng.randint(lo, maxN)
@@ -103,6 +104,7 @@ def main():
             cur += ref_counts[i] * 4 + 4
         if cur > GRAPH_SIZE:
             print("  [%2d/%2d] N=%d graph too large (%d), skipped" % (t, trials, n, cur))
+            skipped += 1
             continue
         buf = bytearray(cur)
         for i in range(n):
@@ -139,6 +141,7 @@ def main():
             time.sleep(0.0002)
         hw_wall = time.time() - t0
         ctrl    = rr(R_CTRL)
+        st      = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr
         hw_mkd  = rr(R_MARKED)
         hw_cyc  = rr(R_CYCLES)
         hw_us   = hw_cyc * 0.01
@@ -169,6 +172,7 @@ def main():
         if L <= 0:               fails.append("DEGENERATE")
         if not ran:              fails.append("NO-RUN")
         if not done:             fails.append("DONE-LOW")
+        if st != 0:              fails.append("STATUS=0x%X" % st)
         if not (hw_cyc >= MIN_CYCLES): fails.append("CYCLES<%d" % MIN_CYCLES)
         if hw_mkd != L:          fails.append("HW!=(%d vs %d)" % (hw_mkd, L))
         if sw_mkd != L:          fails.append("SW!=(%d vs %d)" % (sw_mkd, L))
@@ -208,6 +212,7 @@ def main():
     tot_sw  = sum(r['sw_ms'] for r in rows)
     sp = [r['speed'] for r in rows if r['ok']]
     print("  trials                : %d" % len(rows))
+    print("  skipped (graph too big): %d" % skipped)
     print("  seed                  : %d   (replay: --seed %d)" % (seed, seed))
     print("  PASSED (all invariants): %d/%d" % (nok, len(rows)))
     print("  total HW cycles        : %d  (= %.2f us @100MHz)" % (tot_cyc, tot_hw))
@@ -227,6 +232,6 @@ def main():
 
     task(100, "done")
     regs.close(); gph.close(); os.close(fd)
-    return 0 if nok == len(rows) else 1
+    return 0 if (nok == len(rows) and skipped == 0) else 1
 
 sys.exit(main())

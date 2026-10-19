@@ -29,9 +29,16 @@ if [ ! -f "$DIR/gc_test.py" ]; then
     exit 1
 fi
 
+# pipefail: otherwise the pipeline's status is tee's (always 0) and a failing
+# gc_test.py still looks green to the caller.
+set -o pipefail
 python3 "$DIR/gc_test.py" "$MAXN" "$TRIALS" "$AVG" 2>&1 | tee "$LOG"
+rc=$?
+set +o pipefail
 
 echo ""
 echo "=========================================================="
 echo " done.  log saved on the card: $LOG"
+echo " exit code: $rc"
 echo "=========================================================="
+exit "$rc"

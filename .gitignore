@@ -31,7 +31,7 @@ __pycache__/
 Thumbs.db
 
 # 本地排错笔记 (不推送)
-AGENT_NOTES_pitfalls.md
+# AGENT_NOTES_pitfalls.md  (2026-10-19: now published -- the absolute paths were removed)
 
 # xsim 仿真运行产物 (只保留 tb_gc_top.v / run_sim.bat 这两个源文件)
 sim/xsim.dir/

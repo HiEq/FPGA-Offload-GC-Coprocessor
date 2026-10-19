@@ -27,12 +27,19 @@ echo "GCC            = $($GCC --version | head -1)"
 echo "as             = $(ls $N/usr/bin/arm-amd-linux-gnueabi/arm-amd-linux-gnueabi-as)"
 
 echo "=== 2. 编译 (静态, 硬浮点) ==="
-set +e
-CFLAGS="-O2 -static -Wall -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard"
+# Remove any previous binary first: a failed compile must not leave the old cmark
+# in place and let the script print DONE (that is how a stale binary pretends to
+# be a fresh build).
+rm -f "$OUT"
+CFLAGS="-O2 -Wall -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard"
 echo "CFLAGS = $CFLAGS"
 COMPILER_PATH="$N/usr/bin/arm-amd-linux-gnueabi" \
     "$GCC" $CFLAGS --sysroot="$S" -o "$OUT" "$SRC" 2>&1 | head -25
-set -e
+rc=${PIPESTATUS[0]}
+if [ "$rc" -ne 0 ]; then
+    echo "!!! 编译失败 (gcc rc=$rc)"
+    exit 1
+fi
 
 echo "=== 3. 结果 ==="
 if [ -f "$OUT" ]; then

@@ -40,3 +40,8 @@ if [ ! -x "$DIR/cmark" ]; then
 fi
 
 "$DIR/cmark" "$MAXN" "$TRIALS" "$AVG"
+rc=$?
+if [ "$rc" -ne 0 ]; then
+    echo "ERROR: cmark exited $rc (mismatch or timeout)" >&2
+fi
+exit "$rc"

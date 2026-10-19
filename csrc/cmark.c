@@ -215,6 +215,7 @@ int main(int argc, char **argv) {
            "HW/Cun", "C-cac us", "HW/Cca", "mkd(HW/Cu/Cc)");
     printf(" %s\n", "--------------------------------------------------------------------------------------------");
 
+    int bad = 0;                     /* any timeout/mismatch -> exit 1 */
     for (t = 1; t <= trials; t++) {
         uint32_t lo = maxN / 8u; if (lo < 64u) lo = 64u;
         uint32_t n  = lo + (uint32_t)(rand() % (int)(maxN - lo + 1u));
@@ -225,7 +226,7 @@ int main(int argc, char **argv) {
         L = build_graph(n, avg_refs, &used);
         usleep(20000);                      /* 让写入落盘 (和 Python 版一致) */
 
-        if (!hw_run(n, &hw_cyc, &hw_mkd)) { printf(" trial %d: HW TIMEOUT\n", t); continue; }
+        if (!hw_run(n, &hw_cyc, &hw_mkd)) { printf(" trial %d: HW TIMEOUT\n", t); bad = 1; continue; }
 
         t0 = now_ms(); mku = c_mark(n, gbase, 0);        cu = now_ms() - t0;
         c_prepare_cached(n, used);                       /* 拷图+修指针: 不计时 */
@@ -234,7 +235,7 @@ int main(int argc, char **argv) {
         {
             double hw_us = hw_cyc * 0.01;   /* 100MHz */
             const char *verdict = "OK";
-            if (hw_mkd != L || mku != L || mkc != L) verdict = "**MISMATCH**";
+            if (hw_mkd != L || mku != L || mkc != L) { verdict = "**MISMATCH**"; bad = 1; }
             printf(" %5d %6u %6u %6u %12u %10.2f %10.3f %8.2fx %9.3f %8.2fx  %u/%u/%u %s\n",
                    t, n, L, n - L, hw_cyc, hw_us, cu * 1000.0,
                    cu * 1000.0 / hw_us, cc * 1000.0, cc * 1000.0 / hw_us,
@@ -257,5 +258,5 @@ int main(int argc, char **argv) {
     printf("======================================================================\n");
 
     munmap((void *)regs, 4096); munmap(gbase, GRAPH_SIZE); close(fd);
-    return 0;
+    return bad ? 1 : 0;
 }
