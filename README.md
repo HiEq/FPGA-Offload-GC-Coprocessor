@@ -334,6 +334,21 @@ python3 python/benchmark.py
 - 原始串口记录：`tools/logs/board_test_main_20261019.txt`、`tools/logs/board_verify_*.log`、
   `tools/logs/cmark_sweep*.log`。
 
+#### 端到端成本（为什么上面的加速比只是上界）
+
+`FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
+`gc_test.py 4096 3 2 --seed 424242` 在板上实测（2026-10-19，bitstream `EC59DFAA…`）：
+
+| 阶段 | 时间 |
+| --- | --- |
+| 构图 + 写 DDR（Python，含 1 MB memset 与引用数组）| **134.5 ms / 图** |
+| 同图 Python BFS（oracle）| 68.5 ms / 图 |
+| 硬件标记（引擎）| **0.289 ms / 图**（N≈1127–2799）|
+
+⇒ 单次卸载的端到端成本由构图主导（约 **465×** 标记时间）。只有对象图**常驻 DDR、能反复复用**时，
+"把标记卸载到 PL"才可能划算。这里用的是 Python 构图，C 侧批量写会快得多，但同样不计入 `FPGA us`
+（`test_main` 的构图走 `fpga_gc_build_graph()`，也没有单独计时）。
+
 ### 仿真回归
 
 `sim\run_sim.bat` 一次跑完下面全部检查：

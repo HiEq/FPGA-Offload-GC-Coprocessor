@@ -28,15 +28,11 @@ echo "   params : maxN=$MAXN  trials=$TRIALS  avg_refs=$AVG"
 echo "=========================================================="
 
 if [ ! -x "$DIR/cmark" ]; then
-    if [ -f "$DIR/cmark.c" ] && command -v gcc >/dev/null 2>&1; then
-        echo "cmark 不存在, 就地编译 (板上有 gcc) ..."
-        gcc -O2 -static -o "$DIR/cmark" "$DIR/cmark.c" || {
-            echo "ERROR: 板上编译失败"; exit 1; }
-        chmod +x "$DIR/cmark"
-    else
-        echo "ERROR: 找不到 $DIR/cmark (也没有 cmark.c 或 gcc)"
-        exit 1
-    fi
+    # No on-board fallback on purpose: this rootfs has no gcc, so a silent
+    # "compile here" branch could only ever fail or run a stale binary.
+    echo "ERROR: $DIR/cmark is missing or not executable"
+    echo "       build it on the host with csrc/build_cmark.sh and copy it over"
+    exit 1
 fi
 
 "$DIR/cmark" "$MAXN" "$TRIALS" "$AVG"
