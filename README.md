@@ -1,4 +1,4 @@
-# FOGC² — FPGA Offload GC Coprocessor for CPython
+# FPGA Offload GC Coprocessor（FOGC²）
 
 [![Platform](https://img.shields.io/badge/Platform-Xilinx%20Zynq--7000%20XC7Z100-blue)](#platform)
 [![RTL](https://img.shields.io/badge/RTL-Verilog%202001-green)](#rtl)
@@ -522,38 +522,6 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > 这一节是**卡上的布局**（p1/p2 两个 FAT32 分区里放什么），不是仓库结构；仓库结构见上面的「目录结构」。
 
 本仓库根目录即为**完整工程**；`artifacts/` + `tools/` 是上板验证所需的一站式内容。
-
-## 目录
-
-```
-FPGA Offload GC Coprocessor for CPython/
-├─ rtl/               Verilog RTL 源码
-│    gc_top.v          顶层 (AXI-Lite + AXI HP, 单一时钟域无 CDC)
-│    gc_regs.v         AXI-Lite 寄存器文件
-│    gc_mark_engine.v  BFS 标记状态机 (核心)
-│    gc_bitmap.v       标记位图 4096x32 BRAM (读/写地址独立, 简单双口)
-│    gc_queue.v        BFS 队列 4096x12 BRAM
-│    gc_axi_read.v     AXI HP 读命令队列 (多笔未完成读, 64 位对齐 + 半字选择)
-├─ vivado/            build.tcl 首次建工程+综合+实现+导出 XSA ; build_rtl_only.tcl 只改 RTL 时快速重编
-│                     fogccc_proj/ 由 build.tcl 生成, 已 .gitignore
-├─ csrc/              PS 端 C 驱动 (fpga_gc.h/.c, test_main.c)
-├─ python/            CPython 侧 ctypes 绑定 + 软件基准
-├─ petalinux/         PetaLinux 必须改的配置项
-├─ tools/             宿主脚本：基准在外，测试/调试各一层
-│    serial_run_gc.ps1  性能基准（唯一入口，串口跑 gc_test 并解析）
-│    fogccc.bat         统一控制台 ; serial-monitor.ps1 后端 ; log.bat 看日志
-│    tests/             功能测试 (gc_test.py, irq_drv_test.sh, run_cmark_sweep.ps1)
-│    debug/             调试工具 (hw_program.tcl, hw_probe.tcl, gic_dump.py ...)
-├─ artifacts/         要拷到 TF 卡的构建产物 (按分区摆放, 详见 artifacts/README.md)
-│    BOOT.BIN  image.ub  boot.scr  system.dtb
-│    zynq_fsbl.elf  mount_data.sh          -> BOOT 分区
-│    userdata/                             -> USERDATA 分区
-│        run_gc.sh  run_cmark.sh  run_repeat.sh  gc_test.py  cmark
-│        bin/test_main   tests/(gc_probe.py, irq_drv_test.sh, py_bfs.py,
-│                              abort_test.py, abort_sweep.py, done_race_test.py)
-│        py/(fogccc.py, libfogccc.so)   ko/(内核模块, 不入库)   logs/(板上生成)
-└─ petalinux/BUILD_GUIDE.md     构建步骤
-```
 
 ## 下载启动镜像（Release）
 
