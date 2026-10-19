@@ -257,10 +257,9 @@ try {
 
     # 开机阶段不转发按键，免得手一抖打断 U-Boot 自启动；
     # 但如果控制台是在板子起来之后才启动的（串口一直没数据），10 秒后也得解锁，
-    # 否则就永远敲不进去了（和 fogccc.bat 的旧行为一致）。
+    # 否则就永远敲不进去了（和 fogccc.bat 的旧行为一致）。解锁本身不出提示。
     if (-not $keysOn -and -not $NoInput -and ($now - $lastRxAt).TotalSeconds -gt 10) {
       $keysOn = $true
-      Write-Host "[keys] 10 秒没有串口数据 -> 解锁（板子应该已经起来了）" -ForegroundColor DarkGray
     }
 
     # ---------------- host clock -> board ----------------
