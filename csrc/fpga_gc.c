@@ -50,9 +50,28 @@ int fpga_gc_init(fpga_gc_t *dev) {
     dev->graph_paddr = (uint32_t)GRAPH_DDR_ADDR;
     dev->obj_count   = 0;
 
+    /* Bitstream/software pairing: a wrong .bit must fail here, not inside a test. */
+    {
+        uint32_t magic   = dev->regs[REG_MAGIC   / 4];
+        uint32_t version = dev->regs[REG_VERSION / 4];
+        if (magic != FOGCCC_MAGIC || version != FOGCCC_VERSION) {
+            printf("ERROR: bitstream/software mismatch: MAGIC=0x%08X VERSION=0x%08X"
+                   " (expected 0x%08X/0x%08X)\n",
+                   (unsigned)magic, (unsigned)version,
+                   (unsigned)FOGCCC_MAGIC, (unsigned)FOGCCC_VERSION);
+            munmap(dev->graph_vaddr, GRAPH_MAP_SIZE);
+            munmap((void *)dev->regs, MAP_SIZE);
+            close(dev->fd);
+            dev->fd = -1;
+            return -2;
+        }
+    }
+
     printf("[FOGCCC] Initialized:\n");
     printf("  AXI-Lite regs @ 0x%08X\n", (unsigned)FPGA_BASE_ADDR);
     printf("  Graph DDR     @ 0x%08X (1MB)\n", dev->graph_paddr);
+    printf("  MAGIC/VERSION : 0x%08X / 0x%08X\n",
+           (unsigned)FOGCCC_MAGIC, (unsigned)FOGCCC_VERSION);
     return 0;
 }
 

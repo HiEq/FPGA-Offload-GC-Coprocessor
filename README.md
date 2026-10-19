@@ -114,7 +114,7 @@ FOGCCC2/
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
 │   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/Python 三方对比)
-│   ├── py_bfs.py          Python 参照 (被 test_main 经 popen 调用)
+│   ├── py_bfs.py          Python BFS 参照（独立 oracle；test_main 调的是 gc_probe.py）
 │   ├── cmark.c             C 基准源码（卡上二进制在 artifacts/userdata/cmark）
 │   └── build_cmark.sh      cmark 交叉编译
 ├── python/                 ctypes 绑定 + CPython 基准（gc_probe.py / benchmark.py）
@@ -208,7 +208,7 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
 >
 > 同一份数据按"增量"再算一次（更接近同阶段）：n=10 时基线 7.295 ms，n=4000 时 16.797 ms，
 > 增量 **9.50 ms / 3990 个对象 = 2.38 µs/对象**；硬件 647.3 µs / 3766 个对象 = **0.172 µs/对象**
-> ⇒ **约 15×**。主表的 **26×** 里含整堆基线扫描与清扫。
+> ⇒ **约 13.8×**。主表的 **26×** 里含整堆基线扫描与清扫。
 >
 > 对照：`py_bfs.py`（Python 字节码实现的 BFS）在同一张图上要 169 ms，比 `gc.collect()` 慢约
 > 10 倍 —— 这也说明 CPython 的收集器确实是 C 速度的执行路径，两者不要混用。
@@ -317,9 +317,10 @@ python3 python/benchmark.py
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
 > 只有 **每对象周期** 是可比的。
 > Ver4 列用**当时那版**比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
-> 240,007 拍 / 13,497 个活跃对象 = **17.8 拍/对象**（扣清位图后 **15.4**），加速比 **220.8~279.3x**。
-> 出处：提交 `cc09f3e`、bitstream md5 `3E79AF835DBDF53F5D2CDC23A0DA1D86`、
-> 2026-10-19 板测日志 `tools/logs/board_verify_20261019_153604.log`（随机图，种子打印在日志里）[确定]。
+> **240,007 拍 / 13,497 个活跃对象 = 17.8 拍/对象**（扣清位图后 15.4），加速比 220.8~279.3x。
+> ⚠️ 这一行的原始日志**没有归档**。归档的 `tools/logs/board_verify_20261019_153604.log` 是**另一次**运行：
+> **209,802 拍 / 11,585 个活跃对象 = 18.1 拍/对象**（8/8 PASSED，bitstream `3E79AF83…`，2026-10-19）。
+> 两次数值接近但不是同一次，引用时请分开写。
 
 #### 测量口径
 
@@ -463,7 +464,7 @@ SPI 编号 = ID − 32）。
 
 结论：它加速的是**CPU 侧被内存延迟钉住的遍历**，不是"所有 GC"。要再快，得改引擎自身（预取深度 / 未完成事务数），而不是换存储通路。
 
-> 主对比是 `py_bfs.py`（**Python 实现的 BFS**，逐条读 `/dev/mem`），不是 CPython 的 GC 本体；`cmark` 只作参考。
+> 与 CPython 的主对比见上面的主表（`gc_probe.py` 的 `gc.collect()`）；`py_bfs.py` 只是另一种 Python\n> 实现的参照（逐条读 `/dev/mem`），**不是** CPython 的 GC 本体；`cmark` 只作参考。
 
 ## Debug & Monitoring
 
@@ -572,7 +573,7 @@ FPGA Offload GC Coprocessor for CPython/
 ① 双击 tools/fogccc.bat
 ② 板子上电
    出现 linux login:
-③ root  + 回车 → 密码 root
+③ root + 回车 → 空密码（`CONFIG_imagefeature-empty-root-password=y`）
 ④ 数据分区 p2 每次开机由 udev 按卷标挂在 /run/media/USERDATA-mmcblk0p2，直接 cd 进去就能用
    （仓库脚本走 /mnt/userdata：sh /mnt/boot/mount_data.sh 或手动 mount；两条路径是同一个分区，写哪边都一样）
 ⑤ sh <上面任一条路径>/run_gc.sh
@@ -684,7 +685,7 @@ sh run_repeat.sh 10          # 默认 10 次
 
 ```sh
 python3 gc_test.py 4096 8 2 --seed 12345   # 指定种子可复现
-./bin/test_main                            # 五级 C 测试（需 root）
+./bin/test_main                            # 4 项 C 测试（需 root）
 insmod ko/fogccc-irq.ko                    # 仅插驱动
 ```
 

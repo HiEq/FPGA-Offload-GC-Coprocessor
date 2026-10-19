@@ -4,7 +4,8 @@ rem run_axi_tb.bat - directed unit test for gc_axi_read (outstanding cap)
 rem   Caches/logs go to Desktop\Cache\axi_tb.
 rem
 rem   Exit code is evidence: xsim returns 0 even on TB failures, so the log
-rem   is grepped for [AXI][FAIL] / [TB][FAIL].
+rem   is grepped for [AXITB][FAIL] / [AXI][FAIL] / [TB][FAIL], and the TB's own
+rem   PASS banner must be present (a missing banner is a failure too).
 rem   Set VIVADO_BIN to the folder holding vivado.bat, or have vivado.bat on PATH.
 rem ============================================================
 setlocal
@@ -39,12 +40,20 @@ set "XRC=%errorlevel%"
 type axi_tb.log
 if not "%XRC%"=="0" goto :err
 
-findstr /C:"[AXI][FAIL]" /C:"[TB][FAIL]" axi_tb.log >nul
+findstr /C:"[AXITB][FAIL]" /C:"[AXI][FAIL]" /C:"[TB][FAIL]" axi_tb.log >nul
 if not errorlevel 1 goto :tbfail
+
+rem The TB prints its own banner; without it the run did not reach the verdict.
+findstr /C:"[AXITB] ==================== PASS" axi_tb.log >nul
+if errorlevel 1 goto :nobanner
 
 echo === AXI TB DONE ===
 echo cache dir: %CACHE%
 exit /b 0
+
+:nobanner
+echo === AXI TB DID NOT REACH ITS PASS BANNER (see %CACHE%\axi_tb.log) ===
+exit /b 1
 
 :tbfail
 echo === AXI TB REPORTED FAILURES (see %CACHE%\axi_tb.log) ===

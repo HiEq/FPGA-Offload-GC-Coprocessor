@@ -97,7 +97,6 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         (void)py_freed;
 
         // ---- 结果 ----
-        int py_ok = (py_ms >= 0.0);
         int match = (fpga_count == sw_count);
         char cbuf[16], pbuf[16], nbuf[16];
         if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);

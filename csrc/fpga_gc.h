@@ -32,6 +32,10 @@
 #define REG_STATUS       0x20   // [0]=queue overflow [1]=AXI read error [2]=ref desync [3]=bad header
 #define REG_BM_ADDR      0x24   // bitmap probe address (0..4095)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
+#define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
+#define REG_VERSION      0x34   // fixed 0x0004_0000 (v4.0)
+#define FOGCCC_MAGIC     0x47434343u
+#define FOGCCC_VERSION   0x00040000u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
