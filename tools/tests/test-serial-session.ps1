@@ -1,4 +1,4 @@
-﻿# Unit test for tools/serial-session.ps1 - no board and no COM port needed.
+# Unit test for tools/serial-session.ps1 - no board and no COM port needed.
 #
 #   powershell -ExecutionPolicy Bypass -File tools\tests\test-serial-session.ps1
 #
@@ -35,6 +35,7 @@ function New-FakeSession([string]$initial) {
 # 1) ANSI strip
 $esc = [char]27
 Check "ansi strip" ((ConvertFrom-Ansi ($esc + "[1;31mred" + $esc + "[0m")) -eq "red")
+Check "osc strip" ((ConvertFrom-Ansi ($esc + "]3008;start=abc;cwd=/root" + [char]7 + "ls")) -eq "ls")
 
 # 2) tail = last N non-empty lines
 $s = New-FakeSession ("a`r`n`r`nb`r`nc`r`n")
