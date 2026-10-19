@@ -937,6 +937,80 @@ module tb_gc_top;
             errors = errors + 1;
         end
 
+        // ---- T-MAXFAN: one object with ref_count = 4095 ----
+        // The reference and header data FIFOs share the R channel. Push the ref
+        // FIFO to its limit with one huge reference list and check that the
+        // header stream still drains (no head-of-line deadlock) and that the
+        // engine still finishes with the exact mark count.
+        begin : t_maxfan
+            integer i;
+            for (i = 0; i < 300; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i == 0) ? 4095 : 0;
+                mem[(i*16)/4 + 2] = BASE + 32'h8000;
+            end
+            for (i = 0; i < 4095; i = i + 1)
+                mem[32'h8000/4 + i] = (i % 299) + 1;
+            mem[32'h8000/4 + 4095] = 32'hFFFFFFFF;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd300);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T-MAXFAN DONE never asserted (head-of-line deadlock?)");
+            errors = errors + 1;
+        end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-MAXFAN marked=%0d (expect 300, ref_count=4095)", rd_val);
+        if (rd_val !== 32'd300) begin
+            $display("[TB][FAIL] T-MAXFAN marked=%0d != 300", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T-MAXFAN STATUS=%h (expect 0)", rd_val);
+        if (rd_val !== 32'h0) begin
+            $display("[TB][FAIL] T-MAXFAN STATUS=%h", rd_val);
+            errors = errors + 1;
+        end
+
+        // ---- T-ROOTCLAMP: root_count > 256 must not wrap around ----
+        // Without the clamp the engine re-reads root[0..255] about 16M times and
+        // the run never finishes; the guard below turns that into a failure.
+        begin : t_clamp
+            integer i;
+            for (i = 0; i < 300; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = 0;
+                mem[(i*16)/4 + 2] = BASE + 32'h8000;
+            end
+        end
+        for (i = 0; i < 256; i = i + 1)
+            axil_wr(R_RLIST + (i * 4), i[11:0]);
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd300);
+        axil_wr(R_ROOTS, 32'hFFFFFFFF);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T-ROOTCLAMP DONE never asserted (root_count not clamped)");
+            errors = errors + 1;
+        end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-ROOTCLAMP marked=%0d (expect 256, root_count=0xFFFFFFFF)", rd_val);
+        if (rd_val !== 32'd256) begin
+            $display("[TB][FAIL] T-ROOTCLAMP marked=%0d != 256", rd_val);
+            errors = errors + 1;
+        end
+
         // ---- #6 汇总 ----
         if (err_ho != 0) begin
             $display("[TB][FAIL] #6 未完成读事务超过 8 的次数: %0d", err_ho);

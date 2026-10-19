@@ -33,6 +33,17 @@ jobs:
           done < <(git ls-files '*.py')
           exit $fail
 
+      - name: C warnings (gcc -Wall -Wextra -Werror)
+        run: |
+          gcc -O2 -Wall -Wextra -Werror -fsyntax-only \
+              csrc/fpga_gc.c csrc/test_main.c csrc/cmark.c
+
+      - name: binary manifest (SHA256SUMS)
+        shell: pwsh
+        run: |
+          ./tools/make_manifest.ps1 -Check
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: powershell parse
         shell: pwsh
         run: |
