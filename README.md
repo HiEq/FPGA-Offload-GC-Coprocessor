@@ -296,7 +296,7 @@ python3 python/benchmark.py
 
 #### 测量口径
 
-- `FPGA us` = `CYCLES` / 100 MHz，不含驱动 `usleep`。
+- `FPGA us` = `CYCLES` / 100 MHz：**只含引擎时间**，不含构图/写对象头/清队列轮询/驱动 `usleep`。
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
 - `py_bfs ms`：`py_bfs.py` 独立进程（`test_main` 经 `popen` 调用）。
 - **与 CPython 只能比出上界**：`gc.collect()` 含标记+清扫，硬件只做标记，非同阶段。
@@ -447,6 +447,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 ---
 
 # 交付包 / 上板验证包
+
+> 这一节是**卡上的布局**（p1/p2 两个 FAT32 分区里放什么），不是仓库结构；仓库结构见上面的「目录结构」。
 
 本仓库根目录即为**完整工程**；`artifacts/` + `tools/` 是上板验证所需的一站式内容。
 
