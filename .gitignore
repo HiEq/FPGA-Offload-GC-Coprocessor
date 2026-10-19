@@ -77,3 +77,6 @@ artifacts/system.dtb
 # vivado batch 在仓库根目录留下的日志（不只 vivado/ 子目录）
 vivado*.jou
 vivado*.log
+
+# Vivado 运行目录（batch 在仓库根留下的）
+.Xil/
