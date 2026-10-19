@@ -234,6 +234,8 @@ python3 python/benchmark.py
 | 0x20 | STATUS | R | [0]=队列溢出（**防御性**：对象数上限 4096 = 队列深度，正常路径不可达）[1]=AXI 读错误 [2]=引用失步 [3]=坏对象头（`ref_count>4096`）；除 [1] 按 start 清零外，其余每次 start 清零 |
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0~4095，只在引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据 = `mem[BM_ADDR]`（**2 拍**：BRAM 1 拍 + 探针寄存器 1 拍；两次读数之间不要改 BM_ADDR）|
+| 0x30 | MAGIC | R | 固定 `0x47434343`（"GCCC"）：软件可比对，确认 bitstream 与驱动配对 |
+| 0x34 | VERSION | R | 固定 `0x0004_0000`（v4.0）|
 | 0x40+ | ROOT_LIST | W | 根集对象 ID 数组（0x40~0x43F，最多 256 个） |
 
 ## 关键设计参数

@@ -67,6 +67,13 @@ def main():
     print("   expected count is KNOWN A PRIORI = L (live region), garbage must be 0")
     print("   regs @ 0x%08X  graph @ 0x%08X  reset CTRL = 0x%08X"
           % (REG_BASE, GRAPH_BASE, rr(R_CTRL)))
+    # Bitstream/software pairing check: MAGIC (0x30) and VERSION (0x34).
+    _magic = rr(0x30)
+    _ver   = rr(0x34)
+    print("   MAGIC = 0x%08X   VERSION = 0x%08X" % (_magic, _ver))
+    if _magic != 0x47434343:
+        print("   ERROR: MAGIC mismatch (0x%08X) -- bitstream and software are not paired" % _magic)
+        return 1
     print("=" * 84)
 
     rows = []
