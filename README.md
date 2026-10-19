@@ -114,7 +114,7 @@ CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和
 ## 目录结构
 
 ```
-FOGCCC2/
+FPGA-Offload-GC-Coprocessor/
 ├── rtl/                    Verilog RTL 源码
 │   ├── gc_top.v            顶层 (AXI-Lite + AXI3 HP, 单时钟域无 CDC)
 │   ├── gc_regs.v           AXI-Lite 寄存器接口 (12 位地址 / 含 STATUS)
@@ -123,14 +123,14 @@ FOGCCC2/
 │   ├── gc_queue.v          BFS 队列 BRAM 4096×12
 │   └── gc_axi_read.v       AXI3 读主控: 双流 (ID=0 引用 / ID=1 对象头)
 ├── sim/                    xsim 自检仿真
-│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + T-ABORT/T-ABORT2 + STATUS)
+│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + T-ABORT/T-ABORT2/T-MAXFAN/T-ROOTCLAMP)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真
 │   ├── tb_axi_read.v       #6 未完成读事务上限的定向测试 (+ run_axi_tb.bat)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
-│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/Python 三方对比)
+│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
 │   ├── py_bfs.py          Python BFS 参照（独立 oracle；test_main 调的是 gc_probe.py）
 │   ├── cmark.c             C 基准源码（卡上二进制在 artifacts/userdata/cmark）
 │   └── build_cmark.sh      cmark 交叉编译
@@ -138,11 +138,14 @@ FOGCCC2/
 ├── vivado/
 │   ├── build.tcl           BD + 综合 + 实现 + XSA
 │   └── build_rtl_only.tcl  复用 BD
-├── tools/                  宿主脚本: serial_run_gc.ps1(基准) / tests/(功能) / debug/(调试)
+├── tools/                  宿主脚本
+│   ├── serial_run_gc.ps1 / serial_push_chunked.ps1 / make_manifest.ps1
+│   ├── tests/(功能测试)  debug/(调试工具)
 │   └── logs/               证据日志（只留 README 引用的那些，见其中的 README.md）
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
-├── artifacts/              要拷到 TF 卡的构建产物
+├── artifacts/              要拷到 TF 卡的构建产物 + SHA256SUMS（二进制清单）
+├── .github/workflows/      CI: lint + gcc -Werror + SHA256SUMS 校验
 ├── legacy/original-v1/     优化前 RTL 存档 (tag v1-original)
 ├── AGENTS.md               本项目对 AI 参与者的工程约束
 ├── petalinux/BUILD_GUIDE.md 构建步骤
@@ -611,7 +614,9 @@ FPGA Offload GC Coprocessor for CPython/
 | --- | --- | --- |
 | 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
 | 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
-| **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（空密码）、挂载 `/mnt/userdata`、跑 `run_gc.sh`，等到 `PASSED (all invariants)`（最长约 7 分钟）后打印 tail 并存全程日志 |
+| **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
+| 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；18 MB 的 `BOOT.BIN` 压成 ~1 MB 后约 3 分钟 |
+| 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
 | C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
 | 单条命令 | `powershell -ExecutionPolicy Bypass -File tools\serial_cmd.ps1 -Cmd "uname -a"` | 发一条命令并抓回显 |
 | 指定串口 | 上面任意一条加 `-Port COM7` | 只在自动识别失败（多根串口线）时才需要 |
