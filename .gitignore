@@ -80,3 +80,10 @@ vivado*.log
 
 # Vivado 运行目录（batch 在仓库根留下的）
 .Xil/
+
+# 内核模块编译中间产物（driver/plnx/... 下）
+driver/**/*.cmd
+driver/**/Module.symvers
+driver/**/modules.order
+driver/**/*.mod
+driver/**/*.mod.c

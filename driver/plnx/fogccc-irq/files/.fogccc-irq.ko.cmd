@@ -1,1 +1,0 @@
-savedcmd_fogccc-irq.ko := arm-amd-linux-gnueabi-ld -r -EL -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T /home/hieq/xilinx/fogccc2_linux/build/tmp/work-shared/zynq-generic-7z100/kernel-build-artifacts/scripts/module.lds -o fogccc-irq.ko fogccc-irq.o fogccc-irq.mod.o .module-common.o
