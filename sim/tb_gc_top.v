@@ -700,6 +700,16 @@ module tb_gc_top;
             errors = errors + 1;
         end
 
+        // ---- T7b: overflow must not leave a stray bitmap bit ----
+        // T7 forced q_full, so nothing was enqueued; the bitmap must agree.
+        axil_wr(R_BMADDR, 32'h0);
+        repeat (4) @(negedge clk);
+        axil_rd(R_BMDATA, rd_val);
+        $display("[TB] T7b bitmap[0]=%h (expect 0: nothing was enqueued)", rd_val);
+        if (rd_val !== 32'h0) begin
+            $display("[TB][FAIL] T7b bitmap[0]=%h after overflow (bit set without a queue entry)", rd_val);
+            errors = errors + 1;
+        end
         // ============================================================
         // T8: AXI read error must be reported (STATUS[1]) and must not hang
         //   inject_err makes the slave answer SLVERR; the read master turns

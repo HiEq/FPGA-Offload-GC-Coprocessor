@@ -378,6 +378,12 @@ module gc_mark_engine (
                         // 根集内重复 (同一个 root 写了两次) → 跳过, 不置位不入队不计数
                         root_idx <= root_idx + 32'd1;
                         state    <= S_RD_ROOT;
+                    end else if (q_full) begin
+                        // Queue full: do NOT set the bitmap bit. Nothing will be
+                        // enqueued, and a stray bit would silently mark an object.
+                        err_ovf  <= 1'b1;
+                        root_idx <= root_idx + 32'd1;
+                        state    <= S_RD_ROOT;
                     end else begin
                         bm_waddr <= pending_obj;
                         bm_wdata <= 32'h1 << pending_obj[4:0];
@@ -449,11 +455,11 @@ module gc_mark_engine (
                         // 相邻重复引用: 写脉冲下一拍落盘, 用上一笔标记值兜住
                         state <= S_REFS_LOOP;
                     end else begin
-                        prev_ref <= ref_val;
-                        bm_waddr <= ref_val[11:0];
-                        bm_wdata <= 32'h1 << ref_val[4:0];
-                        bm_we    <= 1'b1;
                         if (!q_full) begin
+                            prev_ref <= ref_val;
+                            bm_waddr <= ref_val[11:0];
+                            bm_wdata <= 32'h1 << ref_val[4:0];
+                            bm_we    <= 1'b1;
                             q_push_data <= ref_val[11:0];
                             q_push_addr <= q_tail;
                             q_push      <= 1'b1;
