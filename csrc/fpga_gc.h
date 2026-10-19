@@ -100,6 +100,8 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out);
 
 // 软件BFS标记 (对照组, 验证正确性)
 uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots);
+/* same BFS, but also writes the per-object bitmap into out[0..obj_count-1] */
+uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint8_t *out);
 
 // 读取单个对象的标记状态
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id);

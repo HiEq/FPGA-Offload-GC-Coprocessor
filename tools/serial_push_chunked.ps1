@@ -36,7 +36,7 @@ function WaitPrompt([int]$ms) {
         Start-Sleep -Milliseconds 120
         Drain
         $t = $rx.ToString()
-        if ($t -match '(?m)(\[[^\]\r\n]+\][#$]|login:)\s*$') { return $true }
+        if ($t -match '(?m)([#$]|login:)\s*$') { return $true }
     }
     return $false
 }

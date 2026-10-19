@@ -346,7 +346,7 @@ python3 python/benchmark.py
 > Ver4 列用**当时那版**比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
 > **240,007 拍 / 13,497 个活跃对象 = 17.8 拍/对象**（扣清位图后 15.4），加速比 220.8~279.3x。
 > ⚠️ 这一行的原始日志**没有归档**。归档的 `tools/logs/board_verify_20261019_153604.log` 是**另一次**运行：
-> **209,802 拍 / 11,585 个活跃对象 = 18.1 拍/对象**（8/8 PASSED，bitstream `3E79AF83…`，2026-10-19）。
+> **209,802 拍 / 11,585 个活跃对象 = 18.1 拍/对象**（8/8 PASSED，2026-10-19；该日志没有记录 bitstream md5）。
 > 两次数值接近但不是同一次，引用时请分开写。
 
 #### 测量口径
@@ -435,8 +435,8 @@ SPI 编号 = ID − 32）。
 
 **数据出处**：
 - 命令：`run_gc.sh`（maxN=4096 trials=8 avg_refs=2）、`run_cmark.sh` 4 组共 72 次
-- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）
-- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）
+- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）—— **历史记录**，归档日志里查不到这个哈希
+- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）—— **历史记录**，归档日志里查不到这个哈希
 - 板卡：XC7Z100-FFG900-2，AXI HP 与引擎同在 FCLK0 = 100MHz，DDR3 @ 533MHz
 
 
@@ -468,7 +468,7 @@ SPI 编号 = ID − 32）。
 
 72 次全部 OK；三个实现（HW / C 非缓存 / C 缓存）标记数均等于真值 L。
 
-> 上表用**当时那版**比特流（`36D14E4B…`）与 `cmark`（23,200 B）重跑，72/72 OK；
+> 上表用**当时那版**比特流（`36D14E4B…`，日志里没有记录这个哈希，属历史记录）与 `cmark`（23,200 B）重跑，72/72 OK；
 > HW 拍/对象与旧版一致，C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`。
 
 **结论**：
@@ -519,7 +519,9 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 ila_0
 MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 - `driver/fogccc_irq.c`、`driver/plnx/fogccc-irq/files/fogccc-irq.c`：GPL-2.0（文件首行 SPDX 标识）。
-- `BOOT.BIN`、`zynq_fsbl.elf`、`image.ub`、`system.dtb` 不入库，由 `petalinux/build_fogccc2.sh` 生成。
+- `BOOT.BIN` / `image.ub` 由 `petalinux/build_fogccc2.sh` **打包生成**；其中 `zynq_fsbl.elf` 是**输入**
+  （厂商 FSBL，授权原因不入库、也不随 Release 发布，仅本机 `artifacts/` 保留），`image.ub` 由 PetaLinux 构建。
+- `system.dtb` 也不入库；`boot.scr` / `uEnv.txt` / `mount_data.sh` 入库（都是文本，随 Release 的 `card-boot.zip` 一起发）。
 - 仓库不含 AMD 源码或文档；`vivado/build.tcl` 仅含 IP 配置参数。
 
 ---
@@ -536,7 +538,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 仓库只保留可复现的构建配置。
 `BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
-> ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+> ⚠️ 下表是 **GitHub Release 资产**的哈希。仓库与 tag **都不跟踪** `BOOT.BIN`（`artifacts/BOOT.BIN` 被 `.gitignore` 排除），
+> 所以 tag 树里根本没有这个文件，不要试图用 tag 树核对哈希。
 > `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `FA816025…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同；已用串口推到板上并重启验证）。
 
 | 资产 | 放到哪 | 大小 | md5 |

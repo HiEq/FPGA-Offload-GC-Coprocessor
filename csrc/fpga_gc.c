@@ -247,7 +247,7 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
 // ============================================================
 // 软件BFS标记 (对照组)
 // ============================================================
-uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
+uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint8_t *out) {
     uint8_t *base        = (uint8_t *)dev->graph_vaddr;
     uint32_t graph_paddr = dev->graph_paddr;
     int      n           = dev->obj_count;
@@ -293,9 +293,14 @@ uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
         }
     }
 
+    if (out) memcpy(out, marked, (size_t)n);
     free(marked);
     free(queue);
     return count;
+}
+
+uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
+    return fpga_gc_sw_mark_bits(dev, roots, n_roots, NULL);
 }
 
 // ============================================================

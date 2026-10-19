@@ -12,7 +12,7 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 | `image.ub` | 43.2 MB | 内核 + 设备树 + initramfs |
 | `boot.scr` / `uEnv.txt` | — | U-Boot 启动脚本与默认环境 |
 | `system.dtb` | 18 KB | 设备树，与 `image.ub` 内的一致 |
-| `zynq_fsbl.elf` | 347 KB | 厂商 FSBL 原始 ELF，`BOOT.BIN` 的组成部分 |
+| `zynq_fsbl.elf` | 347 KB | 厂商 FSBL 原始 ELF，`BOOT.BIN` 的**构建输入**；不入库、不随 Release 发布，只在本机保留 |
 | `mount_data.sh` | 1.2 KB | 板上把两个分区挂到 `/mnt/boot`、`/mnt/userdata` |
 
 ## `userdata/` → USERDATA 分区

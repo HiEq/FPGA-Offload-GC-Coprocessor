@@ -12,7 +12,7 @@
 # 判据:
 #   1) 活跃区 [0,L): 对象 0 的生成树加随机边, 期望标记数 = L
 #   2) 垃圾区 [L,n): 只指向自身, 期望标记数 = 0
-#   3) 完成判定: 读 CYCLES 变化, 不轮询 DONE
+#   3) 完成判定: 先读一次 CTRL 刷 posted write, 再轮询 DONE (并检查 CYCLES >= MIN_CYCLES)
 # ============================================================
 import mmap, os, struct, time, random, sys
 
@@ -72,8 +72,9 @@ def main():
     _magic = rr(0x30)
     _ver   = rr(0x34)
     print("   MAGIC = 0x%08X   VERSION = 0x%08X" % (_magic, _ver))
-    if _magic != 0x47434343:
-        print("   ERROR: MAGIC mismatch (0x%08X) -- bitstream and software are not paired" % _magic)
+    if _magic != 0x47434343 or _ver != 0x00040000:
+        print("   ERROR: bitstream/software mismatch: MAGIC=0x%08X VERSION=0x%08X"
+              " (expected 0x47434343/0x00040000)" % (_magic, _ver))
         return 1
     print("=" * 84)
 
@@ -239,7 +240,7 @@ def main():
     print("  PASSED (all invariants): %d/%d" % (nok, len(rows)))
     print("  total HW cycles        : %d  (= %.2f us @100MHz)" % (tot_cyc, tot_hw))
     print("  end-to-end note        : graph build+write (Python) %.1f ms avg vs HW %.3f ms avg"
-          % (1000.0 * sum(r["build"] for r in rows) / len(rows), tot_hw / len(rows)))
+          % (1000.0 * sum(r["build"] for r in rows) / len(rows), tot_hw / len(rows) / 1000.0))
     print("  total SW (Python)      : %.2f ms" % tot_sw)
     if sp:
         print("  speedup min/avg/max    : %.1fx / %.1fx / %.1fx"
