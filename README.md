@@ -113,8 +113,8 @@ FOGCCC2/
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
-│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
-│   ├── py_bfs.py          CPython 基准 (被 test_main 经 popen 调用)
+│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/Python 三方对比)
+│   ├── py_bfs.py          Python 参照 (被 test_main 经 popen 调用)
 │   ├── cmark.c             C 基准源码（卡上二进制在 artifacts/userdata/cmark）
 │   └── build_cmark.sh      cmark 交叉编译
 ├── python/                 ctypes 绑定 + 基准
@@ -184,12 +184,12 @@ sudo ./bin/test_main
 | --- | --- |
 | `FPGA us` | `CYCLES` 寄存器 / 100 MHz（引擎耗时，不含驱动里的 `usleep`） |
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
-| `py_bfs ms` | `py_bfs.py` 独立进程、独立实现的 Python BFS |
+| `Python ms` | `py_bfs.py` 独立进程、独立实现的 Python BFS（**不是** CPython 的 `gc`）|
 
 实测（XC7Z100，PL 100 MHz）：
 
 ```
-Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs py_bfs
+Objects  marked   FPGA us   C us      Python ms   vs C    vs Python
 10       9        44.2      13.7      0.464         0.3x    11x
 100      96       57.1      60.1      4.205         1.1x    74x
 1000     945      184.7     517.1     43.033        2.8x    233x
@@ -202,7 +202,7 @@ Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs py_bfs
 > 该表是早期记录：`184.7 / 646.1 / 517.1 / 2148.3 / 169.802` 在 `tools/logs/` 中没有对应日志，
 > 按 `historical/unverified` 看待。可复核的是 `tools/logs/cmark_sweep*.log` 与 `tools/logs/cmark_sweep_verify_*.log`。
 >
-> 本表最后一列是 **`vs py_bfs`**（Python 脚本参照）。**真 CPython `gc.collect()` 的对比**
+> 本表最后一列是 **`vs Python`**（`py_bfs.py` 脚本参照）。**真 CPython `gc.collect()` 的对比**
 > 见下方「测量口径」：同规模约 **31×**、按对象数插值 **36~42×**，两者都是上界。
 
 ### 4. Python 测试
@@ -302,7 +302,7 @@ python3 python/benchmark.py
 | 总 HW cycles   | 1,804,791                       | 557,091                         | **484,034**                       | 240,007                         |
 | 活跃对象合计   | ~20,010                         | 14,441                          | 12,449                            | 13,497                          |
 | 每对象周期     | **90.2**                        | 38.6                            | **38.9**（扣清位图 36.3）         | **15.4**（扣清位图）            |
-| vs `py_bfs.py`     | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
+| vs Python          | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
@@ -316,7 +316,7 @@ python3 python/benchmark.py
 
 - `FPGA us` = `CYCLES` / 100 MHz：**只含引擎时间**，不含构图/写对象头/清队列轮询/驱动 `usleep`。
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
-- `py_bfs ms`：`py_bfs.py` 独立进程（`test_main` 经 `popen` 调用）。
+- `Python ms`：`py_bfs.py` 独立进程（`test_main` 经 `popen` 调用）—— 普通 Python 脚本，**不是** CPython 的 `gc`。
 - **与 CPython 只能比出上界**：`gc.collect()` 含标记+清扫，硬件只做标记，非同阶段。
 - 原始串口记录：`tools/logs/board_verify_*.log`、`tools/logs/cmark_sweep*.log`。
 **真实 CPython 基线**（`python/benchmark.py`，板上实测 2026-10-19，原始输出 `tools/logs/board_benchmark_20261019.txt`）：
@@ -619,7 +619,7 @@ sh run_gc.sh 2048 5 3
 
 期望：`PASSED (all invariants): trials/trials`，并打印相对同一进程内 Python BFS 参照的加速比（不是 CPython 的 `gc`）。
 
-### 3. 三方对比（FPGA / C / py_bfs）
+### 3. 三方对比（FPGA / C / Python）
 
 ```sh
 cd /run/media/USERDATA-mmcblk0p2
@@ -632,14 +632,14 @@ cd /run/media/USERDATA-mmcblk0p2
 输出一张三方对比表（三个时间都是实测）：
 
 ```
-Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs py_bfs
+Objects  marked   FPGA us   C us      Python ms   vs C    vs Python
 ```
 
 | 列 | 来源 |
 |---|---|
 | `FPGA us` | `CYCLES` 寄存器 ÷ 100 MHz（引擎耗时，不含驱动里的等待）|
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
-| `py_bfs ms` | `popen` 起 `py_bfs.py` 独立进程，独立实现的 Python BFS |
+| `Python ms` | `popen` 起 `py_bfs.py` 独立进程，独立实现的 Python BFS（**不是** CPython 的 `gc`）|
 
 与另外两条命令的分工：`run_gc.sh` 只比 FPGA vs Python 参照，`run_cmark.sh` 只比 FPGA vs C；**真正的 CPython 基线**由 `python3 python/benchmark.py` 单独测（`gc.collect()`，含清扫，只能算上界）。
 

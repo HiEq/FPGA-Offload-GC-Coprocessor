@@ -23,11 +23,11 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 }
 
 // ============================================================
-// Test 1: 正确性 + 性能 (FPGA vs C vs py_bfs)
+// Test 1: 正确性 + 性能 (FPGA vs C vs Python)
 //
 //   FPGA   : CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
 //   C      : fpga_gc_sw_mark() 的 C BFS
-//   py_bfs : py_bfs.py 独立进程遍历同一块 DDR (Python 脚本参照, 不是 CPython 的 gc)
+//   Python : py_bfs.py 独立进程遍历同一块 DDR (普通 Python 脚本, 不是 CPython 的 gc)
 // ============================================================
 #define PY_BFS_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py"
 
@@ -51,11 +51,11 @@ static double py_bfs_mark_ms(const char *py, int n, uint32_t paddr,
 static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     printf("\n");
     printf("=============================================================\n");
-    printf("  Test 1: correctness + speed (FPGA vs C vs py_bfs)\n");
+    printf("  Test 1: correctness + speed (FPGA vs C vs Python)\n");
     printf("=============================================================\n");
     printf("%-8s %-8s %-11s %-11s %-13s %-8s %-9s\n",
-           "Objects", "marked", "FPGA us", "C us", "py_bfs ms",
-           "vs C", "vs py_bfs");
+           "Objects", "marked", "FPGA us", "C us", "Python ms",
+           "vs C", "vs Python");
     printf("-------- -------- ----------- ----------- ------------- "
            "-------- ---------\n");
 
@@ -140,10 +140,10 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     if (best_py_x > 0) {
         printf("\n  >>> %d objects marked in %.1f us (%.1f ns/obj)\n",
                best_marked, best_hw_us, best_hw_us * 1000.0 / best_marked);
-        printf("  >>> py_bfs needs %.2f ms for the same graph\n", best_py_ms);
-        printf("  >>> FPGA is %.0fx FASTER than py_bfs\n", best_py_x);
+        printf("  >>> Python needs %.2f ms for the same graph\n", best_py_ms);
+        printf("  >>> FPGA is %.0fx FASTER than Python\n", best_py_x);
     } else if (best_n > 0) {
-        printf("\n  (py_bfs baseline unavailable: %s not found?)\n", py_path);
+        printf("\n  (Python baseline unavailable: %s not found?)\n", py_path);
     }
 
     return all_pass;
