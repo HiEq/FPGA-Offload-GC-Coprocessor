@@ -1,9 +1,14 @@
 param(
     [Parameter(Mandatory=$true)][string]$Cmd,
     [int]$WaitMs = 8000,
-    [string]$Port = "COM3"
+    [string]$Port = "auto"
 )
 $ErrorActionPreference = 'Stop'
+
+# Port auto-detection: the CH340 re-enumerates across reboots (COM3 -> COM5 ...).
+# Pass -Port COMx to override.
+. (Join-Path $PSScriptRoot 'serial-port.ps1')
+$Port = Resolve-SerialPort $Port
 $sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
 $sp.ReadBufferSize = 65536; $sp.ReadTimeout = 200
 $sp.Open()

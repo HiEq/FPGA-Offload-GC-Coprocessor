@@ -4,11 +4,16 @@
 #   Each entry below is:  maxN  trials  avg_refs
 #   Edit $sweeps to change the matrix.
 #
-#   Close the fogccc.bat console first (COM5 is exclusive).
+#   Close the board console first (it holds the COM port exclusively).
 #
 #   ASCII-ONLY, including comments.
 # ============================================================
-param([string]$Port = "COM3", [int]$Baud = 115200)
+param([string]$Port = "auto", [int]$Baud = 115200)
+
+# Port auto-detection: the CH340 re-enumerates across reboots (COM3 -> COM5 ...).
+# Pass -Port COMx to override.
+. (Join-Path $PSScriptRoot '..\serial-port.ps1')
+$Port = Resolve-SerialPort $Port
 
 $sweeps = @(
     ,@(4096, 24, 2)

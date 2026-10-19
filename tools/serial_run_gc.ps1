@@ -1,6 +1,11 @@
-param([string]$Port = "COM3")
+param([string]$Port = "auto")
 
 $ErrorActionPreference = 'Stop'
+
+# Port auto-detection: the CH340 re-enumerates across reboots (COM3 -> COM5 ...).
+# Pass -Port COMx to override.
+. (Join-Path $PSScriptRoot 'serial-port.ps1')
+$Port = Resolve-SerialPort $Port
 # logs directory
 $logDir = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }

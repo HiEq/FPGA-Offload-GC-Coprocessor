@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Port     = "COM5",
     [int]   $Baud     = 115200,
     [string]$Log      = "$PSScriptRoot\logs\serial.log",
