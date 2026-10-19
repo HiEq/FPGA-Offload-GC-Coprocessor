@@ -30,7 +30,7 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 | `cmark` | C 基线二进制，动态链接 |
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
-| `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出，不入库 |
+| `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出；不入库，随 `card-userdata.zip` 发布（vermagic 与已发布的 `image.ub` 严格配对）|
 | `tests/gc_probe.py` | CPython `gc.collect()` 探针，`test_main` 的主对照 |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证 |
 | `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同图恢复/换图恢复） |
