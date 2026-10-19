@@ -64,8 +64,8 @@ FPGA 垃圾回收协处理器原型 —— 将 GC 的**标记阶段（Mark Phase
 | PS 内存      | DDR3 @ 533.33MHz                                  |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
-| 实测资源占用（本板） | LUT 7,444 (2.68%) ／ FF 18,181 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
-| 时序（本板） | WNS +1.854 ns ／ WHS +0.052 ns                                    |
+| 实测资源占用（本板） | LUT 7,555 (2.72%) ／ FF 18,214 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
+| 时序（本板） | WNS +1.527 ns ／ WHS +0.053 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
 > 资源与时序数字来自 `vivado/build.tcl` 的实现报告；`fogccc_proj/` 不入库，可用该脚本重新生成。
@@ -80,9 +80,9 @@ FPGA 垃圾回收协处理器原型 —— 将 GC 的**标记阶段（Mark Phase
 | GNU Make | 4.3 |
 | CMake | 3.28.3（SDK 自带；本仓不使用） |
 | 构建主机 | Ubuntu 22.04.5 LTS（WSL2） |
-| 目标 glibc | 2.39 |
-| 目标 BusyBox / OpenSSL | 1.36.1 / 3.2.6 |
-| 目标 Python | 3.12.12（仅标准库，无 numpy） |
+| 目标 glibc | 板端 rootfs **2.43**；SDK sysroot 2.39（按 2.39 链接，向上兼容）|
+| 目标 BusyBox / OpenSSL | 1.36.1 / 3.6.3 |
+| 目标 Python | 3.14.8（仅标准库，无 numpy） |
 | 内核 | linux-xlnx 6.18.10 |
 | Bootloader | u-boot-xlnx 2026.01 |
 
@@ -91,7 +91,7 @@ FPGA 垃圾回收协处理器原型 —— 将 GC 的**标记阶段（Mark Phase
 1. `test_main` 与 `libfogccc.so` 用 SDK 交叉编译：`source environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi` 后调用 `$CC`。
 2. 不使用根 `Makefile` 的 `CROSS=arm-linux-gnueabihf-`；PetaLinux 2026.1 SDK 提供的是 `arm-amd-linux-gnueabi-gcc`。
 3. 产物须为 ARM：`file libfogccc.so` 输出包含 `ARM, EABI5`。
-4. 目标根文件系统 glibc 与 sysroot 同为 2.39。
+4. SDK sysroot 是 glibc 2.39，板上 rootfs 已升到 2.43；按 2.39 链接即可，向后兼容。
 5. Python 脚本仅使用标准库（`ctypes`、`mmap`、`struct`、`time`、`random`、`sys`）。
 
 ## 目录结构
@@ -316,7 +316,7 @@ python3 python/benchmark.py
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
 > 只有 **每对象周期** 是可比的。
-> Ver4 列用当前比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
+> Ver4 列用**当时那版**比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
 > 240,007 拍 / 13,497 个活跃对象 = **17.8 拍/对象**（扣清位图后 **15.4**），加速比 **220.8~279.3x**。
 > 出处：提交 `cc09f3e`、bitstream md5 `3E79AF835DBDF53F5D2CDC23A0DA1D86`、
 > 2026-10-19 板测日志 `tools/logs/board_verify_20261019_153604.log`（随机图，种子打印在日志里）[确定]。
@@ -438,7 +438,7 @@ SPI 编号 = ID − 32）。
 
 72 次全部 OK；三个实现（HW / C 非缓存 / C 缓存）标记数均等于真值 L。
 
-> 上表用当前比特流（`36D14E4B…`）与当前 `cmark`（23,200 B）重跑，72/72 OK；
+> 上表用**当时那版**比特流（`36D14E4B…`）与 `cmark`（23,200 B）重跑，72/72 OK；
 > HW 拍/对象与旧版一致，C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`。
 
 **结论**：
