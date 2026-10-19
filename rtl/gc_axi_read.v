@@ -210,6 +210,6 @@ module gc_axi_read #(
         end
     end
 
-    wire _unused = &{1'b0, c0cnt, c1cnt, d0cnt, d1cnt, ho_cnt, RLAST};
+    wire _unused = &{1'b0, RLAST};   // c0cnt/c1cnt/d0cnt/d1cnt/ho_cnt are real flow control
 
 endmodule

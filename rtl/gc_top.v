@@ -35,8 +35,8 @@ module gc_top (
     output wire        S_AXI_RVALID,
     input  wire        S_AXI_RREADY,
 
-    // 声明为 AXI4 主机 (PROTOCOL=AXI4, HAS_BURST=1, ID_WIDTH=4)
-    // 全部读使用同一 ARID
+    // HP 主机实为 AXI3（PS7 的 S_AXI_HP 就是 AXI3）：ID_WIDTH=6，两条读流
+    // （ARID=0 引用 / ARID=1 对象头），ARSIZE=3 / ARLEN=0 / ARBURST=INCR。
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXI_HP_ACLK, ASSOCIATED_BUSIF S_AXI_HP, ASSOCIATED_RESET S_AXI_HP_ARESETN" *)
     (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 S_AXI_HP_ACLK CLK" *)
     input  wire        S_AXI_HP_ACLK,
@@ -192,8 +192,7 @@ module gc_top (
     wire _unused = &{1'b0,
                      S_AXI_WSTRB,                          // AXI-Lite字节选通(不用)
                      S_AXI_HP_AWREADY, S_AXI_HP_WREADY,    // 写通道桩(从不写)
-                     S_AXI_HP_BRESP, S_AXI_HP_BVALID,      // 写响应(从不写)
-                     w_rd_err};                            // 读错误标志(仅诊断)
+                      S_AXI_HP_BRESP, S_AXI_HP_BVALID};     // write response (never used)
 
     gc_regs u_regs (
         .ACLK              (S_AXI_ACLK),
