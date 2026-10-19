@@ -16,4 +16,7 @@ rem  Keyboard unlocks when 'linux login:' is seen, or after 10s of serial silenc
 rem  Keep the input method on EN (US) while typing.
 rem ============================================================
 title FOGCCC console  (COM5)  plain passthrough
-powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0monitor_com5.ps1" -Plain -NoBoardStats
+rem  serial-monitor.ps1 is the unified console shared with the LINUX-FPGA project.
+rem  -WaitPortSec 300 : the console is normally started *before* the board is powered.
+rem  -Log             : keep the fixed logs\serial.log name (log.bat opens it).
+powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0serial-monitor.ps1" -Log "%~dp0logs\serial.log" -WaitPortSec 300

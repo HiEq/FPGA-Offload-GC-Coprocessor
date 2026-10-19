@@ -135,13 +135,14 @@ cat /sys/class/fpga_manager/fpga0/state
 source ~/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi
 $CC -O2 -o test_main csrc/fpga_gc.c csrc/test_main.c
 
-# 拷到 USERDATA 分区后，在板上运行（需要 root；数据分区由 mount_data.sh 挂到 /mnt/userdata）
-cd /mnt/userdata
+# 拷到 USERDATA 分区后，在板上运行（需要 root）
+cd /run/media/USERDATA-mmcblk0p2        # udev 按卷标自动挂；仓库脚本用的 /mnt/userdata 见「上板流程」
 sudo ./bin/test_main
 ```
 
-`test_main` 会用 `popen` 调用 `tests/py_mark.py` 测 CPython 基准；默认路径就是上面卡上的位置，
-也可以 `./test_main /path/to/py_mark.py` 显式指定。表里三个时间都是实测：
+`test_main` 会用 `popen` 调用 `tests/py_mark.py` 测 CPython 基准。代码里的默认值就是
+`/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，而这个目录每次开机都在，所以**不用传参**；
+只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才要显式指定路径。表里三个时间都是实测：
 
 | 列 | 来源 |
 | --- | --- |
@@ -174,7 +175,7 @@ $CC -O2 -shared -fPIC -o libfogccc.so csrc/fpga_gc.c
 
 ```bash
 # 板上（把 libfogccc.so + fogccc.py 放到卡上 py/ 目录后）
-cd /mnt/userdata/py
+cd /run/media/USERDATA-mmcblk0p2/py
 python3 fogccc.py        # 三方对账：FPGA / C / 位图读回 + STATUS
 ```
 
@@ -404,7 +405,7 @@ FPGA Offload GC Coprocessor for CPython/
 ├─ petalinux/         PetaLinux 必须改的配置项
 ├─ tools/             宿主脚本：基准在外，测试/调试各一层
 │    serial_run_gc.ps1  性能基准（唯一入口，串口跑 gc_test 并解析）
-│    fogccc.bat         统一控制台 ; monitor_com5.ps1 后端 ; log.bat 看日志
+│    fogccc.bat         统一控制台 ; serial-monitor.ps1 后端 ; log.bat 看日志
 │    tests/             功能测试 (gc_test.py, irq_drv_test.sh, run_cmark_sweep.ps1)
 │    debug/             调试工具 (hw_program.tcl, hw_probe.tcl, gic_dump.py ...)
 ├─ artifacts/         要拷到 TF 卡的构建产物 (按分区摆放, 详见 artifacts/README.md)
@@ -457,8 +458,9 @@ FPGA Offload GC Coprocessor for CPython/
 ② 板子上电
    出现 linux login:
 ③ root  + 回车                    (空密码)
-④ 数据分区在 /mnt/userdata（BOOT 里的 mount_data.sh 负责挂；没挂上就 mkdir -p /mnt/userdata && mount /dev/mmcblk0p2 /mnt/userdata）
-⑤ sh /mnt/userdata/run_gc.sh
+④ 数据分区 p2 每次开机由 udev 按卷标挂在 /run/media/USERDATA-mmcblk0p2，直接 cd 进去就能用
+   （仓库脚本走 /mnt/userdata：sh /mnt/boot/mount_data.sh 或手动 mount；两条路径是同一个分区，写哪边都一样）
+⑤ sh <上面任一条路径>/run_gc.sh
 ```
 
 测试输出同时打印到窗口并写入 `USERDATA` 分区上的 `gc_run_<时间戳>.log`。
@@ -470,7 +472,7 @@ FPGA Offload GC Coprocessor for CPython/
 
 | 做什么 | 命令 | 说明 |
 | --- | --- | --- |
-| 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell → 仪表盘（TASK/CPU/MEM/TEMP），键盘直通板子 |
+| 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
 | 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
 | **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（空密码）、挂载 `/mnt/userdata`、跑 `run_gc.sh`，等到 `PASSED (all invariants)`（最长约 7 分钟）后打印 tail 并存全程日志 |
 | C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
@@ -480,10 +482,16 @@ FPGA Offload GC Coprocessor for CPython/
 > 串口是**独占**的：同一时刻只能有一个窗口占用 COM 口。跑脚本前先关掉 `fogccc.bat`，
 > 否则会报“拒绝访问/端口被占用”。
 
+> 板上**没有 RTC、也没有网络**，所以每次上电时钟都退回 2018-03-09。`fogccc.bat` 和
+> `serial_run_gc.ps1` 会用宿主时间自动发一次 `date -s`（只在 shell 提示符、控制台空闲时发），
+> 卡上日志的时间戳因此是真实日期；不想被自动设置就加 `-NoTimeSync`。
+
 ## 板上测试命令速查
 
-数据分区在板上挂载于 `/mnt/userdata`（由 `mount_data.sh` 挂载；旧文档中的
-`/run/media/USERDATA-mmcblk0p2` 不再使用）。以下命令均需 root。
+数据分区 p2 每次开机由 udev 按卷标自动挂在 `/run/media/USERDATA-mmcblk0p2`，登录后直接可用；
+仓库脚本另外把它挂到 `/mnt/userdata`（`sh /mnt/boot/mount_data.sh`，这一步**不是**开机自动的）。
+两条路径是同一个分区，同时挂着也正常，写哪边都一样——下面命令里的 `/mnt/userdata`
+都可以换成 `/run/media/USERDATA-mmcblk0p2`。以下命令均需 root。
 
 ### 1. 中断通路验证
 
@@ -517,12 +525,12 @@ sh run_gc.sh 2048 5 3
 ### 3. 三方对比（FPGA / C / CPython）
 
 ```sh
-cd /mnt/userdata
-./bin/test_main /mnt/userdata/tests/py_mark.py
+cd /run/media/USERDATA-mmcblk0p2
+./bin/test_main
 ```
 
-必须带 `py_mark.py` 路径：代码里的默认值是历史路径
-`/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，在当前卡片布局下不存在。需要 root。
+`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，而这个目录每次开机都由 udev
+按卷标挂好，所以不用传参；只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才显式指定路径。需要 root。
 
 输出一张三方对比表（三个时间都是实测）：
 

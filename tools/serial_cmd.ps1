@@ -43,4 +43,4 @@ Pump 300
 $sp.Close()
 
 $t = $sb.ToString()
-($t -split "`r?`n") | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 40 | ForEach-Object { "  | " + ($_ -replace "`e",'') }
+($t -split "`r?`n") | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 40 | ForEach-Object { "  | " + ($_ -replace '\x1b\[[0-9;?]*[a-zA-Z]','' -replace '\x1b','') }

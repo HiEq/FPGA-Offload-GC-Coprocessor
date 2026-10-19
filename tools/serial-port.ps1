@@ -16,7 +16,7 @@
 #   4. otherwise throw, listing what is present
 #
 # ASCII only on purpose: PowerShell 5.1 reads .ps1 files using the ANSI code page,
-# so non-ASCII source bytes can corrupt the token stream (see monitor_com5.ps1
+# so non-ASCII source bytes can corrupt the token stream (see serial-monitor.ps1
 # history: UTF-8 without a BOM made the parser lose a Try/Catch pair).
 # Keep every .ps1 ASCII-only or UTF-8 *with* a BOM.
 

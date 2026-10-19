@@ -31,7 +31,8 @@ logs/
                     位于仓库 tools/，需要时再拷入
 
 常用命令（板上）
-  cd /mnt/userdata
+  cd /run/media/USERDATA-mmcblk0p2
+  也可以挂到 /mnt/userdata:  mkdir -p /mnt/userdata && mount -t vfat /dev/mmcblk0p2 /mnt/userdata
   sh run_gc.sh 4096 8 2
   sh run_cmark.sh 4096 8 2
   sh run_repeat.sh 10

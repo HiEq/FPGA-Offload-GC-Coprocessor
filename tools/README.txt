@@ -37,9 +37,15 @@ FOGCCC 串口控制台 —— 使用说明
         mkdir -p /mnt/userdata
         mount /dev/mmcblk0p2 /mnt/userdata
         sh /mnt/userdata/run_gc.sh
+     也可以不挂载，直接用 rootfs 自动挂好的路径（udev 按卷标挂）：
+        sh /run/media/USERDATA-mmcblk0p2/run_gc.sh
      指定规模：
         sh /mnt/userdata/run_gc.sh 2048 5 3     # maxN trials avg_refs
   5. 结果输出到窗口，同时写入 USERDATA 的 logs/gc_run_*.log
+  6. 时钟：板上没有 RTC、也没有网络，每次上电时间都退回 2018-03-09。
+     控制台 (fogccc.bat) 和 serial_run_gc.ps1 会用宿主时间自动发一次 date -s
+     （只在 shell 提示符、且控制台空闲时发），这样日志的时间戳才是真实日期。
+     不想被自动设置就加 -NoTimeSync。
 
 【通过标准】
   每轮 verdict = OK；汇总 "PASSED (all invariants): 8/8"
@@ -49,7 +55,7 @@ FOGCCC 串口控制台 —— 使用说明
     fogccc.bat          统一控制台
     serial_run_gc.ps1   性能基准：串口执行 gc_test 并解析结果
   基础设施
-    monitor_com5.ps1    控制台后端
+    serial-monitor.ps1  控制台后端（与 LINUX-FPGA 工程共用同一份；等端口/时间戳/宿主时间同步）
     log.bat             查看串口日志
     serial_cmd.ps1      串口发送命令并抓取输出
     serial-port.ps1     串口自动识别 (CH340)，上面各脚本默认 -Port auto

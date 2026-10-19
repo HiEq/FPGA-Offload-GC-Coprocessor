@@ -19,7 +19,7 @@ D:\AMDDesignTools\2026.1\Vivado\bin\vivado.bat -mode batch `
 ```
 
 ```sh
-cd /mnt/userdata
+cd /run/media/USERDATA-mmcblk0p2
 D=. sh tests/irq_drv_test.sh
 ```
 
