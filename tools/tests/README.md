@@ -18,4 +18,4 @@ powershell -ExecutionPolicy Bypass -File .\tools\tests\run_cmark_sweep.ps1
 板上运行：脚本自带的默认 `D` 就是 `/run/media/USERDATA-mmcblk0p2`，从该目录跑正好命中——`sh tests/irq_drv_test.sh`；
 如果数据分区挂在 `/mnt/userdata`，要显式传：`D=/mnt/userdata sh tests/irq_drv_test.sh`。
 
-> 卡上 `USERDATA/tests/` 是板级脚本（`irq_drv_test.sh`、`py_bfs.py`），与本目录为两份，不要互相覆盖。
+> 卡上 `USERDATA/tests/` 里的同名文件由 `make card` 从本目录**生成**；不要手改卡上那份（会被覆盖）。

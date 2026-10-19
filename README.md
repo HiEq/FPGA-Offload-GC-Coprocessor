@@ -489,7 +489,7 @@ FPGA Offload GC Coprocessor for CPython/
 
 `image.ub` 为 **43.2 MB**，不入仓库：二进制镜像随 Release 发布，
 仓库只保留可复现的构建配置。
-`BOOT.BIN` 虽然仓库里有，Release 里也一并提供，做到**开箱即用**。
+`BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 > ⚠️ 下表是 **GitHub Release 资产**的哈希（2026-10-19 用 Releases API 的 `sha256` 复核过），**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
