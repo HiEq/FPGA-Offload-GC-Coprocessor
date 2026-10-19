@@ -20,6 +20,9 @@ py/
 
 tests/
   irq_drv_test.sh   中断驱动端到端验证
+  abort_test.py     CTRL[3] abort 五段验收
+  abort_sweep.py    abort 相位扫描（--delays 可重复单点）
+  done_race_test.py stale-DONE 实验 + 连续换图回归
 
 logs/
   gc_run_*.log      run_gc.sh 输出
@@ -28,7 +31,7 @@ logs/
 不在此分区的内容
   cmark.c           源码位于仓库 csrc/cmark.c
   gic_dump.py / gic_irq_test.py / irq_loss_test.sh
-                    位于仓库 tools/，需要时再拷入
+                    位于仓库 tools/debug/，需要时再拷入
 
 常用命令（板上）
   cd /run/media/USERDATA-mmcblk0p2

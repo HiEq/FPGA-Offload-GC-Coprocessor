@@ -4,7 +4,9 @@
 #             with struct.unpack_from over /dev/mem, one reference at a time)
 #
 # Marks the SAME object graph that test_main built in DDR, using a
-# plain Python BFS.  This is the "what would CPython cost" number.
+# plain Python BFS.  It is a Python-LEVEL reference (interpreter loop +
+# one uncached /dev/mem read per reference), NOT CPython's gc: the real
+# gc.collect() baseline lives in python/benchmark.py.
 #
 #   usage: python3 py_bfs.py <n> <graph_phys_hex> <root>
 #   output: "<elapsed_ms> <marked_count>"

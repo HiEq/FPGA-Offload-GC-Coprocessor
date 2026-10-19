@@ -47,6 +47,10 @@ FPGA 异步垃圾回收协处理器原型 —— 将 CPython GC 的**标记阶�
 5. ARM PS 轮询完成标志，读取标记结果和周期计数
 6. CPython 据此跳过/回收未标记对象
 
+> **当前实现（别读成已接入）**：第 1、6 步还是目标形态 —— CPython 的 `gc` 模块尚未接进来。
+> 对象图由 `csrc/fpga_gc.c` / `python/fogccc.py` 按相同的「对象头 + 引用数组」布局构造，
+> 标记语义与 GC 的 mark 阶段一致，但回收动作仍由 CPython 自己完成；性能对比的基线见「测量口径」。
+
 ## Platform
 
 | 项目         | 规格                                                              |
@@ -93,7 +97,7 @@ FPGA 异步垃圾回收协处理器原型 —— 将 CPython GC 的**标记阶�
 ## 目录结构
 
 ```
-FOGCCC/
+FOGCCC2/
 ├── rtl/                    Verilog RTL 源码
 │   ├── gc_top.v            顶层 (AXI-Lite + AXI3 HP, 单时钟域无 CDC)
 │   ├── gc_regs.v           AXI-Lite 寄存器接口 (12 位地址 / 含 STATUS)
@@ -102,22 +106,23 @@ FOGCCC/
 │   ├── gc_queue.v          BFS 队列 BRAM 4096×12
 │   └── gc_axi_read.v       AXI3 读主控: 双流 (ID=0 引用 / ID=1 对象头)
 ├── sim/                    xsim 自检仿真
-│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + STATUS)
+│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + T-ABORT/T-ABORT2 + STATUS)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真
 │   ├── tb_axi_read.v       #6 未完成读事务上限的定向测试 (+ run_axi_tb.bat)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
-│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
-│   ├── py_bfs.py          CPython 基准 (被 test_main 经 popen 调用)
+│   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/Python 三方对比)
+│   ├── py_bfs.py          Python 参照 (被 test_main 经 popen 调用)
 │   ├── cmark.c             C 基准源码（卡上二进制在 artifacts/userdata/cmark）
 │   └── build_cmark.sh      cmark 交叉编译
-├── python/                 ctypes 绑定 + 基准
+├── python/                 ctypes 绑定 + CPython 基准（gc_probe.py / benchmark.py）
 ├── vivado/
 │   ├── build.tcl           BD + 综合 + 实现 + XSA
 │   └── build_rtl_only.tcl  复用 BD
 ├── tools/                  宿主脚本: serial_run_gc.ps1(基准) / tests/(功能) / debug/(调试)
+│   └── logs/               证据日志（只留 README 引用的那些，见其中的 README.md）
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物
@@ -171,31 +176,42 @@ sudo ./bin/test_main
 > 工具链版本见「Platform → 构建工具链版本」。根 `Makefile` 的
 > `CROSS=arm-linux-gnueabihf-` 不适用于 PetaLinux 2026.1 SDK，改用 `$CC`。
 
-`test_main` 会用 `popen` 调用 `tests/py_bfs.py` 测 CPython 基准。代码里的默认值就是
-`/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py`，而这个目录每次开机都在，所以**不用传参**；
-只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才要显式指定路径。表里三个时间都是实测：
+`test_main` 会用 `popen` 调用 `tests/gc_probe.py`，在**同样的对象数**下跑真实的 CPython
+`gc.collect()`（三次取最快）。默认路径是 `/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py`；
+如果 udev 没自动挂载、分区在 `/mnt/userdata`，程序会自动改用备用路径，也支持显式传参。
+表里三个时间都是实测：
 
 | 列 | 来源 |
 | --- | --- |
 | `FPGA us` | `CYCLES` 寄存器 / 100 MHz（引擎耗时，不含驱动里的 `usleep`） |
-| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
-| `py_bfs ms` | `py_bfs.py` 独立进程、独立实现的 Python BFS |
+| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现（同时是 `marked` 的独立 oracle）|
+| `CPython ms` | `gc_probe.py`：独立进程里 n 个同样的对象做一次完整 `gc.collect()`（含 mark+sweep，**上界**）|
 
-实测（XC7Z100，PL 100 MHz）：
+实测（XC7Z100，PL 100 MHz，2026-10-19，`tools/logs/board_test_main_20261019.txt`）：
 
 ```
-Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
-10       9        44.2      13.7      0.464         0.3x    11x
-100      96       57.1      60.1      4.205         1.1x    74x
-1000     945      184.7     517.1     43.033        2.8x    233x
-4000     3766     646.1     2148.3    169.802       3.3x    263x
+Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
+10       9        44.0      13.5      7.295        0.3x    166x
+50       47       48.7      31.5      7.350        0.6x    151x
+100      96       57.3      59.6      7.364        1.0x    129x
+500      474      114.2     261.5     8.407        2.3x    74x
+1000     945      184.5     515.5     9.515        2.8x    52x
+2000     1882     339.9     1058.6    11.850       3.1x    35x
+4000     3766     647.3     2141.9    16.797       3.3x    26x
 ```
 
 小图（<100 对象）FPGA 反而慢，因为固定启动开销约 4400 拍；`marked < Objects` 是随机图里
-从根 0 不可达的对象，三个实现标记的是同一张图，所以比较是公平的。
+从根 0 不可达的对象。
 
-> 该表是早期记录：`184.7 / 646.1 / 517.1 / 2148.3 / 169.802` 在 `tools/logs/` 中没有对应日志，
-> 按 `historical/unverified` 看待。可复核的是 `tools/logs/cmark_sweep*.log` 与 `tools/logs/board_run.log`。
+> **口径**：`CPython ms` 是**真实 CPython 收集器**（`gc.collect()`，C 实现）对整个解释器堆的
+> 一次完整回收（含清扫），不是 Python 字节码；硬件只做标记 ⇒ 主表最后一列是**上界**。
+>
+> 同一份数据按"增量"再算一次（更接近同阶段）：n=10 时基线 7.295 ms，n=4000 时 16.797 ms，
+> 增量 **9.50 ms / 3990 个对象 = 2.38 µs/对象**；硬件 647.3 µs / 3766 个对象 = **0.172 µs/对象**
+> ⇒ **约 15×**。主表的 **26×** 里含整堆基线扫描与清扫。
+>
+> 对照：`py_bfs.py`（Python 字节码实现的 BFS）在同一张图上要 169 ms，比 `gc.collect()` 慢约
+> 10 倍 —— 这也说明 CPython 的收集器确实是 C 速度的执行路径，两者不要混用。
 
 ### 4. Python 测试
 
@@ -223,7 +239,7 @@ python3 python/benchmark.py
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE、清 DONE、清 BFS 队列与读流水线；仿真 `T-ABORT`/`T-ABORT2` 红→绿 + 板上 `tools/tests/abort_test.py` T1–T5；个别时序下 abort 后 `STATUS[1]` 会误置，见 AGENTS gap 13；驱动超时路径会写它） [31]=done |
+| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE、清 DONE、清 BFS 队列与读流水线；仿真 `T-ABORT`/`T-ABORT2` 红→绿 + 板上 `abort_test.py` T1–T5 与 `abort_sweep.py` 11 个相位，`STATUS` 保持 0；驱动超时路径会写它） [31]=done |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量 |
@@ -294,7 +310,7 @@ python3 python/benchmark.py
 | 总 HW cycles   | 1,804,791                       | 557,091                         | **484,034**                       | 240,007                         |
 | 活跃对象合计   | ~20,010                         | 14,441                          | 12,449                            | 13,497                          |
 | 每对象周期     | **90.2**                        | 38.6                            | **38.9**（扣清位图 36.3）         | **15.4**（扣清位图）            |
-| vs `py_bfs.py`     | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
+| vs `py_bfs`（脚本）| 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
@@ -308,12 +324,15 @@ python3 python/benchmark.py
 
 - `FPGA us` = `CYCLES` / 100 MHz：**只含引擎时间**，不含构图/写对象头/清队列轮询/驱动 `usleep`。
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
-- `py_bfs ms`：`py_bfs.py` 独立进程（`test_main` 经 `popen` 调用）。
-- **与 CPython 只能比出上界**：`gc.collect()` 含标记+清扫，硬件只做标记，非同阶段。
-- 原始串口记录：`tools/logs/board_verify_*.log`、`tools/logs/cmark_sweep*.log`。
-- **真实 CPython 基线**（`python/benchmark.py`，板上实测 2026-10-19，原始输出 `tools/logs/board_benchmark_20261019.txt`）：
-  `gc.collect()` 在 4000 对象上 **16.04 ms**（2000 对象 11.72 ms，1000 对象 9.61 ms）；同规模硬件约 **0.4 ms** ⇒ **约 36~42×**。
-  表中 `220.8~279.3x` 是对 `py_bfs.py`（Python BFS 逐条读 `/dev/mem`）算的，不是 CPython 的 GC。
+- `CPython ms`：`test_main` 经 `popen` 调用 `tests/gc_probe.py`，在同样对象数下做三次完整
+  `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
+- **同规模对比以主表为准**（4000 对象 **26×**）；`gc.collect()` 含清扫、硬件只做标记。
+- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
+  `tools/logs/board_benchmark_20261019.txt`），用于画曲线；单点对比直接用 `test_main`。
+- `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 220–279×
+  是**另一种实现**的比值，不要和 CPython 的 26× 混用。
+- 原始串口记录：`tools/logs/board_test_main_20261019.txt`、`tools/logs/board_verify_*.log`、
+  `tools/logs/cmark_sweep*.log`。
 
 ### 仿真回归
 
@@ -490,7 +509,7 @@ FPGA Offload GC Coprocessor for CPython/
 │    zynq_fsbl.elf  mount_data.sh          -> BOOT 分区
 │    userdata/                             -> USERDATA 分区
 │        run_gc.sh  run_cmark.sh  run_repeat.sh  gc_test.py  cmark
-│        bin/test_main   tests/(irq_drv_test.sh, py_bfs.py)
+│        bin/test_main   tests/(gc_probe.py, irq_drv_test.sh, py_bfs.py)
 │        py/(fogccc.py, libfogccc.so)   ko/(内核模块, 不入库)   logs/(板上生成)
 └─ petalinux/BUILD_GUIDE.md     构建步骤
 ```
@@ -502,11 +521,11 @@ FPGA Offload GC Coprocessor for CPython/
 `BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
 > ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
-> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空」修复的比特流（md5 `55414EE5…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同）。
+> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `AACF188A…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同）。
 
 | Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 | --- | --- | --- | --- |
-| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `55414EE5CC125325F9BD35FD989FDF16` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `AACF188A3F62BEAB1999DBBB6B6066B8` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 
 > 每个 release 只放自己那一版的 `BOOT.BIN`，加同一份精简 `image.ub`。
@@ -586,7 +605,7 @@ D=/mnt/userdata sh tests/irq_drv_test.sh
 VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1' after='<N> 0')
 ```
 
-### 2. GC 主测试（FPGA vs CPython）
+### 2. GC 主测试（FPGA vs Python 参照）
 
 ```sh
 sh run_gc.sh                 # 默认 maxN=4096 trials=8 avg_refs=2
@@ -600,31 +619,33 @@ sh run_gc.sh 2048 5 3
 | `trials` | 随机轮数 | 8 |
 | `avg_refs` | 平均额外出度 | 2 |
 
-期望：`PASSED (all invariants): trials/trials`，并打印相对 CPython 的加速比。
+期望：`PASSED (all invariants): trials/trials`，并打印相对同一进程内 Python BFS 参照的加速比（不是 CPython 的 `gc`）。
 
-### 3. 三方对比（FPGA / C / CPython）
+### 3. 三方对比（FPGA / C / Python）
 
 ```sh
 cd /run/media/USERDATA-mmcblk0p2
 ./bin/test_main
 ```
 
-`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py`，而这个目录每次开机都由 udev
-按卷标挂好，所以不用传参；只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才显式指定路径。需要 root。
+`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py`（udev 按卷标挂载）；
+若分区在 `/mnt/userdata`，程序会自动回退到那条路径，也支持显式传参。需要 root。
 
 输出一张三方对比表（三个时间都是实测）：
 
 ```
-Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
+Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
 ```
 
 | 列 | 来源 |
 |---|---|
 | `FPGA us` | `CYCLES` 寄存器 ÷ 100 MHz（引擎耗时，不含驱动里的等待）|
-| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
-| `py_bfs ms` | `popen` 起 `py_bfs.py` 独立进程，独立实现的 Python BFS |
+| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现（`marked` 的 oracle）|
+| `CPython ms` | `popen` 起 `gc_probe.py`，同对象数下完整 `gc.collect()`（含清扫 ⇒ 上界）|
 
-与另外两条命令的分工：`run_gc.sh` 只比 FPGA vs CPython，`run_cmark.sh` 只比 FPGA vs C。
+与另外两条命令的分工：`test_main` 是**主对比**（FPGA / C / CPython）；`run_gc.sh` 跑可靠性 +
+对照它自己的 Python BFS；`run_cmark.sh` 只比 FPGA vs C。`python3 python/benchmark.py` 是
+同一 CPython 口径的批量版（10–4000 对象梯度）。
 
 ### 4. C 基准（FPGA vs C）
 
@@ -641,7 +662,7 @@ sh run_cmark.sh 2048 5 3
 sh run_repeat.sh 10          # 默认 10 次
 ```
 
-三组：不同种子 vs CPython、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
+三组：不同种子 vs Python 参照、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
 
 ### 6. 单独调用
 

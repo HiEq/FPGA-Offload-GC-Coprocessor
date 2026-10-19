@@ -10,6 +10,7 @@ module gc_axi_read #(
     input  wire        ACLK,
     input  wire        ARESETN,
     input  wire        run_start,   // 1-cycle START pulse: clears the sticky error
+    input  wire        abort,       // 1-cycle ABORT pulse: flush without touching the error
 
     input  wire        cmd0_valid,
     input  wire [31:0] cmd0_addr,
@@ -147,7 +148,7 @@ module gc_axi_read #(
             err     <= 1'b0;
             flushing <= 1'b0;
         end else begin
-            if (run_start) begin
+            if (run_start || abort) begin
                 c0r <= c0w;                 // commands the engine queued but never issued
                 c1r <= c1w;
                 d0r <= d0w;                 // data nobody consumed

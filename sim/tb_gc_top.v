@@ -717,6 +717,14 @@ module tb_gc_top;
             $display("[TB][FAIL] T-ABORT engine still in state %0d after abort", dut.u_engine.state);
             errors = errors + 1;
         end
+        // An abort must not manufacture status bits out of the abandoned run's
+        // in-flight reads (board: abort_sweep.py saw STATUS[1]/STATUS[3] here).
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T-ABORT status right after abort = %h (expect 0)", rd_val);
+        if (rd_val !== 32'h0) begin
+            $display("[TB][FAIL] T-ABORT status=%h after abort", rd_val);
+            errors = errors + 1;
+        end
         release dut.u_engine.q_pop_ack;
         // New graph with the SAME object count (32) but a different expectation:
         // root 0 has no refs, so exactly 1 object must be marked. The stale queue

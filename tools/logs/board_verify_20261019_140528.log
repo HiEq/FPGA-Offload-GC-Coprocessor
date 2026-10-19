@@ -1,85 +1,0 @@
-
-[?2004l]3008;end=b4a9faf5-cc1b-4994-b732-fe87be5e530a;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# date -s '2026-10-19 06:05:31'
-[?2004l]3008;start=6de8acc7-a0d6-4a0a-9e7b-37145cd95783;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\Mon Oct 19 06:05:31 AM CST 2026
-]3008;end=6de8acc7-a0d6-4a0a-9e7b-37145cd95783;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# date
-[?2004l]3008;start=fcdc7f4c-8013-4570-ba8e-2fd8f118718d;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\Mon Oct 19 06:05:31 AM CST 2026
-]3008;end=fcdc7f4c-8013-4570-ba8e-2fd8f118718d;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# mkdir -p /mnt/userdata
-[?2004l]3008;start=31bad640-4c43-4536-9443-b64756d034ec;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\]3008;end=31bad640-4c43-4536-9443-b64756d034ec;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# mount -t vfat /dev/mmcblk0p2 /mnt/userdata
-[?2004l]3008;start=59f613a3-42af-4eac-929d-171ff19a487f;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\mount: (hint) your fstab has been modified, but systemd still uses
-       the old version; use 'systemctl daemon-reload' to reload.
-]3008;end=59f613a3-42af-4eac-929d-171ff19a487f;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# df -h /mnt/userdata | tail -2
-[?2004l]3008;start=ca543a67-dc96-4e6a-94fe-92a8eaa658b1;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\Filesystem      Size  Used Avail Use% Mounted on
-/dev/mmcblk0p2  4.0G  252K  4.0G   1% /mnt/userdata
-]3008;end=ca543a67-dc96-4e6a-94fe-92a8eaa658b1;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# md5sum /mnt/userdata/cmark
-[?2004l]3008;start=cf9abe2c-424f-4a1e-b601-b081cfd39147;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\849b7323b62c248a0d25fcae3ca439e0  /mnt/userdata/cmark
-]3008;end=cf9abe2c-424f-4a1e-b601-b081cfd39147;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# ls -l /mnt/boot/BOOT.BIN 2>/dev/null || ls -l /run/media/*/BOOT.BIN 2>/dev/null || echo no-boot-mount
-[?2004l]3008;start=5815f801-d768-4afc-9333-83463d8c6da5;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\no-boot-mount
-]3008;end=5815f801-d768-4afc-9333-83463d8c6da5;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpga-manager
-[?2004l]3008;start=4e8f1535-7285-4544-9b4e-54a35136beee;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\operating
-]3008;end=4e8f1535-7285-4544-9b4e-54a35136beee;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# sh /mnt/userdata/run_gc.sh
-[?2004l]3008;start=376de813-714e-4173-bff1-c859eb33b191;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=command;cwd=/root\==========================================================
- FOGCCC on-board test
-   script : /mnt/userdata/gc_test.py
-   params : maxN=4096  trials=8  avg_refs=2
-   log    : /mnt/userdata/logs/gc_run_20261019_060537.log
-==========================================================
-====================================================================================
- FOGCCC  FPGA mark  --  strict reliability + performance sweep
-   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
-   seed=1359775361   (replay exactly: --seed 1359775361)
-   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
-   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x00000000
-====================================================================================
-@@TASK 5 trial 1/8  N=1782  (expect 1336)
-  [ 1/ 8] N=1782 exp=1336 | HW    244.73 us (24473 cyc) | SW    57.14 ms |  233.5x | OK
-@@TASK 15 trial 2/8  N=1886  (expect 1414)
-  [ 2/ 8] N=1886 exp=1414 | HW    261.85 us (26185 cyc) | SW    60.85 ms |  232.4x | OK
-@@TASK 26 trial 3/8  N=2527  (expect 1895)
-  [ 3/ 8] N=2527 exp=1895 | HW    331.50 us (33150 cyc) | SW    81.37 ms |  245.5x | OK
-@@TASK 36 trial 4/8  N=1946  (expect 1459)
-  [ 4/ 8] N=1946 exp=1459 | HW    270.25 us (27025 cyc) | SW    63.21 ms |  233.9x | OK
-@@TASK 47 trial 5/8  N=1218  (expect 913)
-  [ 5/ 8] N=1218 exp= 913 | HW    177.14 us (17714 cyc) | SW    39.31 ms |  221.9x | OK
-@@TASK 58 trial 6/8  N=2634  (expect 1975)
-  [ 6/ 8] N=2634 exp=1975 | HW    343.81 us (34381 cyc) | SW    84.36 ms |  245.4x | OK
-@@TASK 68 trial 7/8  N=1583  (expect 1187)
-  [ 7/ 8] N=1583 exp=1187 | HW    224.78 us (22478 cyc) | SW    51.26 ms |  228.0x | OK
-@@TASK 79 trial 8/8  N=2963  (expect 2222)
-  [ 8/ 8] N=2963 exp=2222 | HW    380.80 us (38080 cyc) | SW    95.47 ms |  250.7x | OK
-@@TASK 96 summarising
-
-====================================================================================
- SUMMARY   (expected = live-region size L, garbage must be 0)
-====================================================================================
- trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
- --------------------------------------------------------------------------------------------
-     1   1782   1336    446        24473     244.73     57.14   233.5x   1336   1336  OK
-     2   1886   1414    472        26185     261.85     60.85   232.4x   1414   1414  OK
-     3   2527   1895    632        33150     331.50     81.37   245.5x   1895   1895  OK
-     4   1946   1459    487        27025     270.25     63.21   233.9x   1459   1459  OK
-     5   1218    913    305        17714     177.14     39.31   221.9x    913    913  OK
-     6   2634   1975    659        34381     343.81     84.36   245.4x   1975   1975  OK
-     7   1583   1187    396        22478     224.78     51.26   228.0x   1187   1187  OK
-     8   2963   2222    741        38080     380.80     95.47   250.7x   2222   2222  OK
- --------------------------------------------------------------------------------------------
-  trials                : 8
-  skipped (graph too big): 0
-  seed                  : 1359775361   (replay: --seed 1359775361)
-  PASSED (all invariants): 8/8
-  total HW cycles        : 223486  (= 2234.86 us @100MHz)
-  total SW (Python)      : 532.98 ms
-  speedup min/avg/max    : 221.9x / 236.4x / 250.7x
-  N range                : 1218 .. 2963
-
-  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
-        correctness oracle + rough CPU cost bound, NOT an optimised
-        C implementation.  The rigorous hardware metric is the
-        deterministic HW cycle count @100MHz.
-====================================================================================
-@@TASK 100 done
-
-==========================================================
- done.  log saved on the card: /mnt/userdata/logs/gc_run_20261019_060537.log
- exit code: 0
-==========================================================
-]3008;end=376de813-714e-4173-bff1-c859eb33b191;exit=success\]3008;start=91fcd7ee-eb5e-49b8-926b-507ecddeb7b8;machineid=50e28c1e31e742f0be5da604281b3352;user=root;hostname=zynq7100;bootid=ad363c5f-dc33-4e54-9920-0e0e442b941f;pid=00000000000000000179;type=shell;cwd=/root\[?2004h[root@zynq7100 ~]# 

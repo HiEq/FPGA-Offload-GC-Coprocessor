@@ -2,6 +2,7 @@
 vivado/fogccc_proj/
 
 # Vivado 日志/临时
+vivado/bd_if_dump.txt          # build.tcl 的 BD_ONLY 调试输出，用完即弃
 vivado/nlviewcommon.logfile
 vivado/*.log
 vivado/*.jou
@@ -47,10 +48,12 @@ tools/*.log
 # 工具日志 (统一放 tools/logs/)
 tools/logs/*
 !tools/logs/.gitkeep
-# 例外：板级验证日志入库，README 里的数字可复核
+!tools/logs/README.md
+# 例外：只有 README 引用的证据日志入库（每次发布只留最终那一份）
 !tools/logs/board_verify_*.log
 !tools/logs/cmark_sweep*.log
-!tools/logs/board_run.log
+!tools/logs/board_benchmark_*.txt
+!tools/logs/board_test_main_*.txt
 tools/__pycache__/
 
 # 本地存档: 改造前的 XSA/bitstream (17 MB, 不入库)
