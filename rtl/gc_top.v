@@ -328,6 +328,7 @@ module gc_top (
         .data1_valid (w_hdr_data_valid),
         .data1_ready (w_hdr_data_ready),
 
+        .run_start   (w_start),
         .err         (w_rd_err),
 
         .ARADDR      (S_AXI_HP_ARADDR),

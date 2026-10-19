@@ -734,6 +734,17 @@ module tb_gc_top;
             $display("[TB][FAIL] T8 STATUS[1]=%b, AXI error not reported", rd_val[1]);
             errors = errors + 1;
         end
+        // ---- T8b: a clean start must clear the latched read-error bit ----
+        // The README says STATUS[1] is cleared on every start; before the fix
+        // gc_regs fed err_rd straight through, so it was sticky until reset.
+        axil_wr(R_CTRL, 32'h1);
+        repeat (300) @(negedge clk);
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T8b STATUS=%h (expect bit1=0)", rd_val);
+        if (rd_val[1] !== 1'b0) begin
+            $display("[TB][FAIL] T8b STATUS[1]=%b still set after a clean start", rd_val[1]);
+            errors = errors + 1;
+        end
 
         // ---- #6 汇总 ----
         if (err_ho != 0) begin

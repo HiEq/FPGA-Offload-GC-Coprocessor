@@ -9,6 +9,7 @@ module gc_axi_read #(
 )(
     input  wire        ACLK,
     input  wire        ARESETN,
+    input  wire        run_start,   // 1-cycle START pulse: clears the sticky error
 
     input  wire        cmd0_valid,
     input  wire [31:0] cmd0_addr,
@@ -24,7 +25,7 @@ module gc_axi_read #(
     output wire        data1_valid,
     input  wire        data1_ready,
 
-    output reg         err,        // AXI 读错误 (粘滞, 复位清除)
+    output reg         err,        // AXI read error (sticky; cleared by run_start or reset)
 
     output reg  [31:0] ARADDR,
     output reg  [5:0]  ARID,       // 0 = 引用流, 1 = 对象头流
@@ -177,8 +178,11 @@ module gc_axi_read #(
                 end
             end
 
+            if (run_start)
+                err <= 1'b0;          // README: STATUS[1] clears on every start
+
             if (RVALID && RREADY) begin
-                if (RRESP != 2'b00)
+                if (RRESP != 2'b00 && !run_start)
                     err <= 1'b1;
                 if (r_is1) begin
                     if (!h1empty) begin
