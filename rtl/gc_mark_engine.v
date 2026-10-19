@@ -400,7 +400,10 @@ module gc_mark_engine (
                 end
 
                 S_RD_ROOT: begin
-                    if (root_idx < root_count) begin
+                    // root_rd_addr is 8 bits and the root list holds 256 entries.
+                    // Clamp here as well: software writing root_count > 256 must
+                    // not wrap around and re-read root[0..255] for ever.
+                    if (root_idx < root_count && root_idx < 32'd256) begin
                         root_rd_addr <= root_idx[7:0];
                         state        <= S_ROOT_WAIT;
                     end else begin

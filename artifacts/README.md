@@ -53,3 +53,8 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - `image.ub` 非位级可复现（gzip 时间戳），以功能验证为准。
+
+> 三个随卡二进制（`bin/test_main`、`py/libfogccc.so`、`cmark`）的 SHA256 记录在 `artifacts/SHA256SUMS`。
+
+> 用 `tools/make_manifest.ps1` 重新生成；CI 跑 `-Check`，二进制改了但 manifest 没更新会直接红。
+
