@@ -1,57 +1,45 @@
 #!/bin/bash
-# ============================================================
-# build_cmark.sh — 交叉编译 cmark.c 到 Zynq (Cortex-A9, armv7-a/neon 硬浮点)
-# 用法:  wsl -e bash <工程根>/csrc/build_cmark.sh
-# ============================================================
+# Cross-build cmark with the PetaLinux SDK.
+#
+# Why not the gcc inside the PetaLinux build tree: that cross-canadian gcc has a
+# broken relocated prefix (`-print-sysroot` returns /not/exist, and crtbeginS.o
+# only resolves to a bare name), so linking fails. The standalone SDK ships a
+# working compiler with its own --sysroot.
+#
+#   ./csrc/build_cmark.sh
+#   SDK_ENV=/path/to/environment-setup-... ./csrc/build_cmark.sh
+#
+# Output: artifacts/userdata/cmark  (ARM, dynamic; the rootfs has glibc 2.39)
 set -u
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/csrc/cmark.c"
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+SRC="$HERE/cmark.c"
 OUT="$ROOT/artifacts/userdata/cmark"
+SDK_ENV="${SDK_ENV:-$HOME/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi}"
 
-echo "=== 1. 找可用的 recipe-sysroot 对 ==="
-S=""
-for proj in fogccc_linux fogccc2_linux; do
-    for d in $(find $HOME/xilinx/$proj/build/tmp/work -maxdepth 5 -type d -name 'recipe-sysroot' 2>/dev/null); do
-        [ -f "$d/usr/include/stdio.h" ] || continue
-        n="${d%recipe-sysroot}recipe-sysroot-native"
-        [ -x "$n/usr/bin/arm-amd-linux-gnueabi/arm-amd-linux-gnueabi-gcc" ] || continue
-        S=$d; break 2
-    done
-done
-[ -n "$S" ] || { echo "ERROR: 找不到可用的 recipe-sysroot 对"; exit 1; }
-N="${S%recipe-sysroot}recipe-sysroot-native"
-GCC="$N/usr/bin/arm-amd-linux-gnueabi/arm-amd-linux-gnueabi-gcc"
-echo "TARGET sysroot = $S"
-echo "NATIVE sysroot = $N"
-echo "GCC            = $($GCC --version | head -1)"
-echo "as             = $(ls $N/usr/bin/arm-amd-linux-gnueabi/arm-amd-linux-gnueabi-as)"
+[ -f "$SRC" ]     || { echo "ERROR: $SRC not found"; exit 1; }
+[ -f "$SDK_ENV" ] || { echo "ERROR: SDK environment not found: $SDK_ENV"; echo "       set SDK_ENV=<path to environment-setup-...>"; exit 1; }
 
-echo "=== 2. 编译 (静态, 硬浮点) ==="
-# Remove any previous binary first: a failed compile must not leave the old cmark
-# in place and let the script print DONE (that is how a stale binary pretends to
-# be a fresh build).
+# shellcheck disable=SC1090
+. "$SDK_ENV"
+[ -n "${CC:-}" ] || { echo "ERROR: \$CC is empty after sourcing the SDK env"; exit 1; }
+
+echo "=== build cmark ==="
+echo "CC  = $CC"
+echo "src = $SRC"
+echo "out = $OUT"
+
+# Remove the previous binary first: a failed compile must not leave it in place
+# and let the script print DONE (a stale binary pretending to be a fresh build).
 rm -f "$OUT"
-CFLAGS="-O2 -Wall -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard"
-echo "CFLAGS = $CFLAGS"
-COMPILER_PATH="$N/usr/bin/arm-amd-linux-gnueabi" \
-    "$GCC" $CFLAGS --sysroot="$S" -o "$OUT" "$SRC" 2>&1 | head -25
-rc=${PIPESTATUS[0]}
-if [ "$rc" -ne 0 ]; then
-    echo "!!! 编译失败 (gcc rc=$rc)"
+$CC -O2 -Wall -o "$OUT" "$SRC"
+rc=$?
+if [ "$rc" -ne 0 ] || [ ! -f "$OUT" ]; then
+    echo "!!! 编译失败 (rc=$rc)"
     exit 1
 fi
 
-echo "=== 3. 结果 ==="
-if [ -f "$OUT" ]; then
-    STRIP="$N/usr/bin/arm-amd-linux-gnueabi/arm-amd-linux-gnueabi-strip"
-    if [ -x "$STRIP" ]; then
-        "$STRIP" "$OUT" && echo "  已 strip 调试信息"
-    fi
-    file "$OUT" 2>/dev/null || true
-    ls -la "$OUT"
-    # 源码只保留在 csrc/cmark.c：板上没有 gcc，不再往卡目录里放副本
-    echo "=== DONE — 板上运行:  ./cmark 4096 8 2 ==="
-else
-    echo "!!! 失败"
-    exit 1
-fi
+file "$OUT" 2>/dev/null || true
+ls -la "$OUT"
+echo "=== DONE — 板上运行: ./cmark 4096 8 2 ==="

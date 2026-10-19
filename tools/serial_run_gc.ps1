@@ -95,3 +95,16 @@ Write-Host ("transcript: " + $outFile)
 
 Write-Host "--- tail ---"
 Get-BoardSerialTail -Session $s -Lines 30 | ForEach-Object { "  | " + $_ }
+
+# Exit code is evidence: before this, the one-click acceptance script returned 0
+# even when the board run failed, and only a human reading the log could tell.
+if (-not $done) {
+    Write-Host "RESULT: FAIL (no verdict line within the timeout)"
+    exit 1
+}
+if ($ml -match 'FAILED|Traceback') {
+    Write-Host ("RESULT: FAIL (" + (ConvertFrom-Ansi $ml).Trim() + ")")
+    exit 1
+}
+Write-Host "RESULT: PASS"
+exit 0
