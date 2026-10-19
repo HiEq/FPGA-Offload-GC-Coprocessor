@@ -73,3 +73,7 @@ vivado/artifacts_before_axi_fix/
 artifacts/BOOT.BIN
 artifacts/zynq_fsbl.elf
 artifacts/system.dtb
+
+# vivado batch 在仓库根目录留下的日志（不只 vivado/ 子目录）
+vivado*.jou
+vivado*.log
