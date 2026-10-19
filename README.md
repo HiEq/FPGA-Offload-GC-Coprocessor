@@ -192,6 +192,9 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
 小图（<100 对象）FPGA 反而慢，因为固定启动开销约 4400 拍；`marked < Objects` 是随机图里
 从根 0 不可达的对象，三个实现标记的是同一张图，所以比较是公平的。
 
+> 该表是早期记录：`184.7 / 646.1 / 517.1 / 2148.3 / 169.802` 在 `tools/logs/` 中没有对应日志，
+> 按 `historical/unverified` 看待。可复核的是 `tools/logs/cmark_sweep*.log` 与 `tools/logs/board_run.log`。
+
 ### 4. Python 测试
 
 板上没有 gcc，共享库在 PC 上交叉编译，卡上 `py/` 已随仓库提供：
