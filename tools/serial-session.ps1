@@ -106,10 +106,14 @@ function Close-BoardSerialSession {
     if ($Session.Sp -and $Session.Sp.IsOpen) { $Session.Sp.Close() }
 }
 
-# Strip ANSI escape sequences (the board's shell colours the prompt).
+# Strip ANSI escape sequences (the board's shell colours the prompt and emits
+# OSC 3008 "shell integration" records, e.g. ESC ]3008;... BEL).
 function ConvertFrom-Ansi {
     param([string]$Text)
-    return ($Text -replace '\x1b\[[0-9;?]*[a-zA-Z]', '' -replace '\x1b', '')
+    $t = $Text -replace '\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)', ''   # OSC ... BEL / ST
+    $t = $t -replace '\x1b\[[0-9;?]*[a-zA-Z]', ''                  # CSI
+    $t = $t -replace '\x1b[()][A-Za-z0-9]', ''                     # charset designation
+    return ($t -replace '\x1b', '')
 }
 
 # Last N non-empty lines of the session, ANSI stripped.

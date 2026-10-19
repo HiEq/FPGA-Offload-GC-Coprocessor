@@ -108,7 +108,7 @@ FOGCCC/
 │   ├── fpga_gc.h / .c      驱动
 │   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
 │   ├── py_mark.py          CPython 基准 (被 test_main 经 popen 调用)
-│   ├── cmark.c / cmark     C 基准源码 + 卡上二进制
+│   ├── cmark.c             C 基准源码（卡上二进制在 artifacts/userdata/cmark）
 │   └── build_cmark.sh      cmark 交叉编译
 ├── python/                 ctypes 绑定 + 基准
 ├── vivado/

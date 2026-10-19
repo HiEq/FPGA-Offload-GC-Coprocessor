@@ -11,11 +11,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGES="$ROOT/artifacts"
 PLNX=~/xilinx/fogccc_linux
 # 厂商 FSBL 在板卡资料包里, 请按实际位置修改
-VENDOR_FSBL="${VENDOR_FSBL:-artifacts/zynq_fsbl.elf}"
+VENDOR_FSBL="${VENDOR_FSBL:-$(cd "$(dirname "$0")/.." && pwd)/artifacts/zynq_fsbl.elf}"
 BITSTREAM="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
 
 echo "=== Strip U-Boot ==="
-arm-linux-gnueabihf-strip --strip-debug ${PLNX}/images/linux/u-boot.elf -o ${PLNX}/images/linux/u-boot-stripped.elf
+STRIP=${STRIP:-arm-amd-linux-gnueabi-strip}; "$STRIP" --strip-debug ${PLNX}/images/linux/u-boot.elf -o ${PLNX}/images/linux/u-boot-stripped.elf
 
 echo "=== Create fixed u-boot-dtb.bin ==="
 # _end 偏移处理: u-boot.bin + BSS 填充 + system.dtb

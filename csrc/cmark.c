@@ -2,7 +2,7 @@
 // cmark.c — FOGCCC: C 标记基准
 //   用法:  ./cmark [maxN] [trials] [avg_refs]      默认 4096 8 2
 // 交叉编译:
-//   arm-*-gcc -O2 -static -o cmark cmark.c
+//   arm-*-gcc -O2 -o cmark cmark.c        (dynamic: the rootfs has glibc 2.39)
 // ============================================================
 #include <stdio.h>
 #include <stdlib.h>
