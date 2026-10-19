@@ -110,7 +110,7 @@ FOGCCC/
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
 │   ├── test_main.c         测试主程序 (4 项，含 FPGA/C/CPython 三方对比)
-│   ├── py_mark.py          CPython 基准 (被 test_main 经 popen 调用)
+│   ├── py_bfs.py          CPython 基准 (被 test_main 经 popen 调用)
 │   ├── cmark.c             C 基准源码（卡上二进制在 artifacts/userdata/cmark）
 │   └── build_cmark.sh      cmark 交叉编译
 ├── python/                 ctypes 绑定 + 基准
@@ -171,20 +171,20 @@ sudo ./bin/test_main
 > 工具链版本见「Platform → 构建工具链版本」。根 `Makefile` 的
 > `CROSS=arm-linux-gnueabihf-` 不适用于 PetaLinux 2026.1 SDK，改用 `$CC`。
 
-`test_main` 会用 `popen` 调用 `tests/py_mark.py` 测 CPython 基准。代码里的默认值就是
-`/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，而这个目录每次开机都在，所以**不用传参**；
+`test_main` 会用 `popen` 调用 `tests/py_bfs.py` 测 CPython 基准。代码里的默认值就是
+`/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py`，而这个目录每次开机都在，所以**不用传参**；
 只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才要显式指定路径。表里三个时间都是实测：
 
 | 列 | 来源 |
 | --- | --- |
 | `FPGA us` | `CYCLES` 寄存器 / 100 MHz（引擎耗时，不含驱动里的 `usleep`） |
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
-| `CPython ms` | `py_mark.py` 独立进程、独立实现的 Python BFS |
+| `py_bfs ms` | `py_bfs.py` 独立进程、独立实现的 Python BFS |
 
 实测（XC7Z100，PL 100 MHz）：
 
 ```
-Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
+Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
 10       9        44.2      13.7      0.464         0.3x    11x
 100      96       57.1      60.1      4.205         1.1x    74x
 1000     945      184.7     517.1     43.033        2.8x    233x
@@ -286,7 +286,7 @@ python3 python/benchmark.py
 | 总 HW cycles   | 1,804,791                       | 557,091                         | **484,034**                       | 240,007                         |
 | 活跃对象合计   | ~20,010                         | 14,441                          | 12,449                            | 13,497                          |
 | 每对象周期     | **90.2**                        | 38.6                            | **38.9**（扣清位图 36.3）         | **15.4**（扣清位图）            |
-| vs `py_mark.py`     | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
+| vs `py_bfs.py`     | 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
@@ -298,12 +298,12 @@ python3 python/benchmark.py
 
 - `FPGA us` = `CYCLES` / 100 MHz，不含驱动 `usleep`。
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
-- `CPython ms`：`py_mark.py` 独立进程（`test_main` 经 `popen` 调用）。
+- `py_bfs ms`：`py_bfs.py` 独立进程（`test_main` 经 `popen` 调用）。
 - **与 CPython 只能比出上界**：`gc.collect()` 含标记+清扫，硬件只做标记，非同阶段。
 - 原始串口记录：`tools/logs/board_verify_*.log`、`tools/logs/cmark_sweep*.log`。
 - **真实 CPython 基线**（`python/benchmark.py`，板上实测 2026-10-19，原始输出 `tools/logs/board_benchmark_20261019.txt`）：
   `gc.collect()` 在 4000 对象上 **16.04 ms**（2000 对象 11.72 ms，1000 对象 9.61 ms）；同规模硬件约 **0.4 ms** ⇒ **约 36~42×**。
-  表中 `220.8~279.3x` 是对 `py_mark.py`（Python BFS 逐条读 `/dev/mem`）算的，不是 CPython 的 GC。
+  表中 `220.8~279.3x` 是对 `py_bfs.py`（Python BFS 逐条读 `/dev/mem`）算的，不是 CPython 的 GC。
 
 ### 仿真回归
 
@@ -401,7 +401,22 @@ SPI 编号 = ID − 32）。
   （仍慢 1.1~1.7x）
 - avg_refs 越大硬件越占优（**3.4x**）
 
-> 主对比是 `py_mark.py`（**Python 实现的 BFS**，逐条读 `/dev/mem`），不是 CPython 的 GC 本体；`cmark` 只作参考。
+#### 为什么非缓存赢、缓存输
+
+| | CPU 取下一个对象要付 | 硬件（AXI HP，非一致）要付 |
+|---|---|---|
+| 图在 DDR（非缓存） | 一整个 DDR 往返（~100 ns 级）；指针追逐**没有并发度**（下一条地址依赖上一条数据）| 同样的往返，但 **8 笔未完成读 + 对象头预取**，把延迟重叠起来 |
+| 图在 CPU cache | L1/L2 命中，几拍（~1–5 ns）| 仍要出 AXI HP 到 DDR（PL 没有 cache，HP 也不一致）|
+
+指针追逐是**延迟受限**而不是带宽受限：CPU 一次只能等一个地址。所以：
+
+- 数据不在 cache 时，谁能"边等边多发几个请求"谁就赢 → 硬件有 8 笔 outstanding + 预取 ⇒ **2.7–3.4×**；
+- 数据在 cache 时，CPU 的往返只有几纳秒，而硬件仍要跨 AXI 走 DDR ⇒ 硬件反而慢 ⇒ **0.6–0.9×**；
+- 此外硬件有固定开销（配置、清队列、清 4096 位图、drain），小图摊不薄。
+
+结论：它加速的是**内存延迟受限的遍历**，不是"所有 GC"。要在缓存场景也赢，得让 PL 能读 CPU cache —— 即 AXI-ACP 一致性口，或把图放进 OCM。
+
+> 主对比是 `py_bfs.py`（**Python 实现的 BFS**，逐条读 `/dev/mem`），不是 CPython 的 GC 本体；`cmark` 只作参考。
 
 ## Debug & Monitoring
 
@@ -461,7 +476,7 @@ FPGA Offload GC Coprocessor for CPython/
 │    zynq_fsbl.elf  mount_data.sh          -> BOOT 分区
 │    userdata/                             -> USERDATA 分区
 │        run_gc.sh  run_cmark.sh  run_repeat.sh  gc_test.py  cmark
-│        bin/test_main   tests/(irq_drv_test.sh, py_mark.py)
+│        bin/test_main   tests/(irq_drv_test.sh, py_bfs.py)
 │        py/(fogccc.py, libfogccc.so)   ko/(内核模块, 不入库)   logs/(板上生成)
 └─ petalinux/BUILD_GUIDE.md     构建步骤
 ```
@@ -577,20 +592,20 @@ cd /run/media/USERDATA-mmcblk0p2
 ./bin/test_main
 ```
 
-`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，而这个目录每次开机都由 udev
+`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py`，而这个目录每次开机都由 udev
 按卷标挂好，所以不用传参；只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才显式指定路径。需要 root。
 
 输出一张三方对比表（三个时间都是实测）：
 
 ```
-Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
+Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
 ```
 
 | 列 | 来源 |
 |---|---|
 | `FPGA us` | `CYCLES` 寄存器 ÷ 100 MHz（引擎耗时，不含驱动里的等待）|
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
-| `CPython ms` | `popen` 起 `py_mark.py` 独立进程，独立实现的 Python BFS |
+| `py_bfs ms` | `popen` 起 `py_bfs.py` 独立进程，独立实现的 Python BFS |
 
 与另外两条命令的分工：`run_gc.sh` 只比 FPGA vs CPython，`run_cmark.sh` 只比 FPGA vs C。
 

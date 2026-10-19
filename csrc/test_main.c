@@ -8,7 +8,7 @@
 //
 // 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
 //       $CC -O2 -o test_main fpga_gc.c test_main.c
-// 运行: sudo ./test_main  [py_mark.py 路径]
+// 运行: sudo ./test_main  [py_bfs.py 路径]
 // ============================================================
 #include "fpga_gc.h"
 #include <stdio.h>
@@ -27,9 +27,9 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 //
 //   FPGA   : CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
 //   C      : fpga_gc_sw_mark() 的 C BFS
-//   CPython: py_mark.py, 独立进程遍历同一块 DDR
+//   CPython: py_bfs.py, 独立进程遍历同一块 DDR
 // ============================================================
-#define PY_MARK_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_mark.py"
+#define PY_BFS_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py"
 
 // 让 CPython 标记同一张图, 返回毫秒 (失败返回 -1)
 static double cpython_mark_ms(const char *py, int n, uint32_t paddr,
@@ -54,7 +54,7 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     printf("  Test 1: correctness + speed (FPGA vs C vs CPython)\n");
     printf("=============================================================\n");
     printf("%-8s %-8s %-11s %-11s %-13s %-8s %-9s\n",
-           "Objects", "marked", "FPGA us", "C us", "CPython ms",
+           "Objects", "marked", "FPGA us", "C us", "py_bfs ms",
            "vs C", "vs CPython");
     printf("-------- -------- ----------- ----------- ------------- "
            "-------- ---------\n");
@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
     printf("+--------------------------------------------+\n");
     (void)argc;
     // 可选参数: CPython 基准脚本路径
-    const char *py_path = (argc > 1) ? argv[1] : PY_MARK_DEFAULT;
+    const char *py_path = (argc > 1) ? argv[1] : PY_BFS_DEFAULT;
 
     // 初始化FPGA
     fpga_gc_t dev;

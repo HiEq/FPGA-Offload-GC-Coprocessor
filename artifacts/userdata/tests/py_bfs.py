@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # ============================================================
-# py_mark.py - CPython baseline for the FOGCCC test suite
+# py_bfs.py - Python BFS reference (NOT CPython's GC: it walks the graph
+#             with struct.unpack_from over /dev/mem, one reference at a time)
 #
 # Marks the SAME object graph that test_main built in DDR, using a
 # plain Python BFS.  This is the "what would CPython cost" number.
 #
-#   usage: python3 py_mark.py <n> <graph_phys_hex> <root>
+#   usage: python3 py_bfs.py <n> <graph_phys_hex> <root>
 #   output: "<elapsed_ms> <marked_count>"
 #
 # Layout (must match csrc/fpga_gc.c):
@@ -24,7 +25,7 @@ TERMINATOR = 0xFFFFFFFF
 
 def main():
     if len(sys.argv) != 4:
-        sys.stderr.write("usage: py_mark.py <n> <graph_phys_hex> <root>\n")
+        sys.stderr.write("usage: py_bfs.py <n> <graph_phys_hex> <root>\n")
         return 2
 
     n = int(sys.argv[1])

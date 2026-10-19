@@ -32,7 +32,7 @@ FAT32，卷标 `USERDATA`。板上两条路径指向同一个分区：`/run/medi
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出，不入库 |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证 |
-| `tests/py_mark.py` | CPython 基准，`test_main` 经 popen 调用 |
+| `tests/py_bfs.py` | CPython 基准，`test_main` 经 popen 调用 |
 | `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定，含 STATUS 与位图探针 |
 
 日志不在本目录，`run_gc.sh` 写入卡上 `logs/`。
