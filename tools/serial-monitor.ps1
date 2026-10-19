@@ -99,9 +99,6 @@ $sp.RtsEnable = $false
 $sp.ReadTimeout = 200
 $sp.Encoding  = New-Object System.Text.UTF8Encoding $false
 
-if ($WaitPortSec -gt 0) {
-  Write-Host ("等待串口出现（最多 {0} 秒）—— 现在给板子上电、插线都可以" -f $WaitPortSec) -ForegroundColor DarkGray
-}
 $deadline = (Get-Date).AddSeconds([Math]::Max(0, $WaitPortSec))
 $busySince = $null
 while ($true) {
@@ -145,24 +142,9 @@ if (-not $NoInput) {
   try { [Console]::TreatControlCAsInput = $true; $ctrlCAsInput = $true } catch { }
 }
 
-Write-Host ("串口 {0} @ {1} 8N1 已打开" -f $Port, $Baud) -ForegroundColor DarkGray
-Write-Host ("日志: {0}" -f $Log) -ForegroundColor DarkGray
-if ($NoInput) {
-  Write-Host "模式: 只收（Ctrl+C 退出）" -ForegroundColor DarkGray
-} else {
-  Write-Host "模式: 收发（Ctrl+C 发给板子，Ctrl+] 退出）" -ForegroundColor DarkGray
-}
-if ($NoTimeSync) {
-  Write-Host "时钟同步: 关（-NoTimeSync）" -ForegroundColor DarkGray
-} else {
-  Write-Host "时钟同步: 开（板子无 RTC，看到提示符后用宿主时间发一次 date -s）" -ForegroundColor DarkGray
-}
-if ($NoInput -or $AlwaysKeys) {
-  # 无需提示
-} else {
-  Write-Host "按键: 开机阶段不转发，见到 login:/提示符后解锁（-AlwaysKeys 可提前接管）" -ForegroundColor DarkGray
-}
-Write-Host ('-' * 72) -ForegroundColor DarkGray
+# 启动只留一行：当前串口号 + 波特率。其余提示（模式/时钟/按键/日志路径/分隔线）
+# 按用户要求全部去掉；出错时照旧报错（见上面的端口等待与打开失败分支）。
+Write-Host ("{0} @ {1}" -f $Port, $Baud) -ForegroundColor DarkGray
 
 # ---------------------------------------------------------------- state
 $clock     = [System.Diagnostics.Stopwatch]::StartNew()
@@ -219,10 +201,7 @@ try {
         $timeDone  = $false
       } elseif (Test-PromptTail $tailS) {
         $promptOk = $true
-        if (-not $keysOn) {
-          $keysOn = $true
-          if (-not $NoInput) { Write-Host "[keys] 已解锁（看到 shell 提示符）" -ForegroundColor DarkGray }
-        }
+        if (-not $keysOn) { $keysOn = $true }
       }
     }
 
@@ -271,8 +250,7 @@ try {
       $utc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
       $timeDone  = $true
       $timeArmed = $false
-      $sp.Write("date -s '$utc'`r")
-      Write-Host ("[time] 板载时钟 <- 宿主 UTC {0}（板上无 RTC，每次上电都会退回 2018-03-09）" -f $utc) -ForegroundColor DarkGray
+      $sp.Write("date -s '$utc'`r")   # 静默注入：不打印任何提示
     }
 
     # ---------------- log flush ----------------
@@ -291,7 +269,5 @@ try {
   $sw.Flush(); $sw.Close()
   if ($sp.IsOpen) { $sp.Close() }
   if ($ctrlCAsInput) { try { [Console]::TreatControlCAsInput = $false } catch { } }
-  Write-Host ''
-  Write-Host ("串口已关闭，日志: {0}" -f $Log) -ForegroundColor DarkGray
   $sp.Dispose()
 }
