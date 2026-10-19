@@ -42,7 +42,8 @@
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
 #define CTRL_CLEAR_BM    (1U << 1)   // 未使用: 位图由引擎每轮自动清除
-#define CTRL_CLEAR_Q     (1U << 2)   // 清BFS队列
+#define CTRL_CLEAR_Q     (1U << 2)
+#define CTRL_ABORT       (1U << 3)   // 把引擎拉回 IDLE 并清 DONE（超时后复位用）   // 清BFS队列
 #define CTRL_DONE        (1U << 31)  // 完成标志
 
 // ==================== 对象图DDR格式 ====================

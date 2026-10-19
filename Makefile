@@ -81,4 +81,9 @@ card: all
 	@mkdir -p artifacts/userdata/py artifacts/userdata/bin
 	@cp -f csrc/libfogccc.so artifacts/userdata/py/libfogccc.so
 	@cp -f test_main artifacts/userdata/bin/test_main
+	@cp -f tools/tests/gc_test.py      artifacts/userdata/gc_test.py
+	@cp -f tools/tests/irq_drv_test.sh artifacts/userdata/tests/irq_drv_test.sh
+	@cp -f csrc/py_bfs.py              artifacts/userdata/tests/py_bfs.py
+	@cp -f python/fogccc.py            artifacts/userdata/py/fogccc.py
+	@cp -f driver/fogccc_irq.c         driver/plnx/fogccc-irq/files/fogccc-irq.c
 	@echo "card dir refreshed: artifacts/userdata/py/libfogccc.so + bin/test_main"
