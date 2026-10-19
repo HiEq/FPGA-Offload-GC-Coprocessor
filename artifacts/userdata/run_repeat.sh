@@ -20,7 +20,7 @@ echo "################################################################"
 echo "#  REPEAT TEST   N=$N   dir=$D"
 echo "################################################################"
 
-echo "=== GROUP1: gc_test, different seeds (vs CPython) ==="
+echo "=== GROUP1: gc_test, different seeds (vs Python BFS 参照, not CPython gc) ==="
 i=1
 while [ $i -le $N ]; do
     seed=$((BASE + i))
