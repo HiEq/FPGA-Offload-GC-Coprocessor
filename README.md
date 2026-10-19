@@ -5,7 +5,24 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-FPGA 垃圾回收协处理器原型 —— 将 GC 的**标记阶段（Mark Phase）** 卸载到 FPGA 硬件，指针追逐由硬件完成（当前是同步的 stop-the-world 卸载，不是异步 GC，见下方"范围"）。
+这是一个把 **CPython GC 的标记阶段**搬到 Zynq FPGA 上实现的**指针追逐原型**：
+引擎在非缓存 DDR 上比 Python 逐条遍历快**两个数量级**（约 220–260×），
+相对 CPython 自己的 `gc.collect()` 约 **26×**（4000 对象、整堆、含清扫 ⇒ 上界）。
+
+优势不来自"算法更快"，而来自**非缓存指针追逐被硬件流水化**。同一张 4096 对象的图
+（`cmark` 第 1 组：4096 对象 / 24 轮 / `avg_refs=2`；72 次扫描全部 OK，见 `tools/logs/cmark_sweep.log`）：
+
+| 同一张图 | 时间 | 相对 FPGA |
+|---|---|---|
+| C，数据**不在** cache（逐条读 DDR）| 2.3 ms | 硬件快 **3.2×** |
+| C，数据**在** cache | 0.63 ms | 硬件 **0.9×**（打平/略慢）|
+| FPGA | 0.72 ms | — |
+
+也就是说：**赢在"指针散落在 DDR、依赖链拉满延迟"这一侧；图完全驻留 cache 时硬件没有优势**。
+堆越大、越放不进 cache，硬件的相对优势越大 —— 但这是设计推断，当前 4096 对象的上限还没法实测。
+
+另外，上面那个 26× **不是** cache 效应：4000 对象的图只有 ~130 KB，本来就能进 L2，
+CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和清扫。
 
 > **范围**：当前实现是 **stop-the-world 的 mark offload**（软件写 START、轮询 DONE），不做并发/增量标记；
 > `python/fogccc.py` 用 ctypes 驱动的是**合成对象图**，尚未接入 CPython 的 `gc` 模块与 `PyObject` 布局。
