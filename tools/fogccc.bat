@@ -19,4 +19,6 @@ title FOGCCC console  (COM5)  plain passthrough
 rem  serial-monitor.ps1 is the unified console shared with the LINUX-FPGA project.
 rem  -WaitPortSec 300 : the console is normally started *before* the board is powered.
 rem  -Log             : keep the fixed logs\serial.log name (log.bat opens it).
-powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0serial-monitor.ps1" -Log "%~dp0logs\serial.log" -WaitPortSec 300
+rem  -Append          : append, like the old monitor did - without it every start
+rem                     would wipe the previous transcript.
+powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0serial-monitor.ps1" -Log "%~dp0logs\serial.log" -Append -WaitPortSec 300
