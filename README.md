@@ -483,7 +483,8 @@ SPI 编号 = ID − 32）。
 
 结论：它加速的是**CPU 侧被内存延迟钉住的遍历**，不是"所有 GC"。要再快，得改引擎自身（预取深度 / 未完成事务数），而不是换存储通路。
 
-> 与 CPython 的主对比见上面的主表（`gc_probe.py` 的 `gc.collect()`）；`py_bfs.py` 只是另一种 Python\n> 实现的参照（逐条读 `/dev/mem`），**不是** CPython 的 GC 本体；`cmark` 只作参考。
+> 与 CPython 的主对比见上面的主表（`gc_probe.py` 的 `gc.collect()`）；`py_bfs.py` 只是另一种
+> Python 实现的参照（逐条读 `/dev/mem`），**不是** CPython 的 GC 本体；`cmark` 只作参考。
 
 ## Debug & Monitoring
 
@@ -545,7 +546,8 @@ FPGA Offload GC Coprocessor for CPython/
 │    zynq_fsbl.elf  mount_data.sh          -> BOOT 分区
 │    userdata/                             -> USERDATA 分区
 │        run_gc.sh  run_cmark.sh  run_repeat.sh  gc_test.py  cmark
-│        bin/test_main   tests/(gc_probe.py, irq_drv_test.sh, py_bfs.py)
+│        bin/test_main   tests/(gc_probe.py, irq_drv_test.sh, py_bfs.py,
+│                              abort_test.py, abort_sweep.py, done_race_test.py)
 │        py/(fogccc.py, libfogccc.so)   ko/(内核模块, 不入库)   logs/(板上生成)
 └─ petalinux/BUILD_GUIDE.md     构建步骤
 ```

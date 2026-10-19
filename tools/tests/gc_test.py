@@ -136,14 +136,12 @@ def main():
         wr(R_CTRL, CTRL_CLEAR_Q)
         time.sleep(0.002)
 
-        cyc0 = rr(R_CYCLES)
-        mkd0 = rr(R_MARKED)
         t0 = time.time()
         wr(R_CTRL, CTRL_START)
         # START is a posted write: read CTRL once to flush it, then poll DONE.
         # (Polling CYCLES alone mis-reported NO-RUN when two runs happened to
         # produce the same cycle count.)
-        rd_ctrl_flush = rr(R_CTRL)
+        _ = rr(R_CTRL)   # flush the posted START write
         time.sleep(0.0002)
         ran = False
         deadline = t0 + 3.0
@@ -151,7 +149,6 @@ def main():
             if rr(R_CTRL) & CTRL_DONE:
                 ran = True; break
             time.sleep(0.0002)
-        hw_wall = time.time() - t0
         ctrl    = rr(R_CTRL)
         st      = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr
         hw_mkd  = rr(R_MARKED)

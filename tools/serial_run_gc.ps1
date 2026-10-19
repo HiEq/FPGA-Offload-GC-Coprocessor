@@ -88,7 +88,9 @@ Write-Host "--- 3) run_gc.sh ---"
 # still holds the whole session, and an old 'FAILED' line used to report
 # finished=True a couple of seconds after the run started.
 $from = $s.Sb.Length
-SendLine "sh /mnt/userdata/run_gc.sh; echo RUN_GC_RC=$?"
+# `$? must reach the board literally: in a double-quoted string PowerShell
+# would expand it to True/False here (that bug made the RC line unusable).
+SendLine "sh /mnt/userdata/run_gc.sh; echo RUN_GC_RC=`$?"
 $done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' -MaxMs 420000 -From $from
 Write-Host ("  finished = " + $done)
 # Let the shell print the exit-code line that follows the summary.
@@ -123,7 +125,12 @@ if ($ml -match 'PASSED \(all invariants\):\s*(\d+)/(\d+)') {
         exit 1
     }
 }
-# The board's own exit code is the last word.
+# The board's own exit code is the last word, and it must actually be present:
+# a truncated transcript that never shows RUN_GC_RC is not a pass.
+if (-not $rcLine) {
+    Write-Host "RESULT: FAIL (no RUN_GC_RC line; transcript truncated?)"
+    exit 1
+}
 if ($rcLine -match 'RUN_GC_RC=(\d+)' -and $Matches[1] -ne '0') {
     Write-Host ("RESULT: FAIL (run_gc.sh exit " + $Matches[1] + ")")
     exit 1

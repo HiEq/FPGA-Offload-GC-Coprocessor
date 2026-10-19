@@ -53,7 +53,14 @@ for %%L in (1 2 4 8 16 24 32) do (
       echo SIM FAILED at LAT=%%L - see lat_L%%L.log
       set "FAILED=1"
     ) else (
-      echo done LAT=%%L
+      rem The PASS banner is the positive evidence; a missing one is a failure.
+      findstr /C:"[TB] ==================== PASS" lat_L%%L.log >nul
+      if errorlevel 1 (
+        echo NO PASS BANNER at LAT=%%L - see lat_L%%L.log
+        set "FAILED=1"
+      ) else (
+        echo done LAT=%%L
+      )
     )
   )
 )

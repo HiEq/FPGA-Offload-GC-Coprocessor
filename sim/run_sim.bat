@@ -52,9 +52,18 @@ rem xsim exits 0 when the TB reports failures, so grep the transcript.
 findstr /C:"[TB][FAIL]" /C:"[AXI][FAIL]" xsim_tb.log >nul
 if not errorlevel 1 goto :tbfail
 
+rem A truncated/empty log must not pass either: the TB prints this banner only
+rem after every check has run, so its absence means the verdict never happened.
+findstr /C:"[TB] ==================== PASS" xsim_tb.log >nul
+if errorlevel 1 goto :nopass
+
 echo === SIM DONE ===
 echo cache dir: %CACHE%
 exit /b 0
+
+:nopass
+echo === SIM DID NOT REACH ITS PASS BANNER (see %CACHE%\xsim_tb.log) ===
+exit /b 1
 
 :tbfail
 echo === SIM REPORTED FAILURES (see %CACHE%\xsim_tb.log) ===

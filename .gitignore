@@ -16,7 +16,8 @@ vivado/*.jou
 *.ltx
 
 # 构建产物: image.ub 有 106MB, 超过 GitHub 单文件 100MB 限制, 不入库
-# (可由 PetaLinux 重新生成; BOOT.BIN 等小件仍然入库)
+# (可由 PetaLinux 重新生成)。厂商启动产物 (BOOT.BIN / zynq_fsbl.elf / system.dtb)
+# 同样不入库，只在 GitHub Release 提供 —— 见 NOTICE。
 artifacts/image.ub
 
 # 运行日志
@@ -54,6 +55,8 @@ tools/logs/*
 !tools/logs/cmark_sweep*.log
 !tools/logs/board_benchmark_*.txt
 !tools/logs/board_test_main_*.txt
+!tools/logs/xsim_*.log
+!tools/logs/board_coldboot_*.log
 tools/__pycache__/
 
 # 本地存档: 改造前的 XSA/bitstream (17 MB, 不入库)
