@@ -3,7 +3,7 @@
 # 平台: Xilinx Zynq-7000 XC7Z100
 #
 # 用法 (三选一):
-#   1. Vivado Tcl Console:  source C:/Users/wwwmt/Desktop/fogccc/vivado/build.tcl
+#   1. Vivado Tcl Console:  source <repo>/legacy/original-v1/vivado/build.tcl   （脚本自己按 info script 定位，与当前目录无关）
 #   2. Vivado Tcl Console:  cd到本目录后:  source build.tcl
 #   3. 命令行:              vivado -mode batch -source build.tcl
 #

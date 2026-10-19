@@ -5,42 +5,22 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-# Port auto-detection: the CH340 re-enumerates across reboots (COM3 -> COM5 ...).
-# Pass -Port COMx to override.
-. (Join-Path $PSScriptRoot 'serial-port.ps1')
-$Port = Resolve-SerialPort $Port
-$sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
-$sp.ReadBufferSize = 65536; $sp.ReadTimeout = 200
-$sp.Open()
-$sb = New-Object System.Text.StringBuilder
+# Port auto-detection + shared plumbing: see serial-session.ps1
+# (serial-port.ps1 is dot-sourced from there).
+. (Join-Path $PSScriptRoot 'serial-session.ps1')
 
-function Pump([int]$ms) {
-    $end = (Get-Date).AddMilliseconds($ms)
-    while ((Get-Date) -lt $end) {
-        try { $c = $sp.ReadExisting(); if ($c) { [void]$sb.Append($c) } } catch {}
-        Start-Sleep -Milliseconds 20
-    }
-}
-function PumpUntil([string]$pattern, [int]$maxMs) {
-    $end = (Get-Date).AddMilliseconds($maxMs)
-    while ((Get-Date) -lt $end) {
-        try { $c = $sp.ReadExisting(); if ($c) { [void]$sb.Append($c) } } catch {}
-        if ($sb.ToString() -match $pattern) { return $true }
-        Start-Sleep -Milliseconds 20
-    }
-    return $false
-}
+$s = New-BoardSerialSession -Port $Port
+Read-BoardSerial -Session $s -Ms 300
+$s.Sp.Write("`n")
+Read-BoardSerial -Session $s -Ms 400
 
-Pump 300
-$sp.Write("`n")
-Pump 400
-foreach ($chunk in ($Cmd -split '(?<=\G.{16})')) {
-    if ($chunk -ne '') { $sp.Write($chunk); Start-Sleep -Milliseconds 30 }
-}
-$sp.Write("`n")
-[void](PumpUntil '#\s*$' $WaitMs)
-Pump 300
-$sp.Close()
+# The offset matters: without it an old prompt already sitting in the buffer ends
+# the wait before this command has produced anything. serial_run_gc.ps1 had been
+# fixed for that; this script still had the bug.
+$from = $s.Sb.Length
+Write-BoardSerialLine -Session $s -Text $Cmd -SettleMs 0
+[void](Read-BoardSerialUntil -Session $s -Pattern '#\s*$' -MaxMs $WaitMs -From $from)
+Read-BoardSerial -Session $s -Ms 300
+Close-BoardSerialSession -Session $s
 
-$t = $sb.ToString()
-($t -split "`r?`n") | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 40 | ForEach-Object { "  | " + ($_ -replace '\x1b\[[0-9;?]*[a-zA-Z]','' -replace '\x1b','') }
+Get-BoardSerialTail -Session $s -Lines 40 | ForEach-Object { "  | " + $_ }

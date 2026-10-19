@@ -56,11 +56,16 @@ FOGCCC 串口控制台 —— 使用说明
     serial_run_gc.ps1   性能基准：串口执行 gc_test 并解析结果
   基础设施
     serial-monitor.ps1  控制台后端（与 LINUX-FPGA 工程共用同一份；等端口/时间戳/宿主时间同步）
+                        注意：它**故意**不依赖 serial-session.ps1 —— 它是跨仓字节一致的
+                        共享件，要动就必须两个仓库同一次提交一起动。
+    serial-session.ps1  会话公共件：开端口 / 收字节 / 分块写 / 等提示符 / 去 ANSI / 取末尾 N 行
+                        serial_cmd.ps1 和 serial_run_gc.ps1 都只调它，不再各写一份
     log.bat             查看串口日志
-    serial_cmd.ps1      串口发送命令并抓取输出
+    serial_cmd.ps1      串口发送命令并抓取输出（很薄，逻辑都在 serial-session.ps1）
     serial-port.ps1     串口自动识别 (CH340)，上面各脚本默认 -Port auto
     logs\               脚本日志输出，已加入 .gitignore
   tests\
+    test-serial-session.ps1  串口公共件的单元测试（不需要板子，含"旧 buffer 里的提示符"负控）
     gc_test.py          板级测试，与卡上 run_gc.sh 同一份
     irq_drv_test.sh     中断端到端验证，验收级
     run_cmark_sweep.ps1 72 次参数扫描，C 基线数据来源

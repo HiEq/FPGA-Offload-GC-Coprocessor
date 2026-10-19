@@ -54,3 +54,18 @@ vivado/artifacts_before_axi_fix/
 
 # 卡镜像里的 Python 绑定必须随卡发布 (板上没有 gcc 不能现编)
 !artifacts/userdata/py/libfogccc.so
+
+# ============================================================
+# 第三方 / 可再生成的启动产物 —— **不入库**（MIT 不覆盖它们，见 NOTICE）
+#
+#   * zynq_fsbl.elf  Xilinx 的 FSBL 二进制（厂商代码，许可证不属于本仓）
+#   * BOOT.BIN       FSBL + U-Boot(GPL-2.0+) + bitstream 的打包产物
+#   * system.dtb     PetaLinux 生成物（源在 driver/ 与 petalinux/ 的 dtsi）
+#
+# 这三样都能用 petalinux/build_fogccc2.sh 重新生成；
+# 要对外发布二进制就走 GitHub Release，并各自保留上游许可证。
+# 注意：boot.scr 是 mkimage 对**本仓自己的启动脚本**打的包，内容不是厂商代码，保留入库。
+# ============================================================
+artifacts/BOOT.BIN
+artifacts/zynq_fsbl.elf
+artifacts/system.dtb

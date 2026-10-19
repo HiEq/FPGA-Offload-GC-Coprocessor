@@ -2,100 +2,63 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Port auto-detection: the CH340 re-enumerates across reboots (COM3 -> COM5 ...).
-# Pass -Port COMx to override.
-. (Join-Path $PSScriptRoot 'serial-port.ps1')
-$Port = Resolve-SerialPort $Port
+# Port auto-detection + shared plumbing live in serial-session.ps1, which in
+# turn dot-sources serial-port.ps1. This script used to carry its own copy of
+# the open/pump/send/ANSI-strip code; keeping one copy stops the two variants
+# from drifting again.
+. (Join-Path $PSScriptRoot 'serial-session.ps1')
+
 # logs directory
 $logDir = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $outFile = "$PSScriptRoot\logs\board_verify_$stamp.log"
 
-$sp = New-Object System.IO.Ports.SerialPort $Port,115200,'None',8,'One'
-$sp.ReadBufferSize  = 65536
-$sp.WriteBufferSize = 65536
-$sp.ReadTimeout     = 200
-$sp.WriteTimeout    = 3000
-$sp.Open()
-Write-Host "opened $Port @ 115200"
+$s = New-BoardSerialSession -Port $Port
+Write-Host ("opened {0} @ {1}" -f $s.Port, $s.Baud)
 
-$sb = New-Object System.Text.StringBuilder
-
-function Pump([int]$ms) {
-    $end = (Get-Date).AddMilliseconds($ms)
-    while ((Get-Date) -lt $end) {
-        try { $c = $sp.ReadExisting(); if ($c) { [void]$sb.Append($c) } } catch {}
-        Start-Sleep -Milliseconds 15
-    }
+# Thin wrappers so the body below reads like the original script.
+function SendLine([string]$text) {
+    Write-Host ("> " + $text)
+    Write-BoardSerialLine -Session $s -Text $text
 }
-
-# $from makes a caller ignore everything already in $sb. The buffer keeps the whole
-# session (login banner, earlier commands), so a stale line there would satisfy the
-# pattern before the new command has produced a single byte.
-function PumpUntil([string]$pattern, [int]$maxMs, [int]$from = 0) {
-    $end = (Get-Date).AddMilliseconds($maxMs)
-    while ((Get-Date) -lt $end) {
-        try { $c = $sp.ReadExisting(); if ($c) { [void]$sb.Append($c) } } catch {}
-        if ($sb.Length -gt $from -and $sb.ToString($from, $sb.Length - $from) -match $pattern) { return $true }
-        Start-Sleep -Milliseconds 15
-    }
-    return $false
-}
-
-function SendLine([string]$s) {
-    Write-Host ("> " + $s)
-    for ($i = 0; $i -lt $s.Length; $i += 16) {
-        $n = [Math]::Min(16, $s.Length - $i)
-        $sp.Write($s.Substring($i, $n))
-        Start-Sleep -Milliseconds 30
-    }
-    $sp.Write("`n")
-    Start-Sleep -Milliseconds 400
-}
-
-function Cmd([string]$s, [int]$waitMs) {
-    $from = $sb.Length
-    SendLine $s
-    if (-not (PumpUntil '#\s*$' $waitMs $from)) {
-        Write-Host ("  (no prompt within {0} ms after: {1})" -f $waitMs, $s)
-    }
-    Pump 200
+function Cmd([string]$text, [int]$waitMs) {
+    [void](Invoke-BoardSerialCommand -Session $s -Text $text -WaitMs $waitMs -Echo -WarnOnTimeout)
 }
 
 # ================= 1) login =================
 Write-Host "--- 1) login ---"
-Pump 500
-$sp.Write("`r")
-Pump 1200
+Read-BoardSerial -Session $s -Ms 500
+$s.Sp.Write("`r")
+Read-BoardSerial -Session $s -Ms 1200
 
 $loggedIn = $false
 for ($try = 1; $try -le 3; $try++) {
-    if ($sb.ToString() -match '#\s*$') { $loggedIn = $true; break }
+    if ($s.Sb.ToString() -match '#\s*$') { $loggedIn = $true; break }
     Write-Host ("  attempt " + $try + ": sending user root")
-    $sp.Write("root`n")
-    Pump 2500
-    if ($sb.ToString() -match 'Password:') {
+    $s.Sp.Write("root`n")
+    Read-BoardSerial -Session $s -Ms 2500
+    if ($s.Sb.ToString() -match 'Password:') {
         Write-Host "  password prompt -> sending empty password"
-        $sp.Write("`n")
-        Pump 2500
+        $s.Sp.Write("`n")
+        Read-BoardSerial -Session $s -Ms 2500
     }
-    if (PumpUntil '#\s*$' 15000) { $loggedIn = $true; break }
+    if (Read-BoardSerialUntil -Session $s -Pattern '#\s*$' -MaxMs 15000) { $loggedIn = $true; break }
 }
 Write-Host ("  logged in = " + $loggedIn)
 if (-not $loggedIn) {
     Write-Host "  LOGIN FAILED, tail:"
-    $t = $sb.ToString()
-    ($t -split "`r?`n") | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 15 | ForEach-Object { "  | " + $_ }
-    $sp.Close()
-    [System.IO.File]::WriteAllText($outFile, $sb.ToString())
+    Get-BoardSerialTail -Session $s -Lines 15 | ForEach-Object { "  | " + $_ }
+    Close-BoardSerialSession -Session $s
+    [System.IO.File]::WriteAllText($outFile, $s.Sb.ToString())
     exit 2
 }
-Pump 400
+Read-BoardSerial -Session $s -Ms 400
 
-# ================= 1b) 宿主时间同步 =================
-# 板上没有 RTC 也没有网络, 每次上电时钟都退回 2018-03-09. 这里把宿主的 UTC 时间灌进去,
-# 这样 run_gc.sh 写出的 gc_run_*.log 文件名才是真实日期.
+# ================= 1b) host time sync =================
+# The board has no RTC and no network, so its clock falls back to 2018-03-09 on
+# every power-up. Push the host's UTC time in, so run_gc.sh writes its
+# gc_run_*.log files under a real date.
 Write-Host "--- 1b) host time sync ---"
 $hostUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
 Cmd "date -s '$hostUtc'" 8000
@@ -112,24 +75,23 @@ Cmd "cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpga-manager
 
 # ================= 3) run_gc.sh =================
 Write-Host "--- 3) run_gc.sh ---"
-# Only output produced from here on may satisfy the verdict pattern: $sb still holds
-# the whole session, and an old 'FAILED' line in it used to report finished=True a
-# couple of seconds after the run started.
-$from = $sb.Length
+# Only output produced from here on may satisfy the verdict pattern: the buffer
+# still holds the whole session, and an old 'FAILED' line used to report
+# finished=True a couple of seconds after the run started.
+$from = $s.Sb.Length
 SendLine "sh /mnt/userdata/run_gc.sh"
-$done = PumpUntil 'PASSED \(all invariants\)|FAILED|Traceback' 420000 $from
+$done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback' -MaxMs 420000 -From $from
 Write-Host ("  finished = " + $done)
 if ($done) {
-    $new = $sb.ToString($from, $sb.Length - $from)
+    $new = $s.Sb.ToString($from, $s.Sb.Length - $from)
     $ml  = ($new -split "`r?`n") | Where-Object { $_ -match 'PASSED \(all invariants\)|FAILED|Traceback' } | Select-Object -First 1
-    Write-Host ("  verdict line: " + (($ml -replace '\x1b\[[0-9;?]*[a-zA-Z]','' -replace '\x1b','').Trim()))
+    Write-Host ("  verdict line: " + ((ConvertFrom-Ansi $ml).Trim()))
 }
-Pump 3000
+Read-BoardSerial -Session $s -Ms 3000
 
-$sp.Close()
-[System.IO.File]::WriteAllText($outFile, $sb.ToString())
+Close-BoardSerialSession -Session $s
+[System.IO.File]::WriteAllText($outFile, $s.Sb.ToString())
 Write-Host ("transcript: " + $outFile)
 
-$t = $sb.ToString()
 Write-Host "--- tail ---"
-($t -split "`r?`n") | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 30 | ForEach-Object { "  | " + ($_ -replace '\x1b\[[0-9;?]*[a-zA-Z]','' -replace '\x1b','') }
+Get-BoardSerialTail -Session $s -Lines 30 | ForEach-Object { "  | " + $_ }

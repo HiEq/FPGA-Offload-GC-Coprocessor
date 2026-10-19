@@ -61,6 +61,49 @@ FPGA 异步垃圾回收协处理器原型 — 将 CPython GC 的**标记阶段�
 | 时序（本板） | WNS +1.854 ns ／ WHS +0.052 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
+### 构建工具链版本（要复现就照这个配）
+
+> 下面每一行都是**从构建产物或工具本身读出来的**（2026-10-19 在构建机 WSL 里实测），
+> 不是从文档抄的；「怎么取的」列写了依据，方便别人自己复核。
+
+| 环节 | 工具 / 库 | 版本 | 怎么取的 |
+| --- | --- | --- | --- |
+| PL 位流、JTAG | Vivado（含 `xsdb` / `hw_server`） | **2026.1**（SW Build 6511674，2026-06-16） | `vivado -version` |
+| 板卡系统 | PetaLinux | **2026.1**（SDK `release-S06060014`，metadata `3bcef3b6`） | `~/xilinx/petalinux/settings.sh`、SDK `version-*` |
+| 交叉编译 | gcc | **13.4.0**（`arm-amd-linux-gnueabi-gcc`） | `$CC --version` |
+| 交叉编译 | gcc 目标选项 | `-mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -mthumb`（SDK 的 `$CC` 已内含） | `echo $CC` |
+| 构建工具 | GNU Make | **4.3** | `make --version` |
+| 构建工具 | CMake | SDK 自带 **3.28.3** —— **本仓构建不使用 CMake** | `cmake --version` |
+| 构建主机 | Ubuntu（WSL2） | **22.04.5 LTS** | `/etc/os-release` |
+| 目标 rootfs | glibc | **2.39**（`2.39+git0+ce65d944e3`） | 镜像 manifest + sysroot 的 `lib/libc.so.6` |
+| 目标 rootfs | BusyBox / OpenSSL | **1.36.1** / **3.2.6** | 镜像 manifest |
+| 目标 rootfs | Python | **3.12.12**（`python3-core` / `python3-ctypes` 等） | 镜像 manifest |
+| 内核 | linux-xlnx | **6.18.10+git+v2026.1** | `build/tmp/work/.../linux-xlnx/` |
+| Bootloader | u-boot-xlnx | **2026.01-xilinx-v2026.1+git** | `build/tmp/work/.../u-boot-xlnx/` |
+
+复现时真正会踩的五个坑：
+
+1. **本仓不用 CMake**（全仓没有 `CMakeLists.txt`）：交叉编译就是 `make` + SDK 的 `$CC`，
+   只链 `-lrt` 与 libc，没有任何第三方 C 依赖。所以「CMake 版本」对复现不构成约束 ——
+   上表那一行只是 SDK 自带版本，供对照。
+2. **交叉前缀别照抄根 `Makefile` 的提示**：`Makefile` 里写的是
+   `make CROSS=arm-linux-gnueabihf-`，但 **PetaLinux 2026.1 的 SDK 没有这个三元组**
+   （实测 `arm-linux-gnueabihf-gcc: NOT FOUND`），它提供的是 `arm-amd-linux-gnueabi-gcc`。
+   按「Quick Start §3」那样先 `source environment-setup-...` 再用 `$CC` 最稳。
+3. **忘了 `source` 会静默编出 x86 的 `.so`**（构建主机上是 Ubuntu 的 gcc 11.4.0），
+   拷到板上才报 `Exec format error`。判据：`file libfogccc.so` 必须写 `ARM, EABI5`。
+4. **Python 侧只用标准库**：`fogccc.py` / `gc_test.py` / `py_mark.py` 只 import
+   `ctypes` / `mmap` / `struct` / `time` / `random` / `sys`。本 rootfs **明确没装 numpy**
+   （`petalinux/project-spec/configs/rootfs_config` 里 `CONFIG_python3-numpy is not set`），
+   所以脚本不要引第三方包；板上的 Python 是 **3.12.12**，按 3.12 写就够。
+5. **glibc 在 sysroot 与镜像里是同一套 2.39+**，所以交叉编出来的 `.so` 在板上一定能加载；
+   换 SDK 版本时这两个版本必须一起动，否则会出现「编得过、板上加载失败」。
+
+> 口径说明：Python / 内核 / libc 的版本读自 **PetaLinux 工程的构建产物**
+> （`build/tmp/deploy/images/<machine>/petalinux-image-minimal-<machine>.manifest`
+> 与 `build/tmp/work/...` 目录），等价于板上实际运行值；板上 `python3 -V`、`uname -r`
+> 是最直接的确认方式，开机后可以补一行存档。
+
 ## 目录结构
 
 ```
@@ -139,6 +182,11 @@ $CC -O2 -o test_main csrc/fpga_gc.c csrc/test_main.c
 cd /run/media/USERDATA-mmcblk0p2        # udev 按卷标自动挂；仓库脚本用的 /mnt/userdata 见「上板流程」
 sudo ./bin/test_main
 ```
+
+> 工具链版本（Vivado / PetaLinux / gcc / glibc / Python）和两个最容易踩的坑见上文
+> 「Platform → 构建工具链版本」。特别提醒：根 `Makefile` 里那句
+> `make CROSS=arm-linux-gnueabihf-` 在 PetaLinux 2026.1 的 SDK 上**用不了**，
+> 按下面的 `$CC` 写法最稳。
 
 `test_main` 会用 `popen` 调用 `tests/py_mark.py` 测 CPython 基准。代码里的默认值就是
 `/run/media/USERDATA-mmcblk0p2/tests/py_mark.py`，而这个目录每次开机都在，所以**不用传参**；
@@ -378,7 +426,21 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 ila_0
 
 ## License
 
-MIT License
+MIT License（见 `LICENSE`）。
+
+**但不是整仓都 MIT** —— 完整边界写在 [`NOTICE`](NOTICE) 里，最要紧的两条：
+
+1. **内核驱动是 GPL-2.0**：`driver/fogccc_irq.c` 与
+   `driver/plnx/fogccc-irq/files/fogccc-irq.c` 的首行是
+   `SPDX-License-Identifier: GPL-2.0`（它们要编进 Linux 内核）。
+   源码就在仓库里，所以发 `.ko` 是合规的；但**别把这两份文件标成 MIT**。
+2. **厂商的启动产物不入库**：`BOOT.BIN`（内含 Xilinx FSBL + U-Boot GPL-2.0+）、
+   `zynq_fsbl.elf`、`image.ub`、`system.dtb` 都能用
+   `petalinux/build_fogccc2.sh` 重新生成，已在 `.gitignore` 里排除。
+   **不要把 BOOT.BIN 当作 MIT 产物再分发。**
+
+仓库里没有包含 AMD 的源代码或文档正文：`vivado/build.tcl` 里只有 IP 配置参数
+（`CONFIG.PCW_*` 等），这是用 Tcl 实例化 IP 的标准做法。
 
 ---
 
