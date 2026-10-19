@@ -104,16 +104,26 @@ module gc_axi_read #(
     wire [PW-1:0] h1nxt = h1cnt + ((ar_hs &&  ar_sel) ? 1'b1 : 1'b0);
     wire [PW-1:0] ho_cnt = h0nxt + h1nxt;
     wire          ho_full = (ho_cnt >= MAXO[PW-1:0]);
+    reg  flushing = 1'b0;          // run_start: discard the previous run's AR responses
     wire ready0 = !c0empty && (h0nxt < MAXO[PW-1:0]);
     wire ready1 = !c1empty && (h1nxt < MAXO[PW-1:0]);
     wire issue0 = ready0 && (ready1 ? (last_served == 1'b1) : 1'b1);
     wire issue1 = ready1 && (ready0 ? (last_served == 1'b0) : 1'b1);
-    wire issue_any = (issue0 || issue1) && !ho_full;
+    wire issue_any = (issue0 || issue1) && !ho_full && !flushing;
 
     // RID 在 RVALID 有效时可用; 按 ID 分流
     wire r_is1  = (RID[0] == 1'b1);
     wire r_full = r_is1 ? d1full : d0full;
-    assign RREADY = ~r_full;
+
+    // ---- run_start flush -------------------------------------------------
+    // A run can finish (or be aborted) while commands are still queued, ARs are
+    // still in flight, or data sits unread in the FIFO. The next run would then
+    // consume that data as its own: out-of-order refs, a bogus STATUS[2]
+    // (consume > issue) and wrong marks. Board evidence: done_race_test.py P3
+    // (every run after the first reported STATUS=0x4; one run marked 964 of an
+    // expected 768). On run_start we drop the queued commands, drop the buffered
+    // data, and keep discarding responses until every pre-flush AR has returned.
+    assign RREADY = flushing ? 1'b1 : ~r_full;
 
     always @(posedge ACLK or negedge ARESETN) begin
         if (!ARESETN) begin
@@ -135,7 +145,18 @@ module gc_axi_read #(
             ar_sel  <= 1'b0;
             last_served <= 1'b0;
             err     <= 1'b0;
+            flushing <= 1'b0;
         end else begin
+            if (run_start) begin
+                c0r <= c0w;                 // commands the engine queued but never issued
+                c1r <= c1w;
+                d0r <= d0w;                 // data nobody consumed
+                d1r <= d1w;
+                flushing <= 1'b1;           // discard responses still in flight
+            end else if (flushing && h0empty && h1empty) begin
+                flushing <= 1'b0;           // every pre-flush AR has come back
+            end
+
             if (cmd0_valid && cmd0_ready) begin
                 c0f[c0w] <= {cmd0_addr[2], cmd0_addr};
                 c0w <= c0w + 1'b1;
@@ -181,7 +202,15 @@ module gc_axi_read #(
             if (run_start)
                 err <= 1'b0;          // README: STATUS[1] clears on every start
 
-            if (RVALID && RREADY) begin
+            if (RVALID && RREADY && flushing) begin
+                // Stale response from the previous run: pop its tracking entry and
+                // throw the data away.
+                if (r_is1) begin
+                    if (!h1empty) h1r <= h1r + 1'b1;
+                end else begin
+                    if (!h0empty) h0r <= h0r + 1'b1;
+                end
+            end else if (RVALID && RREADY) begin
                 if (RRESP != 2'b00 && !run_start)
                     err <= 1'b1;
                 if (r_is1) begin

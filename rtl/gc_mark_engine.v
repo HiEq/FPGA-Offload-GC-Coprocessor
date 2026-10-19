@@ -290,6 +290,15 @@ module gc_mark_engine (
     if ((start && (state == S_IDLE)) || abort) begin   // only when the FSM accepts the start
                 iss_cnt <= 32'd0;
                 err_hdr <= 1'b0;      // 同理: err_hdr 只在本块驱动, 清零也放这里
+                // Abort must also drop what the aborted run left in the prefetch and
+                // issue pipeline. Without this the next run consumes those stale
+                // entries (iss_cnt was just zeroed) and reports a bogus reference
+                // desync (STATUS[2]) -- and across different graphs it would mark
+                // the previous graph's objects. Board test: abort_test.py T4.
+                dq_cnt  <= 4'd0;
+                pf_cnt  <= 3'd0;
+                pf_iss  <= 3'd0;
+                pf_head <= 2'd0;
             end
         end
     end

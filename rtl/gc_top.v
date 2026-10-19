@@ -304,7 +304,7 @@ module gc_top (
     gc_queue u_queue (
         .clk    (S_AXI_ACLK),
         .rst_n  (S_AXI_ARESETN),
-        .clear  (w_clear_q),
+        .clear  (w_clear_q | w_abort),   // abort must drop the aborted run's work queue
         .waddr  (w_q_push_addr),
         .wdata  (w_q_push_data),
         .we     (w_q_push),

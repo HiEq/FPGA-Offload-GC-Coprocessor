@@ -223,7 +223,7 @@ python3 python/benchmark.py
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE 并清 DONE；仿真 `T-ABORT` 已红→绿验证，板上未单独测；驱动超时路径会写它） [31]=done |
+| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE、清 DONE、清 BFS 队列与读流水线；仿真 `T-ABORT`/`T-ABORT2` 红→绿 + 板上 `tools/tests/abort_test.py` T1–T5；个别时序下 abort 后 `STATUS[1]` 会误置，见 AGENTS gap 13；驱动超时路径会写它） [31]=done |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量 |
@@ -252,6 +252,12 @@ python3 python/benchmark.py
 | 时钟 | **FCLK0 = 100MHz** | 引擎 / AXI-Lite / AXI HP 同一域，**无 CDC** |
 | 位图 | 4096×32 = 128 Kb | 对象 x 的状态 = `mem[x]` 的第 `x%32` 位 |
 | 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满 |
+
+> **起跑排空（`run_start` flush）**：一次运行可能在命令还没发完、AR 还在途、数据还没被消费时就结束
+> （或被 abort）。这些残留如果留到下一轮，会被当成新一轮的数据：顺序错位、`STATUS[2]`（消费>发出）
+> 误报，甚至多标对象。所以 `gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
+> 并把在途响应逐拍丢掉，直到两条流的在途计数归零才开始发新命令。
+> 板级证据：`tools/tests/done_race_test.py` 的 P3（修前每轮 `STATUS=0x4`、有一轮标了 964/768）。
 
 ## Object Graph DDR Format
 
@@ -325,6 +331,8 @@ python3 python/benchmark.py
 | **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
 | **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
+| **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
+| **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0`（驱动只写 `START`，这条才是真实路径） |
 | **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
 
@@ -493,11 +501,12 @@ FPGA Offload GC Coprocessor for CPython/
 仓库只保留可复现的构建配置。
 `BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
-| Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
-> ⚠️ 下表是 **GitHub Release 资产**的哈希（2026-10-19 用 Releases API 的 `sha256` 复核过），**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+> ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空」修复的比特流（md5 `55414EE5…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同）。
 
+| Release | 对应版本 | `BOOT.BIN` md5 | `image.ub` md5 |
 | --- | --- | --- | --- |
-| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + rootfs 精简 | `04CFEC20A279CFA2F03225481D42D0EF` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| [`v4-optimized`](../../releases/tag/v4-optimized) | 当前优化版（`dev-hieq`）：双流流水 + 对象头预取 + 位图读回探针 + 读流水线起跑排空 + rootfs 精简 | `55414EE5CC125325F9BD35FD989FDF16` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | [`v1-original`](../../releases/tag/v1-original) | 原始未优化版（标签 `v1-original`：单笔未完成读，AXI HP 200MHz + CDC） | `A33C0591E8455C798955DEB18493B0E6` | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 
 > 每个 release 只放自己那一版的 `BOOT.BIN`，加同一份精简 `image.ub`。

@@ -672,14 +672,25 @@ module tb_gc_top;
         if (rd_val !== 32'h0004_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
+        // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
+        // The refs matter: a stale queue entry with rc=0 would be popped but never
+        // issued, so it could not expose the desync (consume-with-nothing-issued).
+        // A chain would keep the queue at depth 0..1 and leave nothing to inherit.
         begin : t_ab_gen
-            integer i;
+            integer i, w;
             for (i = 0; i < 32; i = i + 1) begin
                 mem[(i*16)/4 + 0] = i;
-                mem[(i*16)/4 + 1] = 1;
-                mem[(i*16)/4 + 2] = BASE + ref_base + i*8;
-                mem[(ref_base + i*8)/4 + 0] = (i < 31) ? (i + 1) : 32'hFFFFFFFF;
-                mem[(ref_base + i*8)/4 + 1] = 32'hFFFFFFFF;
+                mem[(i*16)/4 + 1] = (i == 0) ? 31 : 1;
+                mem[(i*16)/4 + 2] = (i == 0) ? (BASE + ref_base)
+                                             : (BASE + ref_base + (32 + (i-1)*2)*4);
+            end
+            for (i = 0; i < 31; i = i + 1)
+                mem[ref_base/4 + i] = i + 1;
+            mem[ref_base/4 + 31] = 32'hFFFFFFFF;
+            for (i = 1; i < 32; i = i + 1) begin
+                w = ref_base/4 + 32 + (i-1)*2;
+                mem[w]     = (i < 31) ? (i + 1) : 1;
+                mem[w + 1] = 32'hFFFFFFFF;
             end
         end
         axil_wr(R_BASE,  BASE);
@@ -688,8 +699,15 @@ module tb_gc_top;
         axil_wr(R_RLIST, 32'd0);
         axil_wr(R_CTRL, 32'h6);
         repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);                   // START
+        // Wait for real marking activity: the bitmap clear alone takes 4096 cycles,
+        // so aborting at 200 cycles leaves the queue empty and hides the bug.
+        guard = 0;
+        while ((dut.u_queue.count < 8) && guard < 20000) begin
+            @(negedge clk); guard = guard + 1;
+        end
+        $display("[TB] T-ABORT queue fill = %0d when the stall is applied", dut.u_queue.count);
         force dut.u_engine.q_pop_ack = 1'b0;      // hang the prefetcher, like T-HANG
-        axil_wr(R_CTRL, 32'h1);
         repeat (200) @(negedge clk);
         $display("[TB] T-ABORT state while hung = %0d", dut.u_engine.state);
         axil_wr(R_CTRL, 32'h8);                   // CTRL[3] = abort
@@ -700,7 +718,56 @@ module tb_gc_top;
             errors = errors + 1;
         end
         release dut.u_engine.q_pop_ack;
+        // New graph with the SAME object count (32) but a different expectation:
+        // root 0 has no refs, so exactly 1 object must be marked. The stale queue
+        // entries each still carry one ref, and with COUNT=32 those refs pass the
+        // `ref_val >= obj_count` filter -- so inheriting them shows up as a wrong
+        // count. (A smaller COUNT would silently filter them and hide the bug.)
         begin : t_ab_b
+            integer i;
+            mem[(0*16)/4 + 0] = 0;
+            mem[(0*16)/4 + 1] = 0;                        // root: no refs
+            mem[(0*16)/4 + 2] = BASE + ref_base;
+            for (i = 1; i < 32; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = 1;                    // stale objects keep one ref
+                mem[(i*16)/4 + 2] = BASE + ref_base + (32 + (i-1)*2)*4;
+            end
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd32);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+
+        // ---- T-ABORT2: START alone (no CLEAR_Q) must not inherit the aborted run ----
+        // The driver writes only CTRL[0]; CLEAR_Q is a separate register. So abort
+        // itself has to flush the work queue and the prefetch/issue pipeline.
+        // Symptom without the fix: the engine pops the leftovers and marks their
+        // refs, so the count is far above 1.
+        $display("[TB] T-ABORT2 queue count before START = %0d (expect the aborted run's leftovers)",
+                 dut.u_queue.count);
+        axil_wr(R_CTRL, 32'h1);                   // START, deliberately no CLEAR_Q
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-ABORT2 marked=%0d after abort+START without CLEAR_Q (expect 1)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T-ABORT2 marked=%0d != 1 (stale queue/pipeline survives abort)", rd_val);
+            errors = errors + 1;
+        end
+        $display("[TB] T-ABORT2 internals: qcount=%0d pf_cnt=%0d dq_cnt=%0d iss=%0d con=%0d marked_r=%0d err_ref=%b",
+                 dut.u_queue.count, dut.u_engine.pf_cnt, dut.u_engine.dq_cnt,
+                 dut.u_engine.iss_cnt, dut.u_engine.con_cnt, dut.u_engine.marked_r,
+                 dut.u_engine.err_ref);
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T-ABORT2 status=%h (expect 0)", rd_val);
+        if (rd_val !== 32'h0) begin
+            $display("[TB][FAIL] T-ABORT2 status=%h (aborted run leaked into the next run)", rd_val);
+            errors = errors + 1;
+        end
+
+        // ---- and the documented path: CLEAR_Q + START on a 3-object chain ----
+        begin : t_ab_c
             integer i;
             for (i = 0; i < 3; i = i + 1) begin
                 mem[(i*16)/4 + 0] = i;
