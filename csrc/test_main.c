@@ -23,16 +23,16 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 }
 
 // ============================================================
-// Test 1: 正确性 + 性能 (FPGA vs C vs CPython)
+// Test 1: 正确性 + 性能 (FPGA vs C vs py_bfs)
 //
 //   FPGA   : CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
 //   C      : fpga_gc_sw_mark() 的 C BFS
-//   CPython: py_bfs.py, 独立进程遍历同一块 DDR
+//   py_bfs : py_bfs.py 独立进程遍历同一块 DDR (Python 脚本参照, 不是 CPython 的 gc)
 // ============================================================
 #define PY_BFS_DEFAULT "/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py"
 
-// 让 CPython 标记同一张图, 返回毫秒 (失败返回 -1)
-static double cpython_mark_ms(const char *py, int n, uint32_t paddr,
+// 让 py_bfs.py 标记同一张图, 返回毫秒 (失败返回 -1)
+static double py_bfs_mark_ms(const char *py, int n, uint32_t paddr,
                               uint32_t root, uint32_t *count_out) {
     char cmd[512];
     if (count_out) *count_out = 0;
@@ -51,11 +51,11 @@ static double cpython_mark_ms(const char *py, int n, uint32_t paddr,
 static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     printf("\n");
     printf("=============================================================\n");
-    printf("  Test 1: correctness + speed (FPGA vs C vs CPython)\n");
+    printf("  Test 1: correctness + speed (FPGA vs C vs py_bfs)\n");
     printf("=============================================================\n");
     printf("%-8s %-8s %-11s %-11s %-13s %-8s %-9s\n",
            "Objects", "marked", "FPGA us", "C us", "py_bfs ms",
-           "vs C", "vs CPython");
+           "vs C", "vs py_bfs");
     printf("-------- -------- ----------- ----------- ------------- "
            "-------- ---------\n");
 
@@ -88,9 +88,9 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         uint32_t fpga_count = fpga_gc_mark(dev, &cycles);
         double hw_us = cycles * 0.01;          // 100 MHz -> 10 ns/cycle
 
-        // ---- CPython 基准 (独立进程, 独立实现) ----
+        // ---- py_bfs 参照 (独立进程, 独立实现) ----
         uint32_t py_count = 0;
-        double py_ms = cpython_mark_ms(py_path, n, dev->graph_paddr,
+        double py_ms = py_bfs_mark_ms(py_path, n, dev->graph_paddr,
                                        roots[0], &py_count);
 
         // ---- 结果 ----
@@ -140,10 +140,10 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     if (best_py_x > 0) {
         printf("\n  >>> %d objects marked in %.1f us (%.1f ns/obj)\n",
                best_marked, best_hw_us, best_hw_us * 1000.0 / best_marked);
-        printf("  >>> CPython needs %.2f ms for the same graph\n", best_py_ms);
-        printf("  >>> FPGA is %.0fx FASTER than CPython\n", best_py_x);
+        printf("  >>> py_bfs needs %.2f ms for the same graph\n", best_py_ms);
+        printf("  >>> FPGA is %.0fx FASTER than py_bfs\n", best_py_x);
     } else if (best_n > 0) {
-        printf("\n  (CPython baseline unavailable: %s not found?)\n", py_path);
+        printf("\n  (py_bfs baseline unavailable: %s not found?)\n", py_path);
     }
 
     return all_pass;
@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
     printf("|  Platform: Xilinx Zynq-7000 XC7Z100        |\n");
     printf("+--------------------------------------------+\n");
     (void)argc;
-    // 可选参数: CPython 基准脚本路径
+    // 可选参数: py_bfs 参照脚本路径
     const char *py_path = (argc > 1) ? argv[1] : PY_BFS_DEFAULT;
 
     // 初始化FPGA

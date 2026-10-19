@@ -47,6 +47,10 @@ FPGA 异步垃圾回收协处理器原型 —— 将 CPython GC 的**标记阶�
 5. ARM PS 轮询完成标志，读取标记结果和周期计数
 6. CPython 据此跳过/回收未标记对象
 
+> **当前实现（别读成已接入）**：第 1、6 步还是目标形态 —— CPython 的 `gc` 模块尚未接进来。
+> 对象图由 `csrc/fpga_gc.c` / `python/fogccc.py` 按相同的「对象头 + 引用数组」布局构造，
+> 标记语义与 GC 的 mark 阶段一致，但回收动作仍由 CPython 自己完成；性能对比的基线见「测量口径」。
+
 ## Platform
 
 | 项目         | 规格                                                              |
@@ -93,7 +97,7 @@ FPGA 异步垃圾回收协处理器原型 —— 将 CPython GC 的**标记阶�
 ## 目录结构
 
 ```
-FOGCCC/
+FOGCCC2/
 ├── rtl/                    Verilog RTL 源码
 │   ├── gc_top.v            顶层 (AXI-Lite + AXI3 HP, 单时钟域无 CDC)
 │   ├── gc_regs.v           AXI-Lite 寄存器接口 (12 位地址 / 含 STATUS)
@@ -102,7 +106,7 @@ FOGCCC/
 │   ├── gc_queue.v          BFS 队列 BRAM 4096×12
 │   └── gc_axi_read.v       AXI3 读主控: 双流 (ID=0 引用 / ID=1 对象头)
 ├── sim/                    xsim 自检仿真
-│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + STATUS)
+│   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + T-ABORT/T-ABORT2 + STATUS)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真
 │   ├── tb_axi_read.v       #6 未完成读事务上限的定向测试 (+ run_axi_tb.bat)
@@ -118,6 +122,7 @@ FOGCCC/
 │   ├── build.tcl           BD + 综合 + 实现 + XSA
 │   └── build_rtl_only.tcl  复用 BD
 ├── tools/                  宿主脚本: serial_run_gc.ps1(基准) / tests/(功能) / debug/(调试)
+│   └── logs/               证据日志（只留 README 引用的那些，见其中的 README.md）
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物
@@ -171,7 +176,7 @@ sudo ./bin/test_main
 > 工具链版本见「Platform → 构建工具链版本」。根 `Makefile` 的
 > `CROSS=arm-linux-gnueabihf-` 不适用于 PetaLinux 2026.1 SDK，改用 `$CC`。
 
-`test_main` 会用 `popen` 调用 `tests/py_bfs.py` 测 CPython 基准。代码里的默认值就是
+`test_main` 会用 `popen` 调用 `tests/py_bfs.py` 测 **Python 脚本参照**（同一张图、同一套 BFS，但它是普通 Python 脚本，**不是 CPython 的 `gc`**；真正的 CPython 基线见下方「测量口径」）。代码里的默认值就是
 `/run/media/USERDATA-mmcblk0p2/tests/py_bfs.py`，而这个目录每次开机都在，所以**不用传参**；
 只有在别的挂载点（比如 `/mnt/userdata`）上跑副本时才要显式指定路径。表里三个时间都是实测：
 
@@ -184,7 +189,7 @@ sudo ./bin/test_main
 实测（XC7Z100，PL 100 MHz）：
 
 ```
-Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
+Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs py_bfs
 10       9        44.2      13.7      0.464         0.3x    11x
 100      96       57.1      60.1      4.205         1.1x    74x
 1000     945      184.7     517.1     43.033        2.8x    233x
@@ -195,7 +200,7 @@ Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
 从根 0 不可达的对象，三个实现标记的是同一张图，所以比较是公平的。
 
 > 该表是早期记录：`184.7 / 646.1 / 517.1 / 2148.3 / 169.802` 在 `tools/logs/` 中没有对应日志，
-> 按 `historical/unverified` 看待。可复核的是 `tools/logs/cmark_sweep*.log` 与 `tools/logs/board_run.log`。
+> 按 `historical/unverified` 看待。可复核的是 `tools/logs/cmark_sweep*.log` 与 `tools/logs/cmark_sweep_verify_*.log`。
 
 ### 4. Python 测试
 
@@ -586,7 +591,7 @@ D=/mnt/userdata sh tests/irq_drv_test.sh
 VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1' after='<N> 0')
 ```
 
-### 2. GC 主测试（FPGA vs CPython）
+### 2. GC 主测试（FPGA vs Python 参照）
 
 ```sh
 sh run_gc.sh                 # 默认 maxN=4096 trials=8 avg_refs=2
@@ -600,9 +605,9 @@ sh run_gc.sh 2048 5 3
 | `trials` | 随机轮数 | 8 |
 | `avg_refs` | 平均额外出度 | 2 |
 
-期望：`PASSED (all invariants): trials/trials`，并打印相对 CPython 的加速比。
+期望：`PASSED (all invariants): trials/trials`，并打印相对同一进程内 Python BFS 参照的加速比（不是 CPython 的 `gc`）。
 
-### 3. 三方对比（FPGA / C / CPython）
+### 3. 三方对比（FPGA / C / py_bfs）
 
 ```sh
 cd /run/media/USERDATA-mmcblk0p2
@@ -615,7 +620,7 @@ cd /run/media/USERDATA-mmcblk0p2
 输出一张三方对比表（三个时间都是实测）：
 
 ```
-Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
+Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs py_bfs
 ```
 
 | 列 | 来源 |
@@ -624,7 +629,7 @@ Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs CPython
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现 |
 | `py_bfs ms` | `popen` 起 `py_bfs.py` 独立进程，独立实现的 Python BFS |
 
-与另外两条命令的分工：`run_gc.sh` 只比 FPGA vs CPython，`run_cmark.sh` 只比 FPGA vs C。
+与另外两条命令的分工：`run_gc.sh` 只比 FPGA vs Python 参照，`run_cmark.sh` 只比 FPGA vs C；**真正的 CPython 基线**由 `python3 python/benchmark.py` 单独测（`gc.collect()`，含清扫，只能算上界）。
 
 ### 4. C 基准（FPGA vs C）
 
@@ -641,7 +646,7 @@ sh run_cmark.sh 2048 5 3
 sh run_repeat.sh 10          # 默认 10 次
 ```
 
-三组：不同种子 vs CPython、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
+三组：不同种子 vs Python 参照、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
 
 ### 6. 单独调用
 
