@@ -157,6 +157,13 @@ module gc_top (
         root_rd_data <= root_mem[root_rd_addr];
     end
 
+    // An unwritten root entry must read 0, never stale/X: software may set
+    // root_count larger than the number of entries it actually programmed.
+    integer root_i;
+    initial begin
+        for (root_i = 0; root_i < 256; root_i = root_i + 1) root_mem[root_i] = 32'h0;
+    end
+
     wire        w_q_push, w_q_pop;
     wire [11:0] w_q_push_data, w_q_push_addr;
     wire        w_q_pop_ack;

@@ -275,7 +275,7 @@ module gc_mark_engine (
                 pf_head <= pf_head + 2'd1;
 
             // iss_cnt 与 con_cnt 同在 start 清零; 清零留在本块以避免多驱动
-            if (start) begin
+    if (start && (state == S_IDLE)) begin   // only when the FSM accepts the start
                 iss_cnt <= 32'd0;
                 err_hdr <= 1'b0;      // 同理: err_hdr 只在本块驱动, 清零也放这里
             end

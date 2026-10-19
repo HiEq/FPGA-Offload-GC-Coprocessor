@@ -468,6 +468,26 @@ module tb_gc_top;
         end
 
         // ============================================================
+
+        // ---- T0: an unwritten root entry must read 0. Runs before anything
+        // writes root_mem, so in simulation the entry is X unless it is initialised.
+        mem[(0*16)/4 + 1] = 32'd0;
+        mem[(1*16)/4 + 1] = 32'd0;
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd2);
+        axil_wr(R_ROOTS, 32'd2);
+        axil_wr(R_RLIST, 32'd0);          // only root[0]; root[1] is never written
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T0 marked=%0d (expect 1: unwritten root reads 0)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T0 marked=%0d != 1 (root_mem not initialised)", rd_val);
+            errors = errors + 1;
+        end
         // T1: 连续两次运行 —— 回归 #1 prev_ref / #3 iss_cnt 跨运行残留
         //   小图: 0 -> [1];  1 -> 无引用;  其余不可达
         //   两次运行 marked 必须都是 2。
