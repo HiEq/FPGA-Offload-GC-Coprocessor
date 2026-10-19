@@ -133,13 +133,15 @@ static ssize_t fogccc_write(struct file *f, const char __user *buf,
 	tmp[len] = '\0';
 
 	if (!strncmp(tmp, "arm", 3)) {
-		enable_irq(virq);
-		atomic_set(&armed, 1);
+		/* enable_irq() on an already-enabled line unbalances the IRQ core,
+		 * so only the 0->1 transition touches it. */
+		if (atomic_cmpxchg(&armed, 0, 1) == 0)
+			enable_irq(virq);
 		return len;
 	}
 	if (!strncmp(tmp, "dis", 3)) {
-		disable_irq_nosync(virq);
-		atomic_set(&armed, 0);
+		if (atomic_cmpxchg(&armed, 1, 0) == 1)
+			disable_irq_nosync(virq);
 		return len;
 	}
 	return -EINVAL;

@@ -81,8 +81,6 @@ petalinux-package boot \
 | `petalinux/build_fogccc2.sh` | 主构建脚本，自动 bootstrap 并校验配置 |
 | `petalinux/project-spec/` | 工程的 config / rootfs_config / meta-user 源码 |
 | `driver/plnx/fogccc-irq/` | 中断驱动模块 recipe |
-| `petalinux/build_petalinux.sh` | 早期脚本 |
-| `petalinux/package_boot.sh` | BOOT.BIN 打包脚本 |
 | `vivado/build.tcl` | Vivado 自动构建脚本 |
 | `rtl/` | Verilog RTL 源码 |
 | `csrc/` | C 驱动程序 |
