@@ -94,8 +94,9 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
                                        roots[0], &py_count);
 
         // ---- 结果 ----
-        int match = (fpga_count == sw_count) &&
-                    (py_count == 0 || py_count == fpga_count);
+        // py_ms < 0 means the baseline could not run; one that DID run must agree.
+        int py_ok = (py_ms >= 0.0);
+        int match = (fpga_count == sw_count) && (!py_ok || py_count == fpga_count);
         char cbuf[16], pbuf[16], nbuf[16];
         if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);
         else           snprintf(cbuf, sizeof cbuf, "n/a");

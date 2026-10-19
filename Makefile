@@ -75,3 +75,10 @@ help:
 	@echo "  make clean    清理构建文件"
 	@echo ""
 	@echo "交叉编译: make CROSS=arm-linux-gnueabihf-"
+
+# 刷新卡目录：软件改过之后必须同步，否则卡上还是旧二进制
+card: all
+	@mkdir -p artifacts/userdata/py artifacts/userdata/bin
+	@cp -f csrc/libfogccc.so artifacts/userdata/py/libfogccc.so
+	@cp -f test_main artifacts/userdata/bin/test_main
+	@echo "card dir refreshed: artifacts/userdata/py/libfogccc.so + bin/test_main"

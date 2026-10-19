@@ -942,11 +942,11 @@ module tb_gc_top;
     integer pushw_run = 0;
     reg     dumped = 1'b0;
     always @(posedge clk) begin
-        if (dut.u_engine.state == 5'd15) pushw_run = pushw_run + 1;
+        if (dut.u_engine.state == 5'd14) pushw_run = pushw_run + 1;   // S_REFS_LOOP (reachable)
         else pushw_run = 0;
-        if (pushw_run > 40 && !dumped) begin
+        if (pushw_run > 2000 && !dumped) begin
             dumped = 1'b1;
-            $display("[TB][FAIL] 检测到卡死: S_REFS_PUSHW 持续 %0d 拍", pushw_run);
+            $display("[TB][FAIL] stuck: S_REFS_LOOP held for %0d cycles", pushw_run);
             $display("      engine cur=%0d rc=%0d rpi=%0d got=%0d cmd_valid=%0d cmd_ready=%0d",
                      dut.u_engine.cur_obj, dut.u_engine.ref_count,
                      dut.u_engine.ref_push_idx, dut.u_engine.ref_got,

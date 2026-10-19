@@ -17,8 +17,8 @@
 import mmap, os, struct, time, random, sys
 
 REG_BASE   = 0x43C00000
-GRAPH_BASE = int(os.environ.get('FPGA_GC_GRAPH_BASE', '0x1E000000'), 0)
-GRAPH_SIZE = int(os.environ.get('FPGA_GC_GRAPH_SIZE', '0x100000'), 0)   # OCM: 0x40000
+GRAPH_BASE = 0x1E000000
+GRAPH_SIZE = 0x100000          # 1 MiB
 
 R_CTRL, R_OBJ_BASE, R_OBJ_COUNT, R_ROOT_COUNT = 0x00, 0x04, 0x08, 0x0C
 R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18, 0x1C, 0x40, 0x20
