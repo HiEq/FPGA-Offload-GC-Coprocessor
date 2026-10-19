@@ -64,7 +64,7 @@ CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和
 5. ARM PS 轮询完成标志，读取标记结果和周期计数
 6. CPython 据此跳过/回收未标记对象
 
-> **当前实现（别读成已接入）**：第 1、6 步还是目标形态 —— CPython 的 `gc` 模块尚未接进来。
+> **当前实现2，3，4，5**：第 1、6 步还是目标形态 —— CPython 的 `gc` 模块尚未接进来。
 > 对象图由 `csrc/fpga_gc.c` / `python/fogccc.py` 按相同的「对象头 + 引用数组」布局构造，
 > 标记语义与 GC 的 mark 阶段一致，但回收动作仍由 CPython 自己完成；性能对比的基线见「测量口径」。
 
@@ -141,7 +141,7 @@ FPGA-Offload-GC-Coprocessor/
 ├── tools/                  宿主脚本
 │   ├── serial_run_gc.ps1 / serial_push_chunked.ps1 / make_manifest.ps1
 │   ├── tests/(功能测试)  debug/(调试工具)
-│   └── logs/               证据日志（只留 README 引用的那些，见其中的 README.md）
+│   └── logs/               证据日志（只留 README 引用，见其中的 README.md）
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物 + SHA256SUMS（二进制清单）
@@ -288,12 +288,6 @@ python3 python/benchmark.py
 | 位图 | 4096×32 = 128 Kb | 对象 x 的状态 = `mem[x]` 的第 `x%32` 位 |
 | 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满 |
 | FSM 编码 | 5 位 / 25 个 | 12 个在用，13 个**有意保留**（删掉只省 1 个触发器 + 几个已被综合删掉的译码 LUT，却要重排编码并重证 FSM）|
-
-> **起跑排空（`run_start` flush）**：一次运行可能在命令还没发完、AR 还在途、数据还没被消费时就结束
-> （或被 abort）。这些残留如果留到下一轮，会被当成新一轮的数据：顺序错位、`STATUS[2]`（消费>发出）
-> 误报，甚至多标对象。所以 `gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
-> 并把在途响应逐拍丢掉，直到两条流的在途计数归零才开始发新命令。
-> 板级证据：`tools/tests/done_race_test.py` 的 P3（修前每轮 `STATUS=0x4`、有一轮标了 964/768）。
 
 ## Object Graph DDR Format
 
