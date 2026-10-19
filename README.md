@@ -201,6 +201,9 @@ Objects  marked   FPGA us   C us      py_bfs ms   vs C    vs py_bfs
 
 > 该表是早期记录：`184.7 / 646.1 / 517.1 / 2148.3 / 169.802` 在 `tools/logs/` 中没有对应日志，
 > 按 `historical/unverified` 看待。可复核的是 `tools/logs/cmark_sweep*.log` 与 `tools/logs/cmark_sweep_verify_*.log`。
+>
+> 本表最后一列是 **`vs py_bfs`**（Python 脚本参照）。**真 CPython `gc.collect()` 的对比**
+> 见下方「测量口径」：同规模约 **31×**、按对象数插值 **36~42×**，两者都是上界。
 
 ### 4. Python 测试
 
@@ -316,9 +319,18 @@ python3 python/benchmark.py
 - `py_bfs ms`：`py_bfs.py` 独立进程（`test_main` 经 `popen` 调用）。
 - **与 CPython 只能比出上界**：`gc.collect()` 含标记+清扫，硬件只做标记，非同阶段。
 - 原始串口记录：`tools/logs/board_verify_*.log`、`tools/logs/cmark_sweep*.log`。
-- **真实 CPython 基线**（`python/benchmark.py`，板上实测 2026-10-19，原始输出 `tools/logs/board_benchmark_20261019.txt`）：
-  `gc.collect()` 在 4000 对象上 **16.04 ms**（2000 对象 11.72 ms，1000 对象 9.61 ms）；同规模硬件约 **0.4 ms** ⇒ **约 36~42×**。
-  表中 `220.8~279.3x` 是对 `py_bfs.py`（Python BFS 逐条读 `/dev/mem`）算的，不是 CPython 的 GC。
+**真实 CPython 基线**（`python/benchmark.py`，板上实测 2026-10-19，原始输出 `tools/logs/board_benchmark_20261019.txt`）：
+
+| Objects | CPython `gc.collect()` | 同规模 FPGA | 加速比 |
+| --- | --- | --- | --- |
+| 1000 | 9.61 ms | —（未测同规模） | — |
+| 2000 | 11.72 ms | 2963 对象 → 0.381 ms | ~35×（对象数不同，粗比）|
+| 4000 | 16.04 ms | 4096 对象 → 0.526 ms | **~31×**（同规模，最可信）|
+
+> 按对象数把硬件曲线插值到 1000/2000/4000 得到 **36~42×**；直接同规模对比是 **31~35×**。
+> `gc.collect()` 含清扫阶段、硬件只做标记 ⇒ 这两种算法都只能算**上界**。
+> 上面两张表里的 `220.8~279.3x` 是对 `py_bfs.py`（Python 脚本逐条读 `/dev/mem`）算的，
+> **不是 CPython 的 GC**，两者口径不同，不要混用。
 
 ### 仿真回归
 
