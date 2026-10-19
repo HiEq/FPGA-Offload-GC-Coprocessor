@@ -66,6 +66,7 @@ Pump 500
 SendLine "mount -t vfat /dev/mmcblk0p2 /mnt/userdata 2>/dev/null"
 Pump 800
 
+$fail = 0
 foreach ($sw in $sweeps) {
     $maxN = $sw[0]; $trials = $sw[1]; $avg = $sw[2]
     $mark = "SWEEP_" + $maxN + "_" + $trials + "_" + $avg + "_DONE"
