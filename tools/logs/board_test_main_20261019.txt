@@ -1,0 +1,34 @@
+# test_main output on the board (XC7Z100), 2026-10-19
+# command: cd /mnt/userdata && ./bin/test_main
+# bitstream md5 D9699398D7444064B38E7DCAF3E20B52 (sc_state abort reset)
+#
+
+
+|  FOGCCC GC Coprocessor Test Suite          |
+|  Platform: Xilinx Zynq-7000 XC7Z100        |
++--------------------------------------------+
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+=============================================================
+  Test 1: correctness + speed (FPGA vs C vs CPython)
+=============================================================
+Objects  marked   FPGA us     C us        CPython ms    vs C     vs CPython
+-------- -------- ----------- ----------- ------------- -------- ---------
+[FOGCCC] Graph: 10 objects, 4236 bytes, avg_refs=3
+10       9        44.0        13.5        7.295         0.3x     166x     
+[FOGCCC] Graph: 50 objects, 4860 bytes, avg_refs=3
+50       47       48.7        31.5        7.350         0.6x     151x     
+[FOGCCC] Graph: 100 objects, 5756 bytes, avg_refs=3
+100      96       57.3        59.6        7.364         1.0x     129x     
+[FOGCCC] Graph: 500 objects, 16328 bytes, avg_refs=3
+500      474      114.2       261.5       8.407         2.3x     74x      
+[FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
+1000     945      184.5       515.5       9.515         2.8x     52x      
+[FOGCCC] Graph: 2000 objects, 64624 bytes, avg_refs=3
+2000     1882     339.9       1058.6      11.850        3.1x     35x      
+[FOGCCC] Graph: 4000 objects, 129824 bytes, avg_refs=3
+4000     3766     647.3       2141.9      16.797        3.3x     26x      
+  Result: ALL PASS
+  >>> 3766 objects marked in 647.3 us (171.9 ns/obj)
+[root@zynq7100 userdata]# 
