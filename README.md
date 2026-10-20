@@ -340,7 +340,7 @@ python3 python/benchmark.py
 
 > 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
 > 本表是历史数据（`historical/unverified`）；当前可复核的 8/8 见
-> `tools/logs/board_gc_test_20261020.txt`（211,705 拍，发布镜像）。
+> `tools/logs/board_gc_test_20261020.txt`（247,060 拍，发布镜像）。
 
 #### 测量口径
 
@@ -529,20 +529,19 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 > ⚠️ 下表是 **GitHub Release 资产**的哈希。仓库与 tag **都不跟踪** `BOOT.BIN`（`artifacts/BOOT.BIN` 被 `.gitignore` 排除），
 > 所以 tag 树里根本没有这个文件，不要试图用 tag 树核对哈希。
-> `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `FA816025…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同；已用串口推到板上并重启验证）。
+> `v4-optimized` 的 2026-10-20 更新：比特流加入 `STATUS[4]`（engine idle），`BOOT.BIN` 用
+> `bootgen` 重打（md5 `074CF12D…`）；`image.ub` 重新构建（md5 `400F47FA…`），
+> 关闭 telnet/ftp 并给 `pl_graph@1e000000` 加 `no-map`。校验清单见 `artifacts/SHA256SUMS.release`。
 
 | 资产 | 放到哪 | 大小 | md5 |
 | --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,704 B | `FA816025BE38E2AEFD19297C953F0DA5` |
-| `image.ub` | BOOT 分区根目录 | 43,213,279 B | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `074CF12D3DDA51185936571ECD5A37D8` |
+| `image.ub` | BOOT 分区根目录 | 43,295,771 B | `400F47FA29E9617682B9D582109B0F1A` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,795 B | `3DACA0AEEF15A30703625F189FD5D586` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,359 B | `F52565DAB9E0C451A1CCF60F50275F3E` |
 
-> ⚠️ **镜像比仓库配置旧**：`image.ub` 构建于 2026-10-17；仓库里 2026-10-19 的两处配置改动
-> （`inetd.conf` 关闭 telnet/ftp、`system-user.dtsi` 给 `pl_graph@1e000000` 加 `no-map`）**还没有打进这个镜像**
-> （板上 `/etc/inetd.conf` 仍有 telnet，`/proc/device-tree/.../pl_graph@1e000000/` 没有 `no-map`）。
-> 需要最新配置时用 `petalinux/build_fogccc2.sh` 重新构建 `image.ub` 并更新 Release。
->
+下载后校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
+
 > **开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
 
 1. BOOT 分区：放 `BOOT.BIN`、`image.ub`，再解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）
