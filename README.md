@@ -547,7 +547,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,704 B | `FA816025BE38E2AEFD19297C953F0DA5` |
 | `image.ub` | BOOT 分区根目录 | 43,213,279 B | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,506 B | `883149F0CD82A79E4EE4A647838674D9` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,875 B | `878E9880DB4BCEB824B6F340A7FA7036` |
 
 **开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
 
