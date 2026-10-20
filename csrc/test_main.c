@@ -120,13 +120,32 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
             all_pass = 0;
         }
 
-        // ---- bitmap readback (0x24/0x28) must agree with MARKED ----
-        uint32_t bits = 0;
-        for (int o = 0; o < n; o++)
-            bits += fpga_gc_read_mark(dev, (uint32_t)o);
-        if (bits != fpga_count) {
-            printf("  bitmap readback=%u != MARKED=%u (probe broken)\n", bits, fpga_count);
-            all_pass = 0;
+        // ---- bitmap readback (0x24/0x28): compare the SET, not just the count ----
+        // A right-sized count with the wrong objects used to pass here; the
+        // probe is now checked object by object against the software BFS.
+        {
+            uint8_t *sw_bits = (uint8_t *)calloc((size_t)n, 1);
+            int bm_bad = 0;
+            if (!sw_bits) {
+                printf("  ERROR: calloc failed for the bitmap compare (n=%d)\n", n);
+                all_pass = 0;
+            } else {
+                fpga_gc_sw_mark_bits(dev, roots, 1, sw_bits);
+                for (int o = 0; o < n; o++) {
+                    uint32_t hb = fpga_gc_read_mark(dev, (uint32_t)o);
+                    if (hb != (uint32_t)sw_bits[o]) {
+                        if (bm_bad < 3)
+                            printf("  bitmap mismatch obj %d: hw=%u sw=%u\n",
+                                   o, (unsigned)hb, (unsigned)sw_bits[o]);
+                        bm_bad++;
+                    }
+                }
+                free(sw_bits);
+            }
+            if (bm_bad) {
+                printf("  bitmap readback: %d object(s) differ from the SW BFS\n", bm_bad);
+                all_pass = 0;
+            }
         }
         if (!match) all_pass = 0;
         if (n == sizes[n_sizes - 1]) {

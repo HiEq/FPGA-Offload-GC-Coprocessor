@@ -97,9 +97,9 @@ CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和
 | GNU Make | 4.3 |
 | CMake | 3.28.3（SDK 自带；本仓不使用） |
 | 构建主机 | Ubuntu 22.04.5 LTS（WSL2） |
-| 目标 glibc | 板端 rootfs **2.43**；SDK sysroot 2.39（按 2.39 链接，向上兼容）|
-| 目标 BusyBox / OpenSSL | 1.36.1 / 3.6.3 |
-| 目标 Python | 3.14.8（仅标准库，无 numpy） |
+| 目标 glibc | 2.39（发布镜像与 SDK sysroot 一致）|
+| 目标 BusyBox / OpenSSL | 1.36.1 / 3.2.6 |
+| 目标 Python | 3.12.12（仅标准库，无 numpy）|
 | 内核 | linux-xlnx 6.18.10 |
 | Bootloader | u-boot-xlnx 2026.01 |
 
@@ -108,7 +108,7 @@ CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和
 1. `test_main` 与 `libfogccc.so` 用 SDK 交叉编译：`source environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi` 后调用 `$CC`。
 2. 不使用根 `Makefile` 的 `CROSS=arm-linux-gnueabihf-`；PetaLinux 2026.1 SDK 提供的是 `arm-amd-linux-gnueabi-gcc`。
 3. 产物须为 ARM：`file libfogccc.so` 输出包含 `ARM, EABI5`。
-4. SDK sysroot 是 glibc 2.39，板上 rootfs 已升到 2.43；按 2.39 链接即可，向后兼容。
+4. SDK sysroot 与发布镜像同为 glibc 2.39；按它链接即可。
 5. Python 脚本仅使用标准库（`ctypes`、`mmap`、`struct`、`time`、`random`、`sys`）。
 
 ## 目录结构
@@ -206,29 +206,29 @@ sudo ./bin/test_main
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现（同时是 `marked` 的独立 oracle）|
 | `CPython ms` | `gc_probe.py`：独立进程里 n 个同样的对象做一次完整 `gc.collect()`（含 mark+sweep，**上界**）|
 
-实测（XC7Z100，PL 100 MHz，2026-10-19，`tools/logs/board_test_main_20261019.txt`）：
+实测（XC7Z100，PL 100 MHz，**发布镜像 PetaLinux 2026.1 / Python 3.12.12**，2026-10-20，`tools/logs/board_test_main_20261020.txt`）：
 
 ```
 Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   CPython 增量 us/个   vs CPython(增量)
-10       9        44.0      13.5      7.295        0.3x    166x              —                    —
-50       47       48.7      31.5      7.350        0.6x    151x              1.38                 1.3x
-100      96       57.3      59.6      7.364        1.0x    129x              0.77                 1.3x
-500      474      114.2     261.5     8.407        2.3x    74x               2.27                 9.4x
-1000     945      184.5     515.5     9.515        2.8x    52x               2.24                 11.5x
-2000     1882     339.9     1058.6    11.850       3.1x    35x               2.29                 12.7x
-4000     3766     647.3     2141.9    16.797       3.3x    26x               2.38                 13.9x
+10       9        44.0      14.1      5.782        0.3x    132x              —                    —
+50       47       48.7      29.1      5.869        0.6x    121x              2.18                 2.1x
+100      96       57.0      57.6      5.980        1.0x    105x              2.20                 3.7x
+500      474      114.0     259.1     7.025        2.3x    62x               2.54                 10.6x
+1000     945      185.1     515.0     8.370        2.8x    45x               2.61                 13.3x
+2000     1882     339.9     1059.3    11.282       3.1x    33x               2.76                 15.3x
+4000     3766     646.6     2217.9    17.083       3.4x    26x               2.83                 16.5x
 ```
 
-- `CPython 增量 us/个` = `(CPython ms − 7.295) × 1000 / (n − 10)`，即**多这 n−10 个对象的边际成本**
+- `CPython 增量 us/个` = `(CPython ms − 5.782) × 1000 / (n − 10)`，即**多这 n−10 个对象的边际成本**
 - `vs CPython(增量)` = 它 ÷ `(FPGA us / marked)`，同样是**每对象**口径
 
-所以两列回答两个不同问题：`vs CPython(整堆)` 是"一次完整回收 vs 一次标记"（含解释器堆固定成本，随 n 变化很小，n 越小时倍数越虚高）；`vs CPython(增量)` 才是"多标这些对象"的同阶段比较（**≈1–14×**）。
+所以两列回答两个不同问题：`vs CPython(整堆)` 是"一次完整回收 vs 一次标记"（含解释器堆固定成本，随 n 变化很小，n 越小时倍数越虚高）；`vs CPython(增量)` 才是"多标这些对象"的同阶段比较（**≈2–17×**）。
 
 小图（<100 对象）FPGA 反而慢，因为固定启动开销约 4400 拍；`marked < Objects` 是随机图里
 从根 0 不可达的对象。
 
 > ⚠️ **两种对手别混**：对 Python 脚本（`py_bfs.py`，逐条读 `/dev/mem`）是 **220–260×**；
-> 对 CPython 的完整回收是 **26×**（整堆）/ **≈13.9×**（增量）。
+> 对 CPython 的完整回收是 **26×**（整堆）/ **≈16.5×**（增量）。
 
 > **口径**：`CPython ms` 是**真实 CPython 收集器**（`gc.collect()`，C 实现）对整个解释器堆的
 > 一次完整回收（含清扫），不是 Python 字节码；硬件只做标记 ⇒ 主表最后一列是**上界**。
@@ -346,7 +346,7 @@ python3 python/benchmark.py
 > Ver4 列用**当时那版**比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
 > **240,007 拍 / 13,497 个活跃对象 = 17.8 拍/对象**（扣清位图后 15.4），加速比 220.8~279.3x。
 > ⚠️ 这一行的原始日志**没有归档**。归档的 `tools/logs/board_verify_20261019_153604.log` 是**另一次**运行：
-> **209,802 拍 / 11,585 个活跃对象 = 18.1 拍/对象**（8/8 PASSED，bitstream `3E79AF83…`，2026-10-19）。
+> **209,802 拍 / 11,585 个活跃对象 = 18.1 拍/对象**（8/8 PASSED，2026-10-19；该日志没有记录 bitstream md5）。
 > 两次数值接近但不是同一次，引用时请分开写。
 
 #### 测量口径
@@ -357,7 +357,7 @@ python3 python/benchmark.py
   `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
 - **同规模对比以主表为准**（4000 对象 **26×**）；`gc.collect()` 含清扫、硬件只做标记。
 - `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
-  `tools/logs/board_benchmark_20261019.txt`），用于画曲线；单点对比直接用 `test_main`。
+  `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
 - `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 220–279×
   是**另一种实现**的比值，不要和 CPython 的 26× 混用。
 - 原始串口记录：`tools/logs/board_test_main_20261019.txt`、`tools/logs/board_verify_*.log`、
@@ -366,15 +366,15 @@ python3 python/benchmark.py
 #### 端到端成本（为什么上面的加速比只是上界）
 
 `FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
-`gc_test.py 4096 3 2 --seed 424242` 在板上实测（2026-10-19，bitstream `EC59DFAA…`）：
+`gc_test.py 4096 3 2 --seed 424242` 在板上实测（2026-10-20，发布镜像，bitstream `B556EFDC…` / BOOT.BIN `FA816025…`）：
 
 | 阶段 | 时间 |
 | --- | --- |
-| 构图 + 写 DDR（Python，含 1 MB memset 与引用数组）| **134.5 ms / 图** |
-| 同图 Python BFS（oracle）| 68.5 ms / 图 |
+| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **178.8 ms / 图** |
+| 同图 Python BFS（oracle）| 74.6 ms / 图 |
 | 硬件标记（引擎）| **0.289 ms / 图**（N≈1127–2799）|
 
-⇒ 单次卸载的端到端成本由构图主导（约 **465×** 标记时间）。只有对象图**常驻 DDR、能反复复用**时，
+⇒ 单次卸载的端到端成本由构图主导（约 **619×** 标记时间）。只有对象图**常驻 DDR、能反复复用**时，
 "把标记卸载到 PL"才可能划算。这里用的是 Python 构图，C 侧批量写会快得多，但同样不计入 `FPGA us`
 （`test_main` 的构图走 `fpga_gc_build_graph()`，也没有单独计时）。
 
@@ -435,8 +435,8 @@ SPI 编号 = ID − 32）。
 
 **数据出处**：
 - 命令：`run_gc.sh`（maxN=4096 trials=8 avg_refs=2）、`run_cmark.sh` 4 组共 72 次
-- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）
-- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）
+- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）—— **历史记录**，归档日志里查不到这个哈希
+- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）—— **历史记录**，归档日志里查不到这个哈希
 - 板卡：XC7Z100-FFG900-2，AXI HP 与引擎同在 FCLK0 = 100MHz，DDR3 @ 533MHz
 
 
@@ -468,7 +468,7 @@ SPI 编号 = ID − 32）。
 
 72 次全部 OK；三个实现（HW / C 非缓存 / C 缓存）标记数均等于真值 L。
 
-> 上表用**当时那版**比特流（`36D14E4B…`）与 `cmark`（23,200 B）重跑，72/72 OK；
+> 上表用**当时那版**比特流（`36D14E4B…`，日志里没有记录这个哈希，属历史记录）与 `cmark`（23,200 B）重跑，72/72 OK；
 > HW 拍/对象与旧版一致，C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`。
 
 **结论**：
@@ -519,7 +519,9 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 ila_0
 MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 - `driver/fogccc_irq.c`、`driver/plnx/fogccc-irq/files/fogccc-irq.c`：GPL-2.0（文件首行 SPDX 标识）。
-- `BOOT.BIN`、`zynq_fsbl.elf`、`image.ub`、`system.dtb` 不入库，由 `petalinux/build_fogccc2.sh` 生成。
+- `BOOT.BIN` / `image.ub` 由 `petalinux/build_fogccc2.sh` **打包生成**；其中 `zynq_fsbl.elf` 是**输入**
+  （厂商 FSBL，授权原因不入库、也不随 Release 发布，仅本机 `artifacts/` 保留），`image.ub` 由 PetaLinux 构建。
+- `system.dtb` 也不入库；`boot.scr` / `uEnv.txt` / `mount_data.sh` 入库（都是文本，随 Release 的 `card-boot.zip` 一起发）。
 - 仓库不含 AMD 源码或文档；`vivado/build.tcl` 仅含 IP 配置参数。
 
 ---
@@ -536,7 +538,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 仓库只保留可复现的构建配置。
 `BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
 
-> ⚠️ 下表是 **GitHub Release 资产**的哈希，**不是 tag 树里的文件**：tag 树里那份 `BOOT.BIN` 是历史提交，两者本来就不是同一个文件。
+> ⚠️ 下表是 **GitHub Release 资产**的哈希。仓库与 tag **都不跟踪** `BOOT.BIN`（`artifacts/BOOT.BIN` 被 `.gitignore` 排除），
+> 所以 tag 树里根本没有这个文件，不要试图用 tag 树核对哈希。
 > `v4-optimized` 的 2026-10-19 更新：`BOOT.BIN` 里换成含「起跑排空 + abort 复位」修复的比特流（md5 `FA816025…`，`bootgen` 重打，`FSBL`/`U-Boot`/`DTB` 与旧版逐字节相同；已用串口推到板上并重启验证）。
 
 | 资产 | 放到哪 | 大小 | md5 |

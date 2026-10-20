@@ -1,10 +1,11 @@
 #!/bin/bash
 # ============================================================
-# FOGCCC2 — PetaLinux 重建 (在独立工程 fogccc2_linux 里用新 XSA 重跑)
+# FOGC² — PetaLinux 重建 (在独立工程 fogccc2_linux 里用新 XSA 重跑)
 #
 # 前置:
-#   - Vivado 已产出  <工程根>\vivado\fogccc_proj\system.xsa
-#   - fogccc2_linux 是从 fogccc_linux 复制来的, 保留了全部手工配置:
+#   - Vivado 已产出  <工程根>\vivado\fogccc_proj\system.xsa 和 system_wrapper.bit
+#   - artifacts/zynq_fsbl.elf 存在 (厂商 FSBL; 不入库, 见 NOTICE)
+#   - fogccc2_linux 不存在时, 本脚本会用仓库里的 project-spec 骨架创建它, 配置包括:
 #       kernel cmdline = console=ttyPS0,115200 earlycon
 #       rootfs = initramfs, hostname = linux, empty-root-password
 #       device-tree 里 reserved-memory pl_graph@1e000000

@@ -127,35 +127,20 @@ D:\AMDDesignTools\2026.1\Vivado\bin\xsdb.bat -eval "connect; targets"
 
 ## 从零构建（不依赖已有的 PetaLinux 工程）
 
-`build_fogccc2.sh` 假设工程目录已存在（复制旧工程时还会踩 `SDKBASEMETAPATH` 的绝对路径坑）。
-在一台**干净机器**上，先做下面几步再跑它：
+`build_fogccc2.sh` **自己会建工程**：`$HOME/xilinx/fogccc2_linux` 不存在时，它用
+`petalinux-create -t project --template zynq` 创建，并把本仓 `petalinux/project-spec/` 的配置和
+`driver/plnx/fogccc-irq` 拷进去。干净机器上只需要：
 
-```bash
-# 1. 建工程（PetaLinux 2026.1）
-petalinux-create -t project --template zynq --name fogccc2_linux
-cd fogccc2_linux
+1. 装好 PetaLinux 2026.1（脚本自己 `source $HOME/xilinx/petalinux/settings.sh`）
+2. 先跑 `vivado/build.tcl`，产出 `vivado/fogccc_proj/system.xsa` 和 `.../system_wrapper.bit`
+3. 把**厂商 FSBL** 放到 `artifacts/zynq_fsbl.elf`（不入库、不随 Release 发布，原因见 `NOTICE`）
+4. `wsl -e bash <repo>/petalinux/build_fogccc2.sh`
 
-# 2. 用本仓的 XSA 生成硬件平台
-petalinux-config --get-hw-description=<path-to>/system.xsa    # 交互界面里直接 Save & Exit
-```
+脚本开头会 `ls` 检查这三个输入，缺一个就在 `set -e` 下停下。
 
-```bash
-# 3. 把本仓的 BSP 内容放进工程
-cp -a <repo>/petalinux/project-spec/meta-user        project-spec/
-cp -a <repo>/driver/plnx/fogccc-irq                  project-spec/meta-user/recipes-modules/
-```
+> **FSBL 用哪个**：Release 里的 `BOOT.BIN` 是用**厂商 FSBL** 打的。用 PetaLinux 自己生成的
+> `images/linux/zynq_fsbl.elf` 也能启动，但产物哈希不同，**不能拿来核对 Release 的 md5**。
+> 所以没有厂商 FSBL 时只能验证"能启动"，不能复现发布包的字节。
 
-```bash
-# 4. 构建 + 打包
-petalinux-build
-petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
-                       --fpga images/linux/system.bit \
-                       --u-boot --force
-```
-
-注意两点：
-
-- **不要复制整棵旧工程**：`build/conf/bblayers.conf` 里的 `SDKBASEMETAPATH` 是绝对路径，复制后仍指向旧工程。
-  从零 `petalinux-create` 就没有这个问题。
-- `build_fogccc2.sh` 的 `VENDOR_FSBL` 默认取 `artifacts/zynq_fsbl.elf`（见脚本里的 `${VENDOR_FSBL:-...}`），
-  要换 FSBL 时显式传 `VENDOR_FSBL=<elf>`。
+> **不要复制整棵旧工程**：`build/conf/bblayers.conf` 里的 `SDKBASEMETAPATH` 是绝对路径，复制后仍指向旧工程。
+> 让脚本从零创建，或先删掉旧工程的 `build/` 目录，就不会踩这个坑。

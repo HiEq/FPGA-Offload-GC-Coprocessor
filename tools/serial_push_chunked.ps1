@@ -36,7 +36,7 @@ function WaitPrompt([int]$ms) {
         Start-Sleep -Milliseconds 120
         Drain
         $t = $rx.ToString()
-        if ($t -match '(?m)(\[[^\]\r\n]+\][#$]|login:)\s*$') { return $true }
+        if ($t -match '(?m)([#$]|login:)\s*$') { return $true }
     }
     return $false
 }
@@ -87,7 +87,7 @@ try {
             # Do not guess a fixed sleep: wait for the prompt.
             if (-not (WaitPrompt 240000)) { throw "chunk ${i}: no prompt after heredoc" }
             $rx.Clear() | Out-Null
-            Send "base64 -d /tmp/p$i.b64 > /tmp/p$i.bin; md5sum /tmp/p$i.bin`r"
+            Send "openssl base64 -d -in /tmp/p$i.b64 -out /tmp/p$i.bin; md5sum /tmp/p$i.bin`r"
             [void](WaitText '([0-9a-f]{32})\s+/tmp/p' 120000)
             Drain
             $t = $rx.ToString() -replace "`r", ''
