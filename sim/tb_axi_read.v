@@ -117,7 +117,6 @@ module tb_axi_read;
     assign rresp   = 2'b00;
     assign rlast   = 1'b1;
     assign arready = can_shift;
-    assign rready  = 1'b1;
 
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin

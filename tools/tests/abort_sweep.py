@@ -140,10 +140,10 @@ def main():
         task(int(5 + 85.0 * k / len(delays)), "phase %d/%d (%d us)" % (k + 1, len(delays), d))
         wr(R_CTRL, CTRL_START)
         spin_us(d)
-        st_pre  = rr(R_STATUS)
+        st_pre  = (rr(R_STATUS) & 0xF)
         done_pre = bool(rr(R_CTRL) & CTRL_DONE)
         wr(R_CTRL, CTRL_ABORT)
-        st_post = rr(R_STATUS)
+        st_post = (rr(R_STATUS) & 0xF)
         done_after = False
         t0 = time.time()
         while time.time() - t0 < 0.020:
@@ -152,7 +152,7 @@ def main():
         # recovery
         wr(R_CTRL, CTRL_START)
         ok = wait_done(300)
-        mkd = rr(R_MARKED); st_rec = rr(R_STATUS)
+        mkd = rr(R_MARKED); st_rec = (rr(R_STATUS) & 0xF)
         bad = readback_ok() if ok else -1
         row = dict(d=d, skip=done_pre, stop=(not done_after), st_pre=st_pre,
                    st_post=st_post, ok=ok, mkd=mkd, st_rec=st_rec, bad=bad)

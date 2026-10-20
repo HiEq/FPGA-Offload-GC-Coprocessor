@@ -26,10 +26,19 @@
 #define R_MARKED 0x10u
 #define R_CYCLES 0x14u
 #define R_Q_TAIL 0x1Cu
+#define R_STATUS 0x20u
+#define R_MAGIC 0x30u
+#define R_VERSION 0x34u
 #define R_ROOT_LIST 0x40u
 
 #define CTRL_START 1u
 #define CTRL_CLEAR_Q 4u
+#define CTRL_ABORT 8u
+#define CTRL_DONE 0x80000000u
+
+#define FOGCCC_MAGIC 0x47434343u
+#define FOGCCC_VERSION 0x00040000u
+#define STATUS_MASK 0xFu
 
 static uint8_t  *gbase;              /* 映射到的图基址 */
 static volatile uint32_t *regs;
@@ -159,7 +168,7 @@ static void c_prepare_cached(uint32_t n, uint32_t used) {
  * 跑一次 FPGA 引擎, 返回 1 成功; cycles/marked 输出
  * ============================================================ */
 static int hw_run(uint32_t n, uint32_t *cycles, uint32_t *mkd) {
-    uint32_t cyc0, t0;
+    uint32_t t0;
 
     regs[R_ROOT_LIST / 4] = 0;              /* roots = {0} */
     regs[R_ROOT_COUNT / 4] = 1;
@@ -168,16 +177,17 @@ static int hw_run(uint32_t n, uint32_t *cycles, uint32_t *mkd) {
     regs[R_CTRL / 4]       = CTRL_CLEAR_Q;
     usleep(2000);
 
-    cyc0 = regs[R_CYCLES / 4];
     regs[R_CTRL / 4] = CTRL_START;
-    /* 完成判据 = CYCLES 变化 (只有 S_DONE 会锁存它) */
-    for (t0 = 0; t0 < 3000000u; t0++) {
-        if (regs[R_CYCLES / 4] != cyc0) {
+    (void)regs[R_CTRL / 4];                 /* flush the posted write */
+    usleep(1);
+    for (t0 = 0; t0 < 10000000u; t0++) {
+        if (regs[R_CTRL / 4] & CTRL_DONE) {
             *cycles = regs[R_CYCLES / 4];
             *mkd    = regs[R_MARKED / 4];
             return 1;
         }
     }
+    regs[R_CTRL / 4] = CTRL_ABORT;
     *cycles = 0; *mkd = 0;
     return 0;
 }
@@ -190,6 +200,10 @@ int main(int argc, char **argv) {
     double tot_hw = 0, tot_cu = 0, tot_cc = 0;
     uint32_t tot_l = 0;
 
+    if (maxN < 64u) {
+        fprintf(stderr, "ERROR: maxN must be 64..%u (got %u)\n", N_MAX, maxN);
+        return 2;
+    }
     if (maxN > N_MAX) maxN = N_MAX;
     if (avg_refs < 1) avg_refs = 1;
 
@@ -200,6 +214,12 @@ int main(int argc, char **argv) {
     gbase = (uint8_t *)mmap(NULL, GRAPH_SIZE, PROT_READ | PROT_WRITE,
                             MAP_SHARED, fd, GRAPH_BASE);
     if (regs == MAP_FAILED || gbase == MAP_FAILED) { perror("mmap"); return 1; }
+
+    if (regs[R_MAGIC / 4] != FOGCCC_MAGIC || regs[R_VERSION / 4] != FOGCCC_VERSION) {
+        fprintf(stderr, "ERROR: bitstream mismatch: MAGIC=0x%08X VERSION=0x%08X (expect 0x%08X / 0x%08X)\n",
+                regs[R_MAGIC / 4], regs[R_VERSION / 4], FOGCCC_MAGIC, FOGCCC_VERSION);
+        return 1;
+    }
 
     printf("======================================================================\n");
     printf(" FOGCCC  C-mark baseline   maxN=%u  trials=%d  avg_refs=%d\n", maxN, trials, avg_refs);
@@ -227,6 +247,10 @@ int main(int argc, char **argv) {
         usleep(20000);                      /* 让写入落盘 (和 Python 版一致) */
 
         if (!hw_run(n, &hw_cyc, &hw_mkd)) { printf(" trial %d: HW TIMEOUT\n", t); bad = 1; continue; }
+        {
+            uint32_t st = regs[R_STATUS / 4] & STATUS_MASK;
+            if (st) { printf(" trial %d: STATUS=0x%X (bit0=ovf bit1=axierr bit2=desync bit3=badhdr)\n", t, st); bad = 1; }
+        }
 
         t0 = now_ms(); mku = c_mark(n, gbase, 0);        cu = now_ms() - t0;
         c_prepare_cached(n, used);                       /* 拷图+修指针: 不计时 */

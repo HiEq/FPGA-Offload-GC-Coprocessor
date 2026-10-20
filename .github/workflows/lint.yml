@@ -33,6 +33,14 @@ jobs:
           done < <(git ls-files '*.py')
           exit $fail
 
+      - name: RTL syntax (iverilog)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq iverilog
+          iverilog -g2005 -tnull -s gc_top \
+              rtl/gc_top.v rtl/gc_mark_engine.v rtl/gc_axi_read.v \
+              rtl/gc_regs.v rtl/gc_bitmap.v rtl/gc_queue.v
+
       - name: C warnings (gcc -Wall -Wextra -Werror)
         run: |
           gcc -O2 -Wall -Wextra -Werror -fsyntax-only \

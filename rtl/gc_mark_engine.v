@@ -65,8 +65,6 @@ module gc_mark_engine (
     output wire        engine_idle
 );
 
-    localparam [11:0] Q_MAX = 12'd4000;
-
     localparam [4:0]
         S_IDLE       = 5'd0,
         S_CLR_BM     = 5'd1,

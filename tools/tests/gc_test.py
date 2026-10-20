@@ -151,7 +151,10 @@ def main():
                 ran = True; break
             time.sleep(0.0002)
         ctrl    = rr(R_CTRL)
-        st      = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr
+        st_raw  = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr [4]=idle
+        st      = st_raw & 0xF
+        idle    = (st_raw >> 4) & 1
+        q_tail  = rr(R_Q_TAIL)
         hw_mkd  = rr(R_MARKED)
         hw_cyc  = rr(R_CYCLES)
         hw_us   = hw_cyc * 0.01
@@ -195,6 +198,8 @@ def main():
         if not ran:              fails.append("NO-RUN")
         if not done:             fails.append("DONE-LOW")
         if st != 0:              fails.append("STATUS=0x%X" % st)
+        if not idle:             fails.append("BUSY")
+        if (q_tail != (hw_mkd & 0xFFF)): fails.append("QTAIL=%d!=%d" % (q_tail, hw_mkd))
         if not (hw_cyc >= MIN_CYCLES): fails.append("CYCLES<%d" % MIN_CYCLES)
         if hw_mkd != L:          fails.append("HW!=(%d vs %d)" % (hw_mkd, L))
         if sw_mkd != L:          fails.append("SW!=(%d vs %d)" % (sw_mkd, L))

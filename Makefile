@@ -7,8 +7,9 @@
 #   make lib      只编译共享库 (给Python用)
 #   make clean    清理
 #
-# 交叉编译 (在PC上为板卡编译):
-#   make CROSS=arm-linux-gnueabihf-
+# 交叉编译 (在PC上为板卡编译, PetaLinux 2026.1 SDK):
+#   source <sdk>/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi
+#   make CC=$CC
 # ============================================================
 
 CROSS   ?=

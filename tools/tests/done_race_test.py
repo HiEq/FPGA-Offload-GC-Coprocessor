@@ -177,9 +177,11 @@ def main():
         _ = rr(R_CTRL)                       # the driver's flush read
         time.sleep(0.000001)                 # usleep(1)
         ok = wait_done(300)
-        mkd = rr(R_MARKED); st = rr(R_STATUS)
+        mkd = rr(R_MARKED); st_raw = rr(R_STATUS)
+        st = st_raw & 0xF                    # error bits; bit4 is engine idle
+        idle = (st_raw >> 4) & 1
         checked += 1
-        good = ok and (mkd == sw) and (st == 0)
+        good = ok and (mkd == sw) and (st == 0) and idle
         if not good:
             mismatches += 1
             print("   P3[%2d]: N=%4d expect %4d (SW %4d) -> done=%s marked=%d status=0x%X  MISMATCH"
@@ -197,16 +199,16 @@ def main():
     print("=" * 84)
     print(" SUMMARY   stale-DONE experiment")
     print("=" * 84)
-    print("   P1 naive first-read hits        : %d/%d" % (p1_hits, p1_checked))
-    print("   P2 poll early-return hits       : %d/%d (stale value: %d)"
+    print("   P1 naive first-read hits        : %d/%d  (observed, not asserted)" % (p1_hits, p1_checked))
+    print("   P2 poll early-return hits       : %d/%d (stale value: %d)  (observed, not asserted)"
           % (p2_early, p2_checked, p2_stale_val))
-    print("   P3 driver-order mismatches      : %d/%d" % (mismatches, checked))
+    print("   P3 driver-order mismatches      : %d/%d  (the pass/fail criterion)" % (mismatches, checked))
     for f in fails:
         print("   FAIL: " + f)
     if fails:
         print("   RESULT: FAIL")
         return 1
-    print("   RESULT: PASS (driver order always returned the current run's result)")
+    print("   RESULT: PASS (P3 invariant: the driver order always returned the current run's result)")
     return 0
 
 if __name__ == '__main__':
