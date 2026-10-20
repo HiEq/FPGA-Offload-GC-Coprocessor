@@ -10,8 +10,8 @@
 > 与 `SHA256SUMS`；**不跑 RTL 功能仿真或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
 
 Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quick-start) ·
-[寄存器](#register-map) · [对象图格式](#object-graph-ddr-format) · [版本对比](#版本对比历史数据) ·
-[正确性](#正确性) · [中断](#中断链路) · [发布与上板](#下载启动镜像release) · [测试命令](#板上测试命令速查)
+[寄存器](#register-map) · [对象图格式](#object-graph-ddr-format) · [性能与优化](#性能与优化) ·
+[正确性](#正确性) · [许可证](#许可证)
 
 把 GC 的**标记阶段**卸载到 Zynq-7000 PL：BFS 指针追逐由硬件完成，对象图放在 DDR `0x1E000000`。
 
@@ -134,6 +134,7 @@ FPGA-Offload-GC-Coprocessor/
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真
 │   ├── tb_axi_read.v       未完成读事务上限的定向测试 (+ run_axi_tb.bat)
+│   ├── tb_runstart_race.v  run_start/abort 同拍旧 R beat 的定向测试 (+ run_race_tb.bat)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
@@ -297,8 +298,10 @@ python3 python/benchmark.py
 | FSM 编码 | 5 位 / 25 个 | 12 个在用，13 个保留（未删除）|
 
 > **起跑排空（`run_start` flush）**：`gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
-> 并逐拍丢弃在途响应，直到两条流的在途计数归零才发新命令。
-> 覆盖：`done_race_test.py` P3（每轮 `STATUS[3:0]=0` 且 `[4]=1`；修复前为 `0x4`，并有一次标出 964/768）。
+> 并逐拍丢弃在途响应，直到两条流的在途计数归零才发新命令；`run_start`/`abort` **那一拍**
+> 到达的响应也走丢弃分支（否则同拍写入会绕过 flush，成为新 run 的第一笔 ref）。
+> 覆盖：`done_race_test.py` P3（每轮 `STATUS[3:0]=0` 且 `[4]=1`；修复前为 `0x4`，并有一次标出 964/768）、
+> `sim/tb_runstart_race.v`（修复前两例 `stale beat survived`，修复后 PASS）。
 
 ## Object Graph DDR Format
 
@@ -317,7 +320,9 @@ python3 python/benchmark.py
 2. 读对象头 `+8` → `ref_addr` (引用数组物理地址)
 3. 从 `ref_addr + j*4` 读取第 j 个引用
 
-## 版本对比（历史数据）
+## 性能与优化
+
+### 版本对比（历史数据）
 
 历史版本 Ver1–Ver4 的对照表，用于说明每步优化的效果。当前版本的可复核数据见「三方对比」
 （`board_test_main_20261020.txt`）与 `run_gc.sh`（`board_gc_test_20261020.txt`）。
@@ -369,56 +374,6 @@ python3 python/benchmark.py
 
 单次卸载的端到端成本由构图主导：**601×** 标记时间（`board_gc_test_20261020.txt`）。
 构图走 Python；C 侧的 `fpga_gc_build_graph()` 未单独计时，同样不计入 `FPGA us`。
-
-### 仿真回归
-
-`sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）一次跑完下面全部检查：
-`tools\reproduce_all.ps1` 串起 manifest、PS 单测与两套仿真。
-
-| 检查 | 内容 |
-| --- | --- |
-| 主用例 | N=300 / 活跃 250 / 孤岛 50；标记数、队列尾、位图逐位比对 |
-| STATUS | `0x20` 的错误位 [3:0] 必须为 0，且 [4]=1（引擎 idle）|
-| **T1** | 连续两次运行：`marked` 两次都必须是 2 |
-| **T2** | 重复根（同一 root 写两次）：只算一次 |
-| **T3** | 流水 AW（AW/W 背靠背两笔写）：两笔都必须落到正确寄存器 |
-| **T4** | 非法对象头（`ref_count=0xFFFFFFFF`）：被拒、`STATUS[3]=1`、`marked` 仍是活跃区 |
-| **T5** | 12 位寄存器地址：`root[60]` 在 `0x130`；写地址截断到 8 位会标记 0 个对象 |
-| **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
-| **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
-| **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
-| **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
-| **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle） |
-| **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
-| **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
-| **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
-| **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
-| **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
-
-> 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
-> T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 `2` 会报 1588 条 `[AXI][FAIL]`
-> （而功能用例**照样通过**，因为存储模型不检查 ARSIZE）。
-> T6/T7/T8 的反向验证：把 `0x28` 读回改成常量 → T6 报 2 处 FAIL；把 `err_ovf`
-> 赋 0 → T7 `STATUS[0]=0`；把读主控的 `err` 去掉 → T8 `STATUS[1]=0`。
-> 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
-> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
-
-### 中断链路
-
-`gc_top.irq_o = done` 接到 `ps7_0/IRQ_F2P[0]`，即 **GIC 中断 ID 61**
-（`ISPENDR1` bit 29）。`driver/` 里有一个最小模块验证整条链路：
-
-```text
-insmod fogccc-irq.ko          # 映射 SPI 61 + request_irq，生成 /dev/fogccc_irq
-echo arm > /dev/fogccc_irq    # 使能（done=0 时不会触发）
-python3 gc_test.py 1024 1 2 --seed 11   # done 0 -> 1
-cat /dev/fogccc_irq           # "1 0 <virq>"  ← 中断已触发，处理函数自动关线
-```
-
-实测（发布镜像，PL 刚配置）：`before arm 0 0 / after arm 0 1 / after run 1 0`，`VERDICT: IRQ_DRIVEN_DONE_OK`
-（`tools/logs/board_irq_20261020.txt`）。前提是 PL 处于 `done=0`；若 `done=1`（跑过一次），插模块就会先计一次中断，测试会报 FAIL。
-两处约束见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
-SPI 编号 = ID − 32）。
 
 ### 提升幅度
 
@@ -484,6 +439,59 @@ SPI 编号 = ID − 32）。
 
 > 与 CPython 的对比见主表（`gc_probe.py` 的 `gc.collect()`）；`py_bfs.py` 是 Python 字节码
 > BFS 的参照，`cmark` 是 C 侧参照。
+
+## 正确性
+
+### 仿真回归
+
+`sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）一次跑完下面全部检查：
+`tools\reproduce_all.ps1` 串起 manifest、PS 单测与两套仿真。
+
+| 检查 | 内容 |
+| --- | --- |
+| 主用例 | N=300 / 活跃 250 / 孤岛 50；标记数、队列尾、位图逐位比对 |
+| STATUS | `0x20` 的错误位 [3:0] 必须为 0，且 [4]=1（引擎 idle）|
+| **T1** | 连续两次运行：`marked` 两次都必须是 2 |
+| **T2** | 重复根（同一 root 写两次）：只算一次 |
+| **T3** | 流水 AW（AW/W 背靠背两笔写）：两笔都必须落到正确寄存器 |
+| **T4** | 非法对象头（`ref_count=0xFFFFFFFF`）：被拒、`STATUS[3]=1`、`marked` 仍是活跃区 |
+| **T5** | 12 位寄存器地址：`root[60]` 在 `0x130`；写地址截断到 8 位会标记 0 个对象 |
+| **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
+| **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
+| **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
+| **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
+| **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle） |
+| **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 脉冲那一拍到达的旧响应必须被丢弃（`sim/run_race_tb.bat`）；修复前数据 FIFO 留下上一轮的旧字，新 run 的第一笔 ref 被顶掉 |
+| **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
+| **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
+| **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
+| **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
+| **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
+
+> 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
+> T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 `2` 会报 1588 条 `[AXI][FAIL]`
+> （而功能用例**照样通过**，因为存储模型不检查 ARSIZE）。
+> T6/T7/T8 的反向验证：把 `0x28` 读回改成常量 → T6 报 2 处 FAIL；把 `err_ovf`
+> 赋 0 → T7 `STATUS[0]=0`；把读主控的 `err` 去掉 → T8 `STATUS[1]=0`。
+> 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
+> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
+
+### 中断链路
+
+`gc_top.irq_o = done` 接到 `ps7_0/IRQ_F2P[0]`，即 **GIC 中断 ID 61**
+（`ISPENDR1` bit 29）。`driver/` 里有一个最小模块验证整条链路：
+
+```text
+insmod fogccc-irq.ko          # 映射 SPI 61 + request_irq，生成 /dev/fogccc_irq
+echo arm > /dev/fogccc_irq    # 使能（done=0 时不会触发）
+python3 gc_test.py 1024 1 2 --seed 11   # done 0 -> 1
+cat /dev/fogccc_irq           # "1 0 <virq>"  ← 中断已触发，处理函数自动关线
+```
+
+实测（发布镜像，PL 刚配置）：`before arm 0 0 / after arm 0 1 / after run 1 0`，`VERDICT: IRQ_DRIVEN_DONE_OK`
+（`tools/logs/board_irq_20261020.txt`）。前提是 PL 处于 `done=0`；若 `done=1`（跑过一次），插模块就会先计一次中断，测试会报 FAIL。
+两处约束见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
+SPI 编号 = ID − 32）。
 
 ## Debug & Monitoring
 
