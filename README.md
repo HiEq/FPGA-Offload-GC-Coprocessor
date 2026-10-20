@@ -549,7 +549,12 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
 | `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,875 B | `878E9880DB4BCEB824B6F340A7FA7036` |
 
-**开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
+> ⚠️ **镜像比仓库配置旧**：`image.ub` 构建于 2026-10-17；仓库里 2026-10-19 的两处配置改动
+> （`inetd.conf` 关闭 telnet/ftp、`system-user.dtsi` 给 `pl_graph@1e000000` 加 `no-map`）**还没有打进这个镜像**
+> （板上 `/etc/inetd.conf` 仍有 telnet，`/proc/device-tree/.../pl_graph@1e000000/` 没有 `no-map`）。
+> 需要最新配置时用 `petalinux/build_fogccc2.sh` 重新构建 `image.ub` 并更新 Release。
+>
+> **开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
 
 1. BOOT 分区：放 `BOOT.BIN`、`image.ub`，再解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）
 2. USERDATA 分区：解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `cmark` / `bin/test_main` / `py/` / `tests/` / `ko/`）
