@@ -4,9 +4,9 @@
 #
 #   usage: python3 abort_sweep.py [N] [avg_refs] [--seed N]
 #
-# 为什么: abort_test 只在 ~200 us（标记阶段）打断一次。STATUS[1] 的误置已经
-#         证明"落在哪一拍"会改变行为, 所以把打断点扫一遍:
-#           位图清零 (0~41 us) / 根处理 / 头部读 / 引用读 / 收尾
+# abort_test 只在 ~200 us（标记阶段）打断一次; 打断点会影响 STATUS[1],
+# 因此按相位各扫一遍:
+#   位图清零 (0~41 us) / 根处理 / 头部读 / 引用读 / 收尾
 #
 # 每个相位:
 #   1) START, 忙等到 d us, 先读一次 STATUS, 再写 CTRL[3]

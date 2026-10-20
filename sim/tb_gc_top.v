@@ -220,8 +220,8 @@ module tb_gc_top;
             m_awaddr = a; m_awvalid = 1'b1;
             m_wdata  = d; m_wstrb = 4'hF; m_wvalid = 1'b1;
             m_bready = 1'b0;
-            // 注意: 必须在 posedge 采样握手 —— ready 可能是组合信号,
-            //       在 negedge 采样会错过已经发生的握手 (旧 RTL 的"高两拍"掩盖了这个问题)
+            // 握手必须在 posedge 采样: ready 可能是组合信号,
+            // negedge 会错过已经发生的握手。
             @(posedge clk);
             while (!(m_awvalid && m_awready)) @(posedge clk);
             @(negedge clk); m_awvalid = 1'b0;
@@ -303,7 +303,7 @@ module tb_gc_top;
         cur_off  = ref_base;
         for (i = 0; i < N; i = i + 1) begin
             if (i == 0)          rc = 3;          // 根对象有 3 条引用, 图才连通
-            else if (i == 1)     rc = 200;        // >> 旧版 REF_MAX(64): 静默截断的回归测试
+            else if (i == 1)     rc = 200;        // rc > REF_MAX(64): 截断回归
             else if (i < N-ISLAND) rc = i % 8;    // 0..7, 覆盖 ref_count=0 的路径
             else                 rc = (i % 3) + 1;
             rcs[i]  = rc;
@@ -323,7 +323,7 @@ module tb_gc_top;
                 if (i < N-ISLAND) begin
                     tgt = (i + 1 + j*13 + 7) % (N-ISLAND);
                     // 在根对象上造一个"相邻重复引用"(ref1 == ref0), 一定被访问到,
-                    // 用于回归 gc_mark_engine 里的 prev_ref 修复
+                    // 回归 prev_ref 跨运行残留
                     if (i == 0 && j == 1) tgt = mem[roff[0]/4 + 0];
                     if (tgt == i) tgt = (tgt + 1) % (N-ISLAND);
                 end else begin
@@ -611,7 +611,7 @@ module tb_gc_top;
         // T5: 12 位寄存器地址 —— 写 root[60] (地址 0x40+60*4 = 0x130 > 0xFF)
         //   构造: obj_count=61, root[0..59] 全填 200 (>= obj_count, 会被跳过),
         //         root[60]=60。root_count=61 保证引擎确实会读到 root[60]。
-        //   修复后: marked=1 (只有 obj60);
+        //   期望: marked=1 (只有 obj60);
         //   若地址被截断(8 位): root[60] 写不进去 -> 全是无效根 -> marked=0.
         // ============================================================
         $display("[TB] ===== T5: 12-bit register address =====");
@@ -673,8 +673,8 @@ module tb_gc_top;
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
-        // The refs matter: a stale queue entry with rc=0 would be popped but never
-        // issued, so it could not expose the desync (consume-with-nothing-issued).
+        // The refs matter: a stale queue entry with rc>0 is popped but never issued,
+        // which is the desync this test needs (consume-with-nothing-issued).
         // A chain would keep the queue at depth 0..1 and leave nothing to inherit.
         begin : t_ab_gen
             integer i, w;
@@ -701,7 +701,7 @@ module tb_gc_top;
         repeat (200) @(negedge clk);
         axil_wr(R_CTRL, 32'h1);                   // START
         // Wait for real marking activity: the bitmap clear alone takes 4096 cycles,
-        // so aborting at 200 cycles leaves the queue empty and hides the bug.
+        // so aborting at 200 cycles leaves the queue empty and masks the failure.
         guard = 0;
         while ((dut.u_queue.count < 8) && guard < 20000) begin
             @(negedge clk); guard = guard + 1;
@@ -730,7 +730,7 @@ module tb_gc_top;
         // root 0 has no refs, so exactly 1 object must be marked. The stale queue
         // entries each still carry one ref, and with COUNT=32 those refs pass the
         // `ref_val >= obj_count` filter -- so inheriting them shows up as a wrong
-        // count. (A smaller COUNT would silently filter them and hide the bug.)
+        // count. (A smaller COUNT would filter them and mask the failure.)
         begin : t_ab_b
             integer i;
             mem[(0*16)/4 + 0] = 0;
@@ -748,10 +748,8 @@ module tb_gc_top;
         axil_wr(R_RLIST, 32'd0);
 
         // ---- T-ABORT2: START alone (no CLEAR_Q) must not inherit the aborted run ----
-        // The driver writes only CTRL[0]; CLEAR_Q is a separate register. So abort
-        // itself has to flush the work queue and the prefetch/issue pipeline.
-        // Symptom without the fix: the engine pops the leftovers and marks their
-        // refs, so the count is far above 1.
+        // The driver writes only CTRL[0]; CLEAR_Q is a separate register. abort
+        // therefore has to flush the work queue and the prefetch/issue pipeline.
         $display("[TB] T-ABORT2 queue count before START = %0d (expect the aborted run's leftovers)",
                  dut.u_queue.count);
         axil_wr(R_CTRL, 32'h1);                   // START, deliberately no CLEAR_Q
@@ -926,8 +924,7 @@ module tb_gc_top;
             errors = errors + 1;
         end
         // ---- T8b: a clean start must clear the latched read-error bit ----
-        // The README says STATUS[1] is cleared on every start; before the fix
-        // gc_regs fed err_rd straight through, so it was sticky until reset.
+        // STATUS[1] is cleared on every start (not sticky until reset).
         axil_wr(R_CTRL, 32'h1);
         repeat (300) @(negedge clk);
         axil_rd(R_STATUS, rd_val);

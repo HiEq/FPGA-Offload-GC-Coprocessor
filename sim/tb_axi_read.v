@@ -176,7 +176,7 @@ module tb_axi_read;
         end else if (r_cnt != NCMD) begin
             $display("[AXITB][FAIL] 收回的 R 数 %0d != %0d (丢数据)", r_cnt, NCMD);
         end else if (viol != 0) begin
-            $display("[AXITB][FAIL] 未完成读事务超过 8 共 %0d 拍 —— #6 未修复!", viol);
+            $display("[AXITB][FAIL] 未完成读事务超过 8 共 %0d 拍", viol);
         end else if (axi_errs !== 32'd0) begin
             $display("[AXITB][FAIL] AXI 协议违规 %0d 次", axi_errs);
         end else begin

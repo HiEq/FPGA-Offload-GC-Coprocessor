@@ -15,8 +15,7 @@ $s.Sp.Write("`n")
 Read-BoardSerial -Session $s -Ms 400
 
 # The offset matters: without it an old prompt already sitting in the buffer ends
-# the wait before this command has produced anything. serial_run_gc.ps1 had been
-# fixed for that; this script still had the bug.
+# the wait before this command has produced anything.
 $from = $s.Sb.Length
 Write-BoardSerialLine -Session $s -Text $Cmd -SettleMs 0
 [void](Read-BoardSerialUntil -Session $s -Pattern '#\s*$' -MaxMs $WaitMs -From $from)

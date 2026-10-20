@@ -120,7 +120,7 @@ module gc_axi_read #(
     // A run can finish (or be aborted) while commands are still queued, ARs are
     // still in flight, or data sits unread in the FIFO. The next run would then
     // consume that data as its own: out-of-order refs, a bogus STATUS[2]
-    // (consume > issue) and wrong marks. Board evidence: done_race_test.py P3
+    // (consume > issue) and wrong marks. Covered by done_race_test.py P3
     // (every run after the first reported STATUS=0x4; one run marked 964 of an
     // expected 768). On run_start we drop the queued commands, drop the buffered
     // data, and keep discarding responses until every pre-flush AR has returned.

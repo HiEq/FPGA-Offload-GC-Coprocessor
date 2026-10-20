@@ -1,11 +1,9 @@
 # ============================================================
 # serial-session.ps1 - shared serial plumbing for the host scripts
 #
-# Why this file exists: serial_cmd.ps1 and serial_run_gc.ps1 each used to carry
-# their own copy of "open the port + pump bytes + chunked write + strip ANSI +
-# print the tail". The two copies had already drifted: serial_run_gc.ps1 had a
-# $From offset so a stale prompt in the buffer could not satisfy the "command
-# finished" pattern, while serial_cmd.ps1 did not - the same bug was still there.
+# Shared serial plumbing: open the port, pump bytes, chunked write, strip ANSI,
+# print the tail. Used by serial_cmd.ps1 and serial_run_gc.ps1.
+# Waits take a $From offset so a stale prompt in the buffer cannot satisfy a new wait.
 #
 # NOT used by serial-monitor.ps1, on purpose: that file is a byte-identical
 # shared artifact with LINUX-FPGA\scripts\serial-monitor.ps1 (see its header) and

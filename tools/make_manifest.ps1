@@ -4,7 +4,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools/make_manifest.ps1 -Check
 #
 # The binaries are rebuilt on Linux; this manifest pins what is committed so a
-# stale binary (the review found an outdated libfogccc.so) is visible in a diff.
+# a stale binary is visible in a diff.
 # CI runs -Check and fails when the manifest does not match the tree.
 param(
     [switch]$Check

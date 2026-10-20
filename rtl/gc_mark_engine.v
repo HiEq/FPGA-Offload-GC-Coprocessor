@@ -95,11 +95,8 @@ module gc_mark_engine (
         S_ROOT_CHK   = 5'd24;   // #5: 根节点查位图去重
 
     // 25 个编码里 12 个在用, 13 个保留 (S_POP_WAIT / S_HDR_P1..P3 / S_HDR_G1..G2 /
-    // S_REFS_PUSHW / S_PF_WAIT / S_PF_H1..H3 / S_PF_G1..G2)。保留是有意的:
-    // 删掉它们只省 1 个触发器 (全设计 18,214 个里的 1 个) 和几个综合已经删掉的
-    // 译码 LUT, 却要重排编码、改 TB 里的数字常量, 等于把已经板级验证过的 FSM
-    // 重新证一遍。收益 ~0, 风险不为 0, 所以不动。
-    // (case 里保留这些分支只是为了让 `default` 之外的状态名可读, 不可达。)
+    // S_REFS_PUSHW / S_PF_WAIT / S_PF_H1..H3 / S_PF_G1..G2). 这些分支不可达,
+    // 保留只为状态名可读; 删除需重排编码并重跑全部仿真。
 
     reg [4:0]  state = 5'd0;
 
@@ -173,9 +170,7 @@ module gc_mark_engine (
     assign hdr_data_ready = ~dq_full;   // 描述符快满时先别收新的头
 
     // !abort: on the abort cycle the read engine flushes at the next edge, so a
-    // beat can still be presented in the same cycle. Ignoring it here closes the
-    // 1-cycle race that used to latch err_hdr (board: 1 occurrence in 5 repeats
-    // of the 3 us abort phase).
+    // beat can still be presented in the same cycle; it must not be consumed here.
     wire       hdr_hs     = hdr_data_valid && hdr_data_ready && !abort;
     wire       fill_done  = hdr_hs && hdr_second;
     wire       take_ok    = pf_take && (pf_cnt != 3'd0);
@@ -311,11 +306,10 @@ module gc_mark_engine (
                 pf_cnt  <= 3'd0;
                 pf_iss  <= 3'd0;
                 pf_head <= 2'd0;
-                // The prefetch FSM and the issuer must go back to their idle
-                // shape as well. An abort landing between SC_C1 and SC_C3 used to
-                // leave sc_state mid-sequence (and hdr_cmd_valid asserted), so the
-                // next run sometimes never reached DONE -- observed as a single
-                // "recovery no DONE" in abort_sweep.py at a 3 us abort.
+                // The prefetch FSM and the issuer must return to idle as well.
+                // Otherwise an abort between SC_C1 and SC_C3 leaves sc_state
+                // mid-sequence (with hdr_cmd_valid asserted) and the next run
+                // may never reach DONE.
                 sc_state      <= SC_IDLE;
                 sc_tmo        <= 8'd0;
                 hdr_cmd_valid <= 1'b0;
