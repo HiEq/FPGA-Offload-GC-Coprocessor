@@ -388,6 +388,8 @@ python3 python/benchmark.py
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
 | **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
 | **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle、无错误）|
+| **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 当拍到达的旧响应必须被丢弃；未修复时数据 FIFO 留下上一轮的字，新 run 的第一笔 ref 被顶掉（`sim/run_race_tb.bat`）|
+| **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；未修复时 `c0r=1→2` 且残留 `ARADDR=0x30000008`，修复后 `c0r=1→4`、无残留（`sim/run_cmdfifo_tb.bat`）|
 | **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
 | **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
 | **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
@@ -528,8 +530,9 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 > ⚠️ 下表是 **GitHub Release 资产**的哈希。仓库与 tag **都不跟踪** `BOOT.BIN`（`artifacts/BOOT.BIN` 被 `.gitignore` 排除），
 > 所以 tag 树里根本没有这个文件，不要试图用 tag 树核对哈希。
-> `v4-optimized` 的 2026-10-20 更新：比特流加入 `STATUS[4]`（engine idle），`BOOT.BIN` 用
-> `bootgen` 重打（SHA256 `7487463a…`）；`image.ub` 重新构建（SHA256 `5b66851f…`），
+> `v4.1` 的 2026-10-20 更新：`run_start`/`abort` flush 同时覆盖数据 beat 与命令 FIFO；
+> `BOOT.BIN` 用 `bootgen` 重打（SHA256 `7487463a…`，内含 bitstream md5 `3590FBB5…`，
+> WNS `+1.435 ns` / WHS `+0.046 ns`）；`image.ub` 为 `5b66851f…`（未变），
 > 关闭 telnet/ftp 并给 `pl_graph@1e000000` 加 `no-map`。校验清单见 `artifacts/SHA256SUMS.release`。
 
 | 资产 | 放到哪 | 大小 | SHA256 |
