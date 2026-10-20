@@ -358,7 +358,7 @@ python3 python/benchmark.py
 #### 端到端成本
 
 `FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
-`gc_test.py 4096 8 2` 在板上实测（2026-10-20，发布镜像，bitstream `3590FBB5…`）：
+`gc_test.py 4096 8 2` 在板上实测（2026-10-20，v4.1 发布镜像，bitstream `81640C7C…`；新 `3590FBB5` 未重跑性能）：
 
 | 阶段 | 时间 |
 | --- | --- |
@@ -463,8 +463,8 @@ SPI 编号 = ID − 32）。
 
 72 次全部 OK；三个实现（HW / C 非缓存 / C 缓存）标记数均等于真值 L。
 
-> 上表用 bitstream `3590FBB5…`（2026-10-20，`tools/logs/cmark_sweep.log`）与 `cmark`（23,256 B）重跑，
-> 72/72 OK；C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`。
+> 上表用 bitstream `02D52FCC…`（2026-10-20，`tools/logs/cmark_sweep.log`）与 `cmark`（23,256 B）重跑，
+> 72/72 OK；C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`；新 `3590FBB5` 未重跑 cmark。
 
 **结论**：
 
