@@ -7,7 +7,7 @@
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
 > `CI` 只检查 shell/Python/PowerShell 语法、`gcc -fsyntax-only`、`iverilog` 的 RTL parse
-> 与 `SHA256SUMS`；**不跑 RTL 功能仿真或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
+> 与 `SHA256SUMS`；**不进行 RTL 功能仿真或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
 
 Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quick-start) ·
 [寄存器](#register-map) · [对象图格式](#object-graph-ddr-format) · [版本对比](#版本对比历史数据) ·
@@ -71,7 +71,7 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 5. ARM PS 轮询完成标志，读取标记结果和周期计数
 6. CPython 据此跳过/回收未标记对象
 
-> **当前实现**：第 1、6 步是目标形态，CPython 的 `gc` 模块尚未接入。
+> **当前实现2/3/4/5**：第 1、6 步是目标形态，CPython 的 `gc` 模块尚未接入。
 > 对象图由 `csrc/fpga_gc.c` / `python/fogccc.py` 按「对象头 + 引用数组」布局构造；
 > 标记语义与 GC 的 mark 阶段一致，回收动作由 CPython 完成。
 
@@ -325,9 +325,21 @@ python3 python/benchmark.py
 "每对象周期" = HW cycles ÷ 活跃对象数（已扣除固定的 4096 拍清位图）。
 
 > **可复现**：`gc_test.py` 支持 `--seed N` 并会把种子打印在日志里
-> （不传则从时钟取一个并打印），同一种子的两次运行图**完全一致**。
+> （不传则从时钟取一个并打印），同一种子的两次运行图一致。
 > 本次 8 轮的种子是 `180811581`（`--seed 180811581` 可重放）。
 > 同一张图重复跑 100 次（`test_main` Test 3），cycles 在 18372–18809 之间，极差 2.4%。
+
+### 优化手段（四步）
+
+| # | 手段 | 效果 |
+|---|---|---|
+| 1 | **多笔未完成读**：`gc_axi_read` 改成"命令 FIFO + 数据 FIFO"的读命令队列，引擎可连续压入地址互不依赖的读 | 每个对象从 `2 + ref_count` 次**串行**往返 → 2 次**并发**往返 |
+| 2 | **引用阶段压入/取回交错** + **对象头投机预取**：引用命令边压边收；当前对象引用命令压完后立刻从队列弹下一个对象、把它的两笔头读也压进去 | 下一个对象的头延迟被完全覆盖 → 每个对象只暴露 **1 次往返**；无 `REF_MAX` 截断 |
+| 3 | **逐引用快路径**：位图改成读写地址独立的简单双口 BRAM；取到引用值那一拍就发读地址，下一拍"判定+置位+入队"一拍完成 | 每次引用 6 拍 → **2 拍** |
+| 4 | **引用流水**：把"发引用读命令"从主状态机剥离成独立 issuer，描述符在**对象头填好的那一刻**就入队，最多领先 4 个对象；对象头改走**独立的 AXI 流**（`ID=1`），与引用流（`ID=0`）互不阻塞 | 引用读延迟被后续对象的处理盖住：LAT 扫描斜率 **1.00 → 0.71**；每对象 **38.3 → 17.5 拍** |
+
+配套：AXI HP 从 FCLK1 (200MHz) 挪到 FCLK0 (100MHz)，省掉 2FF CDC 同步器。
+
 
 |                | 原始设计 Ver1<br>(单笔未完成读) | Ver2<br>(多笔未完成读 + 快路径) | Ver3<br>(+ 对象头预取 + 竞态修复) | Ver4 [H]<br>(+ 引用流水 + 6 项修复) |
 | -------------- | ------------------------------- | ------------------------------- | --------------------------------- | ------------------------------- |
@@ -341,6 +353,20 @@ python3 python/benchmark.py
 > 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
 > 本表是历史数据（`historical/unverified`）；当前可复核的 8/8 见
 > `tools/logs/board_gc_test_20261020.txt`（218,429 拍，发布镜像）。
+
+### 提升幅度
+
+```
+每对象周期    90.2 → 15.4          = 5.9x     (Ver1 → Ver4, run_gc)
+             38.3 → 17.5          = 2.19x    (Ver3 → Ver4, cmark 同一张图, 最严格)
+总 HW cycles  1,804,791 → 484,034  = −73%     (Ver1 → Ver3)
+```
+
+**数据出处**：
+- 命令：`run_gc.sh`（maxN=4096 trials=8 avg_refs=2）、`run_cmark.sh` 4 组共 72 次
+- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）—— **历史记录**，归档日志里查不到这个哈希
+- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）—— **历史记录**，归档日志里查不到这个哈希
+- 板卡：XC7Z100-FFG900-2，AXI HP 与引擎同在 FCLK0 = 100MHz，DDR3 @ 533MHz
 
 #### 测量口径
 
@@ -403,7 +429,7 @@ python3 python/benchmark.py
 > 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
 > （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
 
-### 中断链路
+### 中断链路（在本项目中的不作使用，本项目使用轮询）
 
 `gc_top.irq_o = done` 接到 `ps7_0/IRQ_F2P[0]`，即 **GIC 中断 ID 61**
 （`ISPENDR1` bit 29）。`driver/` 里有一个最小模块验证整条链路：
@@ -419,32 +445,6 @@ cat /dev/fogccc_irq           # "1 0 <virq>"  ← 中断已触发，处理函数
 （`tools/logs/board_irq_20261020.txt`）。前提是 PL 处于 `done=0`；若 `done=1`（跑过一次），插模块就会先计一次中断，测试会报 FAIL。
 两处约束见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
 SPI 编号 = ID − 32）。
-
-### 提升幅度
-
-```
-每对象周期    90.2 → 15.4          = 5.9x     (Ver1 → Ver4, run_gc)
-             38.3 → 17.5          = 2.19x    (Ver3 → Ver4, cmark 同一张图, 最严格)
-总 HW cycles  1,804,791 → 484,034  = −73%     (Ver1 → Ver3)
-```
-
-**数据出处**：
-- 命令：`run_gc.sh`（maxN=4096 trials=8 avg_refs=2）、`run_cmark.sh` 4 组共 72 次
-- 比特流：`36D14E4B7EFA89AC334F222615A29908`（17,416,553 B，含位图探针）—— **历史记录**，归档日志里查不到这个哈希
-- BOOT.BIN：`04CFEC20A279CFA2F03225481D42D0EF`（18,582,704 B）—— **历史记录**，归档日志里查不到这个哈希
-- 板卡：XC7Z100-FFG900-2，AXI HP 与引擎同在 FCLK0 = 100MHz，DDR3 @ 533MHz
-
-
-### 优化手段（四步）
-
-| # | 手段 | 效果 |
-|---|---|---|
-| 1 | **多笔未完成读**：`gc_axi_read` 改成"命令 FIFO + 数据 FIFO"的读命令队列，引擎可连续压入地址互不依赖的读 | 每个对象从 `2 + ref_count` 次**串行**往返 → 2 次**并发**往返 |
-| 2 | **引用阶段压入/取回交错** + **对象头投机预取**：引用命令边压边收；当前对象引用命令压完后立刻从队列弹下一个对象、把它的两笔头读也压进去 | 下一个对象的头延迟被完全覆盖 → 每个对象只暴露 **1 次往返**；无 `REF_MAX` 截断 |
-| 3 | **逐引用快路径**：位图改成读写地址独立的简单双口 BRAM；取到引用值那一拍就发读地址，下一拍"判定+置位+入队"一拍完成 | 每次引用 6 拍 → **2 拍** |
-| 4 | **引用流水**：把"发引用读命令"从主状态机剥离成独立 issuer，描述符在**对象头填好的那一刻**就入队，最多领先 4 个对象；对象头改走**独立的 AXI 流**（`ID=1`），与引用流（`ID=0`）互不阻塞 | 引用读延迟被后续对象的处理盖住：LAT 扫描斜率 **1.00 → 0.71**；每对象 **38.3 → 17.5 拍** |
-
-配套：AXI HP 从 FCLK1 (200MHz) 挪到 FCLK0 (100MHz)，省掉 2FF CDC 同步器。
 
 ### 对优化 C 的参考对比
 
@@ -533,7 +533,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > `bootgen` 重打（md5 `074CF12D…`）；`image.ub` 重新构建（md5 `400F47FA…`），
 > 关闭 telnet/ftp 并给 `pl_graph@1e000000` 加 `no-map`。校验清单见 `artifacts/SHA256SUMS.release`。
 
-| 资产 | 放到哪 | 大小 | md5 |
+| 资产 | 烧录位置 | 大小 | md5 |
 | --- | --- | --- | --- |
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `074CF12D3DDA51185936571ECD5A37D8` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `400F47FA29E9617682B9D582109B0F1A` |
@@ -562,7 +562,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | p2 | FAT32 | **USERDATA** | `run_gc.sh` / `run_cmark.sh` / `run_repeat.sh` / `gc_test.py` / `cmark` + `bin/` `tests/` `py/` `ko/` `logs/` |
 
 > ⚠️ `USERDATA` 必须是 **FAT32**：板子内核没有编 exFAT (`# CONFIG_EXFAT_FS is not set`)。
-> Windows 图形界面无法创建 >32GB 的 FAT32，用板子自己格式化：
+> Windows 图形界面无法创建 >32GB 的 FAT32，建议用相关硬盘工具创建：
 > `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`
 
 ## 上板流程
@@ -583,7 +583,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 串口脚本自动识别 CH340；多根串口线时用 `-Port COMx` 指定。
 
-| 做什么 | 命令 | 说明 |
+| 功能 | 命令 | 说明 |
 | --- | --- | --- |
 | 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
 | 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
