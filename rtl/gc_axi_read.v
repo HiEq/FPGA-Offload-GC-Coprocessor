@@ -124,7 +124,7 @@ module gc_axi_read #(
     // (every run after the first reported STATUS=0x4; one run marked 964 of an
     // expected 768). On run_start we drop the queued commands, drop the buffered
     // data, and keep discarding responses until every pre-flush AR has returned.
-    assign RREADY = flushing ? 1'b1 : ~r_full;
+    assign RREADY = (flushing || run_start || abort) ? 1'b1 : ~r_full;
 
     always @(posedge ACLK or negedge ARESETN) begin
         if (!ARESETN) begin
@@ -203,9 +203,11 @@ module gc_axi_read #(
             if (run_start)
                 err <= 1'b0;          // README: STATUS[1] clears on every start
 
-            if (RVALID && RREADY && flushing) begin
+            if (RVALID && RREADY && (flushing || run_start || abort)) begin
                 // Stale response from the previous run: pop its tracking entry and
-                // throw the data away.
+                // throw the data away. run_start/abort must be included: flushing is
+                // still 0 on the pulse cycle, so a same-cycle beat would otherwise be
+                // stored and consumed by the new run (1-cycle hole, see tb_runstart_race).
                 if (r_is1) begin
                     if (!h1empty) h1r <= h1r + 1'b1;
                 end else begin

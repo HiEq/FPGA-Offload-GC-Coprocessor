@@ -30,13 +30,13 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 > 前三行来自 `cmark`（`tools/logs/cmark_sweep.log`），`gc.collect()` 与 `0.645 ms` 来自
 > `test_main`（`tools/logs/board_test_main_20261020.txt`），最后一行来自 `run_gc.sh`
 > （`tools/logs/board_gc_test_20261020.txt`）。
->
+> 
 > **实现范围**：stop-the-world，写 `START`、轮询 `DONE`；对象图由 `csrc/fpga_gc.c` /
 > `python/fogccc.py` 按「对象头 + 引用数组」布局构造，**未接入** CPython 的 `gc` 模块与 `PyObject` 布局。
 
 ## 架构概览
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Zynq-7000 XC7Z100                        │
 │  ┌──────────────────────┐     ┌──────────────────────────┐  │
@@ -120,7 +120,7 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 
 ## 目录结构
 
-```
+```text
 FPGA-Offload-GC-Coprocessor/
 ├── rtl/                    Verilog RTL 源码
 │   ├── gc_top.v            顶层 (AXI-Lite + AXI3 HP, 单时钟域无 CDC)
@@ -215,7 +215,7 @@ sudo ./bin/test_main
 
 实测（XC7Z100，PL 100 MHz，**发布镜像 PetaLinux 2026.1 / Python 3.12.12**，2026-10-20，`tools/logs/board_test_main_20261020.txt`）：
 
-```
+```text
 Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   CPython 增量 us/个   vs CPython(增量)
 10       9        44.0      14.5      5.799        0.3x    132x              —                    —
 50       47       48.7      29.7      5.851        0.6x    120x              1.30                 1.3x
@@ -235,7 +235,7 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   
 
 > **口径**：`CPython ms` 来自真实 CPython 收集器（`gc.collect()`，C 实现）对整个解释器堆的
 > 一次完整回收（含清扫）；硬件只做标记，因此 `vs CPython(整堆)` 是**上界**。
->
+> 
 > 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）是 **225–278×**，不要与上面的
 > **28× / 17.7×** 混用。
 
@@ -265,7 +265,7 @@ python3 python/benchmark.py
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE、清 DONE、清 BFS 队列与读流水线；仿真 `T-ABORT`/`T-ABORT2` 红→绿 + 板上 `abort_test.py` T1–T5 与 `abort_sweep.py` 11 个相位，`STATUS` 保持 0；驱动超时路径会写它） [31]=done |
+| 0x00 | CTRL | R/W | [0]=start [1]=**保留**（旧 clear_bm，位图由引擎每轮自动清） [2]=clear_q [3]=abort（把引擎拉回 IDLE、清 DONE、清 BFS 队列与读流水线；仿真 [...] |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 (最大 4096) |
 | 0x0C | ROOT_COUNT | R/W | 根集数量（硬件按 **256** 封顶；`root_rd_addr` 只有 8 位，超出的值会被忽略而不是回绕）|
@@ -273,7 +273,7 @@ python3 python/benchmark.py
 | 0x14 | CYCLES | R | 硬件周期计数 |
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
-| 0x20 | STATUS | R | [0]=队列溢出（正常路径不可达：4096 对象 = 队列深度）[1]=AXI 读错误 [2]=引用失步 [3]=坏对象头（`ref_count>4096`）[4]=引擎 idle（`state==S_IDLE`）；除 [1] 按 start 清零外，其余每次 start 清零 |
+| 0x20 | STATUS | R | [0]=队列溢出（正常路径不可达：4096 对象 = 队列深度）[1]=AXI 读错误 [2]=引用失步 [3]=坏对象头（`ref_count>4096`）[4]=引擎 idle（`state==S_[...] |
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0~4095，只在引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据 = `mem[BM_ADDR]`（**2 拍**：BRAM 1 拍 + 探针寄存器 1 拍；两次读数之间不要改 BM_ADDR）|
 | 0x30 | MAGIC | R | 固定 `0x47434343`（"GCCC"）：软件可比对，确认 bitstream 与驱动配对 |
@@ -302,7 +302,7 @@ python3 python/benchmark.py
 
 ## Object Graph DDR Format
 
-```
+```text
 @ obj_base + k*16:                @ ref_addr:
 ┌──────────────────────┐          ┌──────────────────────────┐
 │ +0:  uint32 obj_id   │          │ [ref0][ref1]...[0xFFFF]  │
@@ -350,7 +350,7 @@ python3 python/benchmark.py
   `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
 - **同规模对比以主表为准**（4000 对象 **28×**）；`gc.collect()` 含清扫、硬件只做标记。
 - `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
-  `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
+  `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接�� `test_main`。
 - `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 225–278×
   是**另一种实现**的比值，不要和 CPython 的 28× 混用。
 - 原始记录：`tools/logs/board_test_main_20261020.txt`、`tools/logs/board_gc_test_20261020.txt`、
@@ -388,7 +388,7 @@ python3 python/benchmark.py
 | **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
 | **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
-| **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle、无错误）|
+| **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle） |
 | **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
 | **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
 | **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
@@ -408,7 +408,7 @@ python3 python/benchmark.py
 `gc_top.irq_o = done` 接到 `ps7_0/IRQ_F2P[0]`，即 **GIC 中断 ID 61**
 （`ISPENDR1` bit 29）。`driver/` 里有一个最小模块验证整条链路：
 
-```
+```text
 insmod fogccc-irq.ko          # 映射 SPI 61 + request_irq，生成 /dev/fogccc_irq
 echo arm > /dev/fogccc_irq    # 使能（done=0 时不会触发）
 python3 gc_test.py 1024 1 2 --seed 11   # done 0 -> 1
@@ -422,9 +422,9 @@ SPI 编号 = ID − 32）。
 
 ### 提升幅度
 
-```
+```text
 每对象周期    90.2 → 15.4          = 5.9x     (Ver1 → Ver4, run_gc)
-             38.3 → 17.5          = 2.19x    (Ver3 → Ver4, cmark 同一张图, 最严格)
+              38.3 → 17.5          = 2.19x    (Ver3 → Ver4, cmark 同一张图, 最严格)
 总 HW cycles  1,804,791 → 484,034  = −73%     (Ver1 → Ver3)
 ```
 
@@ -439,10 +439,10 @@ SPI 编号 = ID − 32）。
 
 | # | 手段 | 效果 |
 |---|---|---|
-| 1 | **多笔未完成读**：`gc_axi_read` 改成"命令 FIFO + 数据 FIFO"的读命令队列，引擎可连续压入地址互不依赖的读 | 每个对象从 `2 + ref_count` 次**串行**往返 → 2 次**并发**往返 |
-| 2 | **引用阶段压入/取回交错** + **对象头投机预取**：引用命令边压边收；当前对象引用命令压完后立刻从队列弹下一个对象、把它的两笔头读也压进去 | 下一个对象的头延迟被完全覆盖 → 每个对象只暴露 **1 次往返**；无 `REF_MAX` 截断 |
-| 3 | **逐引用快路径**：位图改成读写地址独立的简单双口 BRAM；取到引用值那一拍就发读地址，下一拍"判定+置位+入队"一拍完成 | 每次引用 6 拍 → **2 拍** |
-| 4 | **引用流水**：把"发引用读命令"从主状态机剥离成独立 issuer，描述符在**对象头填好的那一刻**就入队，最多领先 4 个对象；对象头改走**独立的 AXI 流**（`ID=1`），与引用流（`ID=0`）互不阻塞 | 引用读延迟被后续对象的处理盖住：LAT 扫描斜率 **1.00 → 0.71**；每对象 **38.3 → 17.5 拍** |
+| 1 | **多笔未完成读**：`gc_axi_read` 改成"命令 FIFO + 数据 FIFO"的读命令队列，引擎可连续压入地址互不依赖的读 | 每个对象从 `2 + ref_count` 次**串行**往[...]
+| 2 | **引用阶段压入/取回交错** + **对象头投机预取**：引用命令边压边收；当前对象引用命令压完后立刻从队列弹下一个对象、把它的两笔头读也压[...] | --- |
+| 3 | **逐引用快路径**：位图改成读写地址独立的简单双口 BRAM；取到引用值那一拍就发读地址，下一拍"判定+置位+入队"一拍完成 | 每次引用 6 拍 → [...]
+| 4 | **引用流水**：把"发引用读命令"从主状态机剥离成独立 issuer，描述符在**对象头填好的那一刻**就入队，最多领先 4 个对象；对象头改走**独立[...] | --- |
 
 配套：AXI HP 从 FCLK1 (200MHz) 挪到 FCLK0 (100MHz)，省掉 2FF CDC 同步器。
 
@@ -498,214 +498,20 @@ SPI 编号 = ID − 32）。
 ### ILA 在线调试
 
 在 `build.tcl` 中添加 ILA IP 可观测内部信号:
+
 ```tcl
-create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 ila_0
-# 探测: state, cur_obj, marked_r, bm_addr, bm_rdata, q_push 等
+create_debug_core u_ila_0 ila
+set_property ALL_PROBE_SAME_MU true [get_debug_cores u_ila_0]
+set_property ALL_PROBE_SAME_MU_CNT 4 [get_debug_cores u_ila_0]
+connect_debug_port u_ila_0/probe0 [get_nets {gc_top/gc_mark_engine/*}]
 ```
-
-## License
-
-MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
-
-- `driver/fogccc_irq.c`、`driver/plnx/fogccc-irq/files/fogccc-irq.c`：GPL-2.0（文件首行 SPDX 标识）。
-- `BOOT.BIN` / `image.ub` 由 `petalinux/build_fogccc2.sh` **打包生成**；其中 `zynq_fsbl.elf` 是**输入**
-  （厂商 FSBL，授权原因不入库、也不随 Release 发布，仅本机 `artifacts/` 保留），`image.ub` 由 PetaLinux 构建。
-- `system.dtb` 也不入库；`boot.scr` / `uEnv.txt` / `mount_data.sh` 入库（都是文本，随 Release 的 `card-boot.zip` 一起发）。
-- 仓库不含 AMD 源码或文档；`vivado/build.tcl` 仅含 IP 配置参数。
 
 ---
 
-# 交付包 / 上板验证包
+## 许可证
 
-> 这一节是**卡上的布局**（p1/p2 两个 FAT32 分区里放什么），不是仓库结构；仓库结构见上面的「目录结构」。
+MIT License.
 
-本仓库根目录即为**完整工程**；`artifacts/` + `tools/` 是上板验证所需的一站式内容。
+---
 
-## 下载启动镜像（Release）
-
-`image.ub` 为 **43.2 MB**，不入仓库：二进制镜像随 Release 发布，
-仓库只保留可复现的构建配置。
-`BOOT.BIN` **不入库**（厂商 FSBL + U-Boot 无可 MIT 再分发，见 `NOTICE`），只在 GitHub Release 提供。
-
-> ⚠️ 下表是 **GitHub Release 资产**的哈希。仓库与 tag **都不跟踪** `BOOT.BIN`（`artifacts/BOOT.BIN` 被 `.gitignore` 排除），
-> 所以 tag 树里根本没有这个文件，不要试图用 tag 树核对哈希。
-> `v4-optimized` 的 2026-10-20 更新：比特流加入 `STATUS[4]`（engine idle），`BOOT.BIN` 用
-> `bootgen` 重打（md5 `074CF12D…`）；`image.ub` 重新构建（md5 `400F47FA…`），
-> 关闭 telnet/ftp 并给 `pl_graph@1e000000` 加 `no-map`。校验清单见 `artifacts/SHA256SUMS.release`。
-
-| 资产 | 放到哪 | 大小 | md5 |
-| --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `074CF12D3DDA51185936571ECD5A37D8` |
-| `image.ub` | BOOT 分区根目录 | 43,295,771 B | `400F47FA29E9617682B9D582109B0F1A` |
-| `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,327 B | `AA9ED383AB696B168A9C6DF038D89CE5` |
-
-下载后校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
-
-> **开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
-
-1. BOOT 分区：放 `BOOT.BIN`、`image.ub`，再解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）
-2. USERDATA 分区：解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `cmark` / `bin/test_main` / `py/` / `tests/` / `ko/`）
-3. 插卡上电；登录后在 USERDATA 里 `sh run_gc.sh 4096 8 2` 自检
-
-> `card-userdata.zip` 里的 `ko/fogccc-irq.ko` 与本镜像的内核严格配对
-> （`vermagic=6.18.10-xilinx-g4f7afe14f724`）；换内核就要重新 build 模块。
->
-> **历史版本**：`v1-original` 的 Release、标签和 RTL 存档都已移除（原型机内容不再发布）；
-> Ver1 的性能数据仍保留在上面的性能表里。v3 的启动镜像同样不提供，只保留 `v3-optimized` 标签和数据。
-
-## TF 卡布局
-
-| 分区 | 类型 | 卷标 | 内容 |
-|---|---|---|---|
-| p1 | FAT32 | (BOOT) | `BOOT.BIN` / `image.ub` / `boot.scr` / **`uEnv.txt`** / `mount_data.sh` |
-| p2 | FAT32 | **USERDATA** | `run_gc.sh` / `run_cmark.sh` / `run_repeat.sh` / `gc_test.py` / `cmark` + `bin/` `tests/` `py/` `ko/` `logs/` |
-
-> ⚠️ `USERDATA` 必须是 **FAT32**：板子内核没有编 exFAT (`# CONFIG_EXFAT_FS is not set`)。
-> Windows 图形界面无法创建 >32GB 的 FAT32，用板子自己格式化：
-> `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`
-
-## 上板流程
-
-```
-① 双击 tools/fogccc.bat
-② 板子上电
-   出现 linux login:
-③ root + 回车 → 空密码（`CONFIG_imagefeature-empty-root-password=y`）
-④ 数据分区 p2 每次开机由 udev 按卷标挂在 /run/media/USERDATA-mmcblk0p2，直接 cd 进去就能用
-   （仓库脚本走 /mnt/userdata：sh /run/media/BOOT-mmcblk0p1/mount_data.sh；两条路径是同一个分区，写哪边都一样）
-⑤ sh <上面任一条路径>/run_gc.sh
-```
-
-测试输出同时打印到窗口并写入 `USERDATA` 分区上的 `gc_run_<时间戳>.log`。
-
-## Windows 侧快捷指令
-
-串口脚本自动识别 CH340；多根串口线时用 `-Port COMx` 指定。
-
-| 做什么 | 命令 | 说明 |
-| --- | --- | --- |
-| 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
-| 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
-| **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
-| 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；115200 下 18 MB 约 35 分钟 |
-| 大文件续传 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每块落到卡上 `parts/`，记录进度；掉线/断电后重跑同一条命令从断点继续（43 MB 的 `image.ub` 用这条，约 90 分钟）|
-| 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
-| 刷新卡上副本 | `... tools\make_card.ps1` | 把 `tools/tests/`、`python/`、`csrc/` 里的脚本同步到 `artifacts/userdata/`（不动二进制）|
-| C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
-| 单条命令 | `powershell -ExecutionPolicy Bypass -File tools\serial_cmd.ps1 -Cmd "uname -a"` | 发一条命令并抓回显 |
-| 指定串口 | 上面任意一条加 `-Port COM7` | 只在自动识别失败（多根串口线）时才需要 |
-
-> 串口是**独占**的：同一时刻只能有一个窗口占用 COM 口。跑脚本前先关掉 `fogccc.bat`，
-> 否则会报“拒绝访问/端口被占用”。
-
-> 板上**没有 RTC、也没有网络**，所以每次上电时钟都退回 2018-03-09。`fogccc.bat` 和
-> `serial_run_gc.ps1` 会用宿主时间自动发一次 `date -s`（只在 shell 提示符、控制台空闲时发），
-> 卡上日志的时间戳因此是真实日期；不想被自动设置就加 `-NoTimeSync`。
-
-## 板上测试命令速查
-
-数据分区 p2 每次开机由 udev 按卷标自动挂在 `/run/media/USERDATA-mmcblk0p2`，登录后直接可用；
-仓库脚本另外把它挂到 `/mnt/userdata`（`sh /run/media/BOOT-mmcblk0p1/mount_data.sh`，
-这一步**不是**开机自动的；`/mnt/boot` 同样要先挂 `mmcblk0p1`，PetaLinux 默认不挂）。
-两条路径是同一个分区，同时挂着也正常，写哪边都一样——下面命令里的 `/mnt/userdata`
-都可以换成 `/run/media/USERDATA-mmcblk0p2`。以下命令均需 root。
-
-### 1. 中断通路验证
-
-```sh
-cd /mnt/userdata
-D=/mnt/userdata sh tests/irq_drv_test.sh
-```
-
-插驱动 → arm → 跑一次 GC → 读计数 → 卸载。期望末行：
-
-```
-VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1' after='<N> 0')
-```
-
-### 2. GC 主测试（FPGA vs Python 参照）
-
-```sh
-sh run_gc.sh                 # 默认 maxN=4096 trials=8 avg_refs=2
-sh run_gc.sh 512 2 1         # 小规模快速验证
-sh run_gc.sh 2048 5 3
-```
-
-| 参数 | 含义 | 默认 |
-|---|---|---|
-| `maxN` | 每轮对象数上限（硬件上限 4096）| 4096 |
-| `trials` | 随机轮数 | 8 |
-| `avg_refs` | 平均额外出度 | 2 |
-
-期望：`PASSED (all invariants): trials/trials`，并打印相对同一进程内 Python BFS 参照的加速比（不是 CPython 的 `gc`）。
-
-### 3. 三方对比（FPGA / C / Python）
-
-```sh
-cd /run/media/USERDATA-mmcblk0p2
-./bin/test_main
-```
-
-`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py`（udev 按卷标挂载）；
-若分区在 `/mnt/userdata`，程序会自动回退到那条路径，也支持显式传参。需要 root。
-
-输出一张三方对比表（三个时间都是实测）：
-
-```
-Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython
-```
-
-| 列 | 来源 |
-|---|---|
-| `FPGA us` | `CYCLES` 寄存器 ÷ 100 MHz（引擎耗时，不含驱动里的等待）|
-| `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现（`marked` 的 oracle）|
-| `CPython ms` | `popen` 起 `gc_probe.py`，同对象数下完整 `gc.collect()`（含清扫 ⇒ 上界）|
-
-与另外两条命令的分工：`test_main` 是**主对比**（FPGA / C / CPython）；`run_gc.sh` 跑可靠性 +
-对照它自己的 Python BFS；`run_cmark.sh` 只比 FPGA vs C。`python3 python/benchmark.py` 是
-同一 CPython 口径的批量版（10–4000 对象梯度）。
-
-### 4. C 基准（FPGA vs C）
-
-```sh
-sh run_cmark.sh              # 默认 4096 8 2
-sh run_cmark.sh 2048 5 3
-```
-
-打印 `totals:` 与 `per object:` 两组时间；出现 `MISMATCH` 即失败。
-
-### 5. 重复性测试
-
-```sh
-sh run_repeat.sh 10          # 默认 10 次
-```
-
-三组：不同种子 vs Python 参照、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
-
-### 6. 单独调用
-
-```sh
-python3 gc_test.py 4096 8 2 --seed 12345   # 指定种子可复现
-./bin/test_main                            # 4 项 C 测试（需 root）
-insmod ko/fogccc-irq.ko                    # 仅插驱动
-```
-
-### 7. 结果判读
-
-| 关键行 | 含义 |
-|---|---|
-| `PASSED (all invariants)` | 功能正确 |
-| `IRQ_DRIVEN_DONE_OK` | 中断通路正常 |
-| `REPEAT_DONE` | 重复性测试完成 |
-| `MISMATCH` / `FAIL` / `FAILED` | 失败 |
-
-日志：`/mnt/userdata/logs/gc_run_<日期>_<时间>.log`。
-
-### 8. 常见问题
-
-- `insmod: already loaded` → 先 `rmmod fogccc_irq`
-- 打不开 `/dev/mem` → 必须是 root
-- 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）
-- `run_gc.sh` 找不到 `gc_test.py` → 脚本按自身目录找文件，整个目录要一起放在 `/mnt/userdata`
-- `run_cmark.sh` 报找不到 `cmark` → 板上无 gcc，不能现场编译，直接用卡上的可执行文件
+本文档是对设计的工程说明，重点在于硬件 offload 的验证路径和性能边界，而不是对 CPython 运行时的侵入式改造。
