@@ -1,13 +1,14 @@
-# xsim transcript for tb_gc_top (all checks incl. T-MAXFAN / T-ROOTCLAMP)
-# command: sim\run_sim.bat (Vivado 2026.1 xsim)
-# date: 2026-10-19
+# sim\run_sim.bat (xsim, tb_gc_top), 2026-10-20
+# command: VIVADO_BIN=<Vivado>/bin sim\run_sim.bat
+# commit: 5a21a7c (binaries: artifacts/SHA256SUMS)
 #
+
 
 ****** xsim v2026.1 (64-bit)
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Mon Oct 19 22:12:13 2026
+  **** Start of session at: Tue Oct 20 09:34:07 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -223,7 +224,7 @@ run -all
 [EV200] R  data=000000001e0029ec hfifo[45]=1 dw=45 dr=44
 [TB] DONE @cycles=0 | scout st=0 pf_cnt=0 pf_iss=0 pf_head=2 dq_cnt=0 dq_head=2 iss_idx=0 qh=250 qt=250
 [TB] DONE detail | cur=77 ref_count=5 ref_got=5 pf_rc=0,5,6,3 pf_id=64,77,38,51 dq_rc=0,5,4,1
-[TB] STATUS=0 OK (鏃犳孩鍑?鎬荤嚎閿欒/娴佸け姝?
+[TB] STATUS=0x10 OK (no errors, idle)
 [TB] HW: marked=250 q_tail=250 cycles=6940
 [TB] 浣嶅浘缁熻: 娲昏穬=250 鏈熸湜=250
 [TB] ===== T1: two consecutive runs =====
@@ -247,30 +248,34 @@ run -all
 [TB] T-ABORT queue fill = 8 when the stall is applied
 [TB] T-ABORT state while hung = 7
 [TB] T-ABORT state after abort = 0 (expect 0 = S_IDLE)
-[TB] T-ABORT status right after abort = 00000000 (expect 0)
+[TB] T-ABORT status right after abort = 00000010 (expect 0x10: idle, no errors)
 [TB] T-ABORT2 queue count before START = 0 (expect the aborted run's leftovers)
 [MON] t=400000000 st=1 cur=4 qh=0 qt=0 ARV=0 ARA=1e002098 cw=84 cr=84 dw=84 dr=84 hw=84 hr=84 drdy=0 dval=0
 [TB] T-ABORT2 marked=1 after abort+START without CLEAR_Q (expect 1)
 [TB] T-ABORT2 internals: qcount=0 pf_cnt=0 dq_cnt=0 iss=0 con=0 marked_r=0 err_ref=0
-[TB] T-ABORT2 status=00000000 (expect 0)
+[TB] T-ABORT2 status=00000010 (expect 0x10: idle, no errors)
 [TB] T-ABORT marked=3 after abort+restart (expect 3)
 [TB] T-REG unmapped read(0x03C): rresp_seen=1 (expect 1)
 [TB] T-HANG done=1 after CLEAR_Q mid-pop (expect 1)
 [TB] ===== T7: queue overflow -> STATUS[0] =====
-[TB] T7 STATUS=00000001 (expect bit0=1)
+[TB] T7 STATUS=00000011 (expect bit0=1)
 [TB] T7b bitmap[0]=00000000 (expect 0: nothing was enqueued)
 [TB] ===== T8: AXI RRESP error -> STATUS[1] =====
-[TB] T8 STATUS=0000000a (expect bit1=1)
+[TB] T8 STATUS=0000001a (expect bit1=1)
 [TB] T8b STATUS=00000000 (expect bit1=0)
 [MON] t=600000000 st=1 cur=0 qh=0 qt=0 ARV=0 ARA=1e000008 cw=87 cr=87 dw=87 dr=87 hw=87 hr=87 drdy=0 dval=0
 [TB] T-MAXFAN marked=300 (expect 300, ref_count=4095)
-[TB] T-MAXFAN STATUS=00000000 (expect 0)
+[TB] T-MAXFAN STATUS=00000010 (expect 0x10: idle, no errors)
 [MON] t=800000000 st=6 cur=299 qh=4 qt=121 ARV=0 ARA=1e000038 cw=86 cr=86 dw=86 dr=86 hw=86 hr=86 drdy=0 dval=0
 [TB] T-ROOTCLAMP marked=256 (expect 256, root_count=0xFFFFFFFF)
+[MON] t=1000000000 st=7 cur=850 qh=854 qt=0 ARV=0 ARA=1e003548 cw=85 cr=85 dw=85 dr=85 hw=85 hr=85 drdy=0 dval=0
+[TB] T-STAR marked=4096 (expect 4096)
+[TB] T-STAR q_tail=0 (expect 0: 4096 pushes wrap the 12-bit pointer)
+[TB] T-STAR STATUS=00000010 (expect bit4=1, errors=0)
 [TB] #6 鏈畬鎴愯浜嬪姟浠庢湭瓒呰繃 8 OK
 [TB] AXI 鍗忚妫€鏌?OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 瀵归綈, VALID 绋冲畾)
 
 [TB] ==================== PASS ====================
-$finish called at time : 823460 ns : File "C:/Users/wwwmt/Desktop/FOGCCC2/sim/tb_gc_top.v" Line 1036
+$finish called at time : 1194930 ns : File "C:/Users/wwwmt/Desktop/FPGA Offload GC Coprocessor/sim/tb_gc_top.v" Line 1079
 exit
-INFO: [Common 17-206] Exiting xsim at Mon Oct 19 22:12:15 2026...
+INFO: [Common 17-206] Exiting xsim at Tue Oct 20 09:34:11 2026...
