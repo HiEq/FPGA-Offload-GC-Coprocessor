@@ -88,7 +88,7 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 | PS 内存      | DDR3 @ 533.33MHz                                  |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
-| 实测资源占用（本板） | LUT 7,555 (2.72%) ／ FF 18,214 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
+| 实测资源占用（本板） | LUT 7,600 (2.74%) ／ FF 18,215 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
 | 时序（本板） | WNS +1.435 ns ／ WHS +0.046 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
@@ -213,7 +213,7 @@ sudo ./bin/test_main
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现（同时是 `marked` 的独立 oracle）|
 | `CPython ms` | `gc_probe.py`：独立进程里 n 个对象（同样的 avg_refs）做一次完整 `gc.collect()`（含 mark+sweep，**上界**）|
 
-实测（XC7Z100，PL 100 MHz，**发布镜像 PetaLinux 2026.1 / Python 3.12.12**，2026-10-20，`tools/logs/board_test_main_20261020.txt`）：
+实测（XC7Z100，PL 100 MHz，**v4.1 发布镜像 PetaLinux 2026.1 / Python 3.12.12**，2026-10-20，`tools/logs/board_test_main_20261020.txt`）：
 
 ```
 Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   CPython 增量 us/个   vs CPython(增量)
@@ -319,7 +319,7 @@ python3 python/benchmark.py
 
 ## 版本对比（历史数据）
 
-历史版本 Ver1–Ver4 的对照表，用于说明每步优化的效果。当前版本的可复核数据见「三方对比」
+历史版本 Ver1–Ver4 的对照表，用于说明每步优化的效果。v4.1 发布镜像的可复核数据见「三方对比」
 （`board_test_main_20261020.txt`）与 `run_gc.sh`（`board_gc_test_20261020.txt`）。
 **下表没有对应的归档日志（`historical/unverified`）**。
 "每对象周期" = HW cycles ÷ 活跃对象数（已扣除固定的 4096 拍清位图）。
@@ -339,8 +339,8 @@ python3 python/benchmark.py
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
-> 本表是历史数据（`historical/unverified`）；当前可复核的 8/8 见
-> `tools/logs/board_gc_test_20261020.txt`（218,429 拍，发布镜像）。
+> 本表是历史数据（`historical/unverified`）；v4.1 发布镜像可复核的 8/8 见
+> `tools/logs/board_gc_test_20261020.txt`（218,429 拍）。
 
 #### 测量口径
 
