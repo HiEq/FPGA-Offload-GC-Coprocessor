@@ -1,0 +1,27 @@
+====================================================================================
+ FOGCCC  stale-DONE race  --  board-level experiment (AGENTS gap 9)
+   iters(P1/P2)=300  flip-iters(P3)=20  seed=20261019
+   MAGIC = 0x47434343   VERSION = 0x00040000
+====================================================================================
+@@TASK 10 P1 naive read
+   warm-up: done=True marked=3072
+   P1: 0/300 first reads saw DONE=1 (stale hit rate 0.00%)
+@@TASK 35 P2 early return hazard
+   P2: 0/300 early returns; 0 of them returned the previous run's MARKED
+@@TASK 60 P3 driver sequence, alternating sizes
+   P3[ 0]: N=1024 expect  768 (SW  768) -> marked=768 status=0x0  ok
+   P3[ 1]: N=3072 expect 2304 (SW 2304) -> marked=2304 status=0x0  ok
+   P3[ 2]: N=1024 expect  768 (SW  768) -> marked=768 status=0x0  ok
+   P3[ 3]: N=3072 expect 2304 (SW 2304) -> marked=2304 status=0x0  ok
+   P3[18]: N=1024 expect  768 (SW  768) -> marked=768 status=0x0  ok
+   P3[19]: N=3072 expect 2304 (SW 2304) -> marked=2304 status=0x0  ok
+   P3: 20/20 runs returned their own L
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   stale-DONE experiment
+====================================================================================
+   P1 naive first-read hits        : 0/300  (observed, not asserted)
+   P2 poll early-return hits       : 0/300 (stale value: 0)  (observed, not asserted)
+   P3 driver-order mismatches      : 0/20  (the pass/fail criterion)
+   RESULT: PASS (P3 invariant: the driver order always returned the current run's result)
