@@ -6,8 +6,8 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-> `CI` 只检查 shell/Python/PowerShell 语法、`gcc -fsyntax-only` 与 `SHA256SUMS`；
-> **不跑 RTL 仿真或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
+> `CI` 只检查 shell/Python/PowerShell 语法、`gcc -fsyntax-only`、`iverilog` 的 RTL parse
+> 与 `SHA256SUMS`；**不跑 RTL 功能仿真或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
 
 Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quick-start) ·
 [寄存器](#register-map) · [对象图格式](#object-graph-ddr-format) · [版本对比](#版本对比历史数据) ·
@@ -348,7 +348,8 @@ python3 python/benchmark.py
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
 - `CPython ms`：`test_main` 经 `popen` 调用 `tests/gc_probe.py`，在同样对象数下做三次完整
   `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
-- **同规模对比以主表为准**（4000 对象 **28×**）；`gc.collect()` 含清扫、硬件只做标记。- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
+- **同规模对比以主表为准**（4000 对象 **28×**）；`gc.collect()` 含清扫、硬件只做标记。
+- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
   `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
 - `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 225–278×
   是**另一种实现**的比值，不要和 CPython 的 28× 混用。
@@ -537,7 +538,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `074CF12D3DDA51185936571ECD5A37D8` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `400F47FA29E9617682B9D582109B0F1A` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,303 B | `83F2BC90E6998010A8C1C639C9427F91` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,327 B | `AA9ED383AB696B168A9C6DF038D89CE5` |
 
 下载后校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
 

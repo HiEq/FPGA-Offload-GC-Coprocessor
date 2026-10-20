@@ -167,19 +167,19 @@ module tb_axi_read;
         while ((r_cnt < NCMD) && guard < 20000) begin @(posedge clk); guard = guard + 1; end
         repeat (20) @(negedge clk);
 
-        $display("[AXITB] NCMD=%0d LAT=%0d | AR=%0d R=%0d | 未完成读峰值=%0d (上限 8) | 超限拍数=%0d",
+        $display("[AXITB] NCMD=%0d LAT=%0d | AR=%0d R=%0d | peak outstanding=%0d (limit 8) | protocol errors=%0d",
                  NCMD, LAT, ar_cnt, r_cnt, peak, viol);
 
         if (ar_cnt != NCMD) begin
-            $display("[AXITB][FAIL] 发出的 AR 数 %0d != %0d", ar_cnt, NCMD);
+            $display("[AXITB][FAIL] AR count %0d != %0d", ar_cnt, NCMD);
         end else if (r_cnt != NCMD) begin
-            $display("[AXITB][FAIL] 收回的 R 数 %0d != %0d (丢数据)", r_cnt, NCMD);
+            $display("[AXITB][FAIL] R count %0d != %0d (data lost)", r_cnt, NCMD);
         end else if (viol != 0) begin
-            $display("[AXITB][FAIL] 未完成读事务超过 8 共 %0d 拍", viol);
+            $display("[AXITB][FAIL] outstanding reads above 8 for %0d cycles", viol);
         end else if (axi_errs !== 32'd0) begin
-            $display("[AXITB][FAIL] AXI 协议违规 %0d 次", axi_errs);
+            $display("[AXITB][FAIL] AXI protocol violations: %0d", axi_errs);
         end else begin
-            $display("[AXITB] AXI 协议检查 OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 对齐)");
+            $display("[AXITB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align)");
             $display("[AXITB] ==================== PASS ====================");
         end
         $finish;
@@ -187,7 +187,7 @@ module tb_axi_read;
 
     initial begin
         #2000000;
-        $display("[AXITB][FAIL] 全局超时 (AR=%0d R=%0d 峰值=%0d)", ar_cnt, r_cnt, peak);
+        $display("[AXITB][FAIL] global timeout (AR=%0d R=%0d peak=%0d)", ar_cnt, r_cnt, peak);
         $finish;
     end
 

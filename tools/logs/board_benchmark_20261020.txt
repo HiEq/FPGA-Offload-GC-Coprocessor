@@ -1,4 +1,4 @@
-# python3 benchmark.py on the release rootfs (Python 3.12.12), 2026-10-20
+﻿# python3 benchmark.py on the release rootfs (Python 3.12.12), 2026-10-20
 # command: cd /mnt/userdata && python3 benchmark.py
 # bitstream: 02D52FCC401DEF9D3A57D3282F627FEB (JTAG-programmed for this run)
 # commit: 5a21a7c (binaries: artifacts/SHA256SUMS)
@@ -48,12 +48,3 @@ Iterations: 50
   4. Note: Python gc.collect() includes mark+clear+sweep
      FPGA only does mark. The warm pass above is still a
      full collection; treat the ratio as an upper bound.
-------------------------------
-  note: still gc.collect(); only the first pass is warm-up
-     100       7227.6
-     500       8068.2
-    1000       9192.2
-    2000      11746.6
-    4000      16951.1
-=======================================================
-  How to Compare with FPGA

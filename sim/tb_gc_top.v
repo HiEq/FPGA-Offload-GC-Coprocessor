@@ -293,10 +293,10 @@ module tb_gc_top;
         // #4: 复位后 DONE 必须为 0
         axil_rd(R_CTRL, rd_val);
         if (rd_val[31] !== 1'b0) begin
-            $display("[TB][FAIL] 复位后 DONE=%0d, 应为 0 (#4)", rd_val[31]);
+            $display("[TB][FAIL] DONE=%0d after reset, expected 0 (#4)", rd_val[31]);
             errors = errors + 1;
         end else begin
-            $display("[TB] 复位后 DONE=0 OK (#4)");
+            $display("[TB] DONE=0 after reset OK (#4)");
         end
 
         // ---- 构造对象图 ----
@@ -352,20 +352,20 @@ module tb_gc_top;
                 end
             end
         end
-        $display("[TB] 图: N=%0d, 活跃=%0d, 孤岛=%0d", N, cnt_exp, ISLAND);
+        $display("[TB] graph: N=%0d, live=%0d, island=%0d", N, cnt_exp, ISLAND);
 
         // ---- 配置寄存器 ----
         axil_wr(R_BASE,  BASE);
         axil_wr(R_COUNT, N);
         axil_wr(R_ROOTS, 1);
         axil_wr(R_RLIST + 8'h00, 32'd0);          // root[0] = 0
-        $display("[TB] 寄存器配置完成");
+        $display("[TB] registers configured");
 
         // ---- 清零位图/队列, 然后启动 ----
         axil_wr(R_CTRL, 32'h6);                   // clear_bm | clear_q
         repeat (3000) @(negedge clk);
         axil_wr(R_CTRL, 32'h1);                   // start
-        $display("[TB] 已写入 START");
+        $display("[TB] write START");
 
         // 等 DONE 拉低 (确认 start 已被引擎接收)
         guard = 0;
@@ -375,11 +375,11 @@ module tb_gc_top;
             guard = guard + 1;
         end
         if (rd_val[31]) begin
-            $display("[TB][FAIL] start 未生效 (DONE 始终为 1) state=%0d",
+            $display("[TB][FAIL] start ignored (DONE stuck at 1) state=%0d",
                      dut.u_engine.state);
             errors = errors + 1;
         end else begin
-            $display("[TB] DONE 已拉低, 引擎开始运行");
+            $display("[TB] DONE raised, marking started");
         end
 
         // 等 DONE 拉高
@@ -390,7 +390,7 @@ module tb_gc_top;
             guard = guard + 1;
         end
         if (!rd_val[31]) begin
-            $display("[TB][FAIL] 超时: DONE 未置位");
+            $display("[TB][FAIL] timeout: DONE not set");
             $display("      engine state=%0d cur_obj=%0d qh=%0d qt=%0d",
                      dut.u_engine.state, dut.u_engine.cur_obj,
                      dut.u_queue.head, dut.u_queue.tail);
@@ -439,15 +439,15 @@ module tb_gc_top;
         $display("[TB] HW: marked=%0d q_tail=%0d cycles=%0d", marked_dut, qtail_dut, rd_val);
 
         if (marked_dut != cnt_exp) begin
-            $display("[TB][FAIL] MARKED=%0d != 期望 %0d", marked_dut, cnt_exp);
+            $display("[TB][FAIL] MARKED=%0d != expected %0d", marked_dut, cnt_exp);
             errors = errors + 1;
         end
         if (qtail_dut != cnt_exp) begin
-            $display("[TB][FAIL] q_tail=%0d != 期望 %0d", qtail_dut, cnt_exp);
+            $display("[TB][FAIL] q_tail=%0d != expected %0d", qtail_dut, cnt_exp);
             errors = errors + 1;
         end
         if (rd_val == 32'h0) begin
-            $display("[TB][FAIL] CYCLES=0 (疑似引擎没真正运行)");
+            $display("[TB][FAIL] CYCLES=0 (engine did not run)");
             errors = errors + 1;
         end
 
@@ -458,18 +458,18 @@ module tb_gc_top;
             bitv = (dut.u_bitmap.mem[i] >> (i % 32)) & 32'h1;
             if (bitv !== expb[i]) begin
                 if (errors < 20)
-                    $display("[TB][FAIL] 对象 %0d 位图=%0d 期望=%0d", i, bitv, expb[i]);
+                    $display("[TB][FAIL] object %0d bitmap=%0d expected=%0d", i, bitv, expb[i]);
                 errors = errors + 1;
             end
             if (bitv) got = got + 1;
         end
-        $display("[TB] 位图统计: 活跃=%0d 期望=%0d", got, cnt_exp);
+        $display("[TB] bitmap: live=%0d expected=%0d", got, cnt_exp);
 
         // 孤岛必须全 0 (多标记检测)
         for (i = N-ISLAND; i < N; i = i + 1) begin
             bitv = (dut.u_bitmap.mem[i] >> (i % 32)) & 32'h1;
             if (bitv) begin
-                $display("[TB][FAIL] 孤岛对象 %0d 被误标记", i);
+                $display("[TB][FAIL] island object %0d marked", i);
                 errors = errors + 1;
             end
         end
@@ -506,7 +506,7 @@ module tb_gc_top;
             axil_rd(R_MARKED, rd_val);
             $display("[TB] T1 run%0d: marked=%0d (expect 2)", rr+1, rd_val);
             if (rd_val !== 32'd2) begin
-                $display("[TB][FAIL] T1 run%0d marked=%0d != 2 (prev_ref 跨运行残留?)", rr+1, rd_val);
+                $display("[TB][FAIL] T1 run%0d marked=%0d != 2 (prev_ref leak?)", rr+1, rd_val);
                 errors = errors + 1;
             end
         end
@@ -532,7 +532,7 @@ module tb_gc_top;
         axil_rd(R_MARKED, rd_val);
         $display("[TB] T2 duplicate-root: marked=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
-            $display("[TB][FAIL] T2 marked=%0d != 1 (重复根被重复计数?)", rd_val);
+            $display("[TB][FAIL] T2 marked=%0d != 1 (duplicate root counted?)", rd_val);
             errors = errors + 1;
         end
 
@@ -568,12 +568,12 @@ module tb_gc_top;
 
             axil_rd(8'h04, rd_val);
             if (rd_val !== 32'hA5A50001) begin
-                $display("[TB][FAIL] T3 reg04=%h != A5A50001 (第一笔写丢失/写错)", rd_val);
+                $display("[TB][FAIL] T3 reg04=%h != A5A50001 (first write lost)", rd_val);
                 errors = errors + 1;
             end
             axil_rd(8'h08, rd_val);
             if (rd_val !== 32'h5A5A0002) begin
-                $display("[TB][FAIL] T3 reg08=%h != 5A5A0002 (第二笔 AW 未锁存)", rd_val);
+                $display("[TB][FAIL] T3 reg08=%h != 5A5A0002 (second AW not delivered)", rd_val);
                 errors = errors + 1;
             end
             if (errors == e0) $display("[TB] T3 pipelined-AW OK");
@@ -598,15 +598,15 @@ module tb_gc_top;
         axil_rd(R_MARKED, rd_val);
         $display("[TB] T4 marked=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
-            $display("[TB][FAIL] T4 marked=%0d != 1 (非法头未被拒)", rd_val);
+            $display("[TB][FAIL] T4 marked=%0d != 1 (bad header accepted)", rd_val);
             errors = errors + 1;
         end
         axil_rd(8'h20, rd_val);
         if (rd_val[3] !== 1'b1) begin
-            $display("[TB][FAIL] T4 STATUS[3]=%b, 应为 1 (err_hdr 没置)", rd_val[3]);
+            $display("[TB][FAIL] T4 STATUS[3]=%b, expected 1 (err_hdr not set)", rd_val[3]);
             errors = errors + 1;
         end else begin
-            $display("[TB] T4 err_hdr=1 OK (非法头被拒并上报)");
+            $display("[TB] T4 err_hdr=1 OK (bad header rejected)");
         end
 
         // ============================================================
@@ -634,7 +634,7 @@ module tb_gc_top;
         axil_rd(R_MARKED, rd_val);
         $display("[TB] T5 root60: marked=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
-            $display("[TB][FAIL] T5 marked=%0d != 1 (root[60] 地址被截断?)", rd_val);
+            $display("[TB][FAIL] T5 marked=%0d != 1 (root[60] address truncated?)", rd_val);
             errors = errors + 1;
         end
 
@@ -1058,25 +1058,25 @@ module tb_gc_top;
 
         // ---- #6 汇总 ----
         if (err_ho != 0) begin
-            $display("[TB][FAIL] #6 未完成读事务超过 8 的次数: %0d", err_ho);
+            $display("[TB][FAIL] #6 outstanding-read violations: %0d", err_ho);
             errors = errors + 1;
         end else begin
-            $display("[TB] #6 未完成读事务从未超过 8 OK");
+            $display("[TB] #6 outstanding reads never exceeded 8 OK");
         end
 
         // ---- AXI 协议检查 (#1) ----
         if (axi_errs !== 32'd0) begin
-            $display("[TB][FAIL] AXI 协议违规 %0d 次 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定性)", axi_errs);
+            $display("[TB][FAIL] AXI protocol violations: %0d (ARSIZE/ARLEN/ARBURST/align/VALID)", axi_errs);
             errors = errors + 1;
         end else begin
-            $display("[TB] AXI 协议检查 OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 对齐, VALID 稳定)");
+            $display("[TB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align, VALID stable)");
         end
 
         // ---- 结论 ----
         if (errors == 0)
             $display("\n[TB] ==================== PASS ====================");
         else
-            $display("\n[TB] ==================== FAIL (%0d 处) ====================", errors);
+            $display("\n[TB] ==================== FAIL (%0d errors) ====================", errors);
 
         $finish;
     end
@@ -1146,7 +1146,7 @@ module tb_gc_top;
     // 倒出环形轨迹
     task dump_ring;
         begin
-            $display("      --- 最近 %0d 拍 (旧→新) ---", TR_N);
+            $display("      --- cycle %0d (readable) ---", TR_N);
             for (k = 0; k < TR_N; k = k + 1) begin
                 j = trp + k;
                 if (j >= TR_N) j = j - TR_N;
@@ -1215,7 +1215,7 @@ module tb_gc_top;
     // 看门狗
     initial begin
         #5_000_000;
-        $display("[TB][FAIL] 全局超时");
+        $display("[TB][FAIL] global timeout");
         $display("      engine state=%0d cur_obj=%0d qh=%0d qt=%0d",
                  dut.u_engine.state, dut.u_engine.cur_obj,
                  dut.u_queue.head, dut.u_queue.tail);

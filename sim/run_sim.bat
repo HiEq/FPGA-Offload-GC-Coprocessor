@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem ============================================================
 rem run_sim.bat - run Vivado xsim on tb_gc_top
 rem   Verifies gc_axi_read (read command queue) + gc_mark_engine.

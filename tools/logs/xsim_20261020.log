@@ -1,6 +1,7 @@
 # sim\run_sim.bat (xsim, tb_gc_top), 2026-10-20
 # command: VIVADO_BIN=<Vivado>/bin sim\run_sim.bat
-# commit: 5a21a7c (binaries: artifacts/SHA256SUMS)
+# commit: pending
+# note: the TB prints ASCII only, so the transcript is plain text
 #
 
 
@@ -8,7 +9,7 @@
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Tue Oct 20 09:34:07 2026
+  **** Start of session at: Tue Oct 20 13:30:16 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -16,11 +17,11 @@ source xsim.dir/tb_sim/xsim_script.tcl
 # xsim {tb_sim} -autoloadwcfg -runall
 Time resolution is 1 ps
 run -all
-[TB] 澶嶄綅鍚?DONE=0 OK (#4)
-[TB] 鍥? N=300, 娲昏穬=250, 瀛ゅ矝=50
-[TB] 瀵勫瓨鍣ㄩ厤缃畬鎴?
-[TB] 宸插啓鍏?START
-[TB] DONE 宸叉媺浣? 寮曟搸寮€濮嬭繍琛?
+[TB] DONE=0 after reset OK (#4)
+[TB] graph: N=300, live=250, island=50
+[TB] registers configured
+[TB] write START
+[TB] DONE raised, marking started
 [EV0] AR addr=1e000000 hi=1 hw=0 hr=0
 [EV1] AR addr=1e000008 hi=0 hw=0 hr=0
 [EV2] R  data=0000000300000000 hfifo[0]=x dw=0 dr=0
@@ -226,7 +227,7 @@ run -all
 [TB] DONE detail | cur=77 ref_count=5 ref_got=5 pf_rc=0,5,6,3 pf_id=64,77,38,51 dq_rc=0,5,4,1
 [TB] STATUS=0x10 OK (no errors, idle)
 [TB] HW: marked=250 q_tail=250 cycles=6940
-[TB] 浣嶅浘缁熻: 娲昏穬=250 鏈熸湜=250
+[TB] bitmap: live=250 expected=250
 [TB] ===== T1: two consecutive runs =====
 [TB] T1 run1: marked=2 (expect 2)
 [TB] T1 run2: marked=2 (expect 2)
@@ -237,7 +238,7 @@ run -all
 [TB] T3 pipelined-AW OK
 [TB] ===== T4: corrupt ref_count guard =====
 [TB] T4 marked=1 (expect 1)
-[TB] T4 err_hdr=1 OK (闈炴硶澶磋鎷掑苟涓婃姤)
+[TB] T4 err_hdr=1 OK (bad header rejected)
 [TB] ===== T5: 12-bit register address =====
 [TB] T5 root60: marked=1 (expect 1)
 [TB] ===== T6: bitmap readback =====
@@ -272,10 +273,10 @@ run -all
 [TB] T-STAR marked=4096 (expect 4096)
 [TB] T-STAR q_tail=0 (expect 0: 4096 pushes wrap the 12-bit pointer)
 [TB] T-STAR STATUS=00000010 (expect bit4=1, errors=0)
-[TB] #6 鏈畬鎴愯浜嬪姟浠庢湭瓒呰繃 8 OK
-[TB] AXI 鍗忚妫€鏌?OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B 瀵归綈, VALID 绋冲畾)
+[TB] #6 outstanding reads never exceeded 8 OK
+[TB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align, VALID stable)
 
 [TB] ==================== PASS ====================
-$finish called at time : 1194930 ns : File "C:/Users/wwwmt/Desktop/FPGA Offload GC Coprocessor/sim/tb_gc_top.v" Line 1079
+$finish called at time : 1194930 ns : File "C:/Users/wwwmt/Desktop/FPGA Offload GC Coprocessor/sim/tb_gc_top.v" Line 1081
 exit
-INFO: [Common 17-206] Exiting xsim at Tue Oct 20 09:34:11 2026...
+INFO: [Common 17-206] Exiting xsim at Tue Oct 20 13:30:19 2026...

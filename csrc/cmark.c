@@ -39,6 +39,7 @@
 #define FOGCCC_MAGIC 0x47434343u
 #define FOGCCC_VERSION 0x00040000u
 #define STATUS_MASK 0xFu
+#define STATUS_IDLE 0x10u
 
 static uint8_t  *gbase;              /* 映射到的图基址 */
 static volatile uint32_t *regs;
@@ -188,6 +189,10 @@ static int hw_run(uint32_t n, uint32_t *cycles, uint32_t *mkd) {
         }
     }
     regs[R_CTRL / 4] = CTRL_ABORT;
+    for (t0 = 0; t0 < 10000u; t0++) {
+        if (regs[R_STATUS / 4] & STATUS_IDLE) break;
+        usleep(1);
+    }
     *cycles = 0; *mkd = 0;
     return 0;
 }
