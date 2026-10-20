@@ -573,7 +573,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
    出现 linux login:
 ③ root + 回车 → 空密码（`CONFIG_imagefeature-empty-root-password=y`）
 ④ 数据分区 p2 每次开机由 udev 按卷标挂在 /run/media/USERDATA-mmcblk0p2，直接 cd 进去就能用
-   （仓库脚本走 /mnt/userdata：sh /mnt/boot/mount_data.sh 或手动 mount；两条路径是同一个分区，写哪边都一样）
+   （仓库脚本走 /mnt/userdata：sh /run/media/BOOT-mmcblk0p1/mount_data.sh；两条路径是同一个分区，写哪边都一样）
 ⑤ sh <上面任一条路径>/run_gc.sh
 ```
 
@@ -606,7 +606,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 ## 板上测试命令速查
 
 数据分区 p2 每次开机由 udev 按卷标自动挂在 `/run/media/USERDATA-mmcblk0p2`，登录后直接可用；
-仓库脚本另外把它挂到 `/mnt/userdata`（`sh /mnt/boot/mount_data.sh`，这一步**不是**开机自动的）。
+仓库脚本另外把它挂到 `/mnt/userdata`（`sh /run/media/BOOT-mmcblk0p1/mount_data.sh`，
+这一步**不是**开机自动的；`/mnt/boot` 同样要先挂 `mmcblk0p1`，PetaLinux 默认不挂）。
 两条路径是同一个分区，同时挂着也正常，写哪边都一样——下面命令里的 `/mnt/userdata`
 都可以换成 `/run/media/USERDATA-mmcblk0p2`。以下命令均需 root。
 
