@@ -327,7 +327,7 @@ module gc_mark_engine (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state        <= S_IDLE;
-            done         <= 1'b0;      // #4: 复位后不应"已完成", 否则软件会读到 marked=0 的假结果
+            done         <= 1'b0;      // #4: 复位值
             marked_count <= 32'h0;
             cycles       <= 32'h0;
             cycles_r     <= 32'h0;
@@ -376,7 +376,7 @@ module gc_mark_engine (
                         err_ovf  <= 1'b0;
                         err_ref  <= 1'b0;
                         con_cnt  <= 32'd0;
-                        prev_ref <= 32'hFFFFFFFF;   // #1: 必须清, 否则第二次运行会静默漏标记
+                        prev_ref <= 32'hFFFFFFFF;   // #1: 每次 start 清空
                         state    <= S_CLR_BM;
                     end
                 end

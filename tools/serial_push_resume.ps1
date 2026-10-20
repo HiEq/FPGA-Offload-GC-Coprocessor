@@ -6,9 +6,9 @@ param(
     [int]$Baud = 115200
 )
 
-# Resumable large-file push: every chunk is verified, moved to a part file on the
-# card, and the completed index is recorded. A dropped shell or a power cycle only
-# costs the chunk in flight; re-running the same command continues where it left off.
+# Resumable large-file push. Each chunk is decoded, md5-checked, moved to a part
+# file on the card, and its index is recorded in a progress file. Re-running the
+# same command continues from that index; the shell is re-opened on error.
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'serial-session.ps1')

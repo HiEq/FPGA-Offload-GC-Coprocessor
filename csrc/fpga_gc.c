@@ -230,7 +230,7 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
     while (!(dev->regs[REG_CTRL / 4] & CTRL_DONE)) {
         if (--timeout == 0) {
             printf("ERROR: FPGA mark timeout after 10M polls; aborting the engine\n");
-            /* abort 后必须等引擎回到 S_IDLE; 否则下一轮会在残留状态上启动 */
+            /* abort 后等待 STATUS[4]=1（engine idle）再返回。 */
             dev->regs[REG_CTRL / 4] = CTRL_ABORT;
             if (fpga_gc_wait_idle(dev, 10000) != 0)
                 printf("ERROR: engine did not return to idle after abort\n");

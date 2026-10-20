@@ -290,7 +290,7 @@ module tb_gc_top;
         rstn = 1'b1;
         repeat (5)  @(negedge clk);
 
-        // #4: 复位后 DONE 必须为 0 —— 否则软件轮询会立刻读到 marked=0 的假结果
+        // #4: 复位后 DONE 必须为 0
         axil_rd(R_CTRL, rd_val);
         if (rd_val[31] !== 1'b0) begin
             $display("[TB][FAIL] 复位后 DONE=%0d, 应为 0 (#4)", rd_val[31]);
@@ -515,8 +515,7 @@ module tb_gc_top;
         // T2: 重复根 —— 同一个 root 写两次, 必须只计一次 (#5)
         // ============================================================
         $display("[TB] ===== T2: duplicate root =====");
-        // 用一个 ID >= 32 的根 —— 让它落在**不同的位图字**上。
-        // 否则"跳过 S_ROOT_CHK 后偶然读到位图字 0"会掩盖重复检测, 反向验证无效.
+        // 根 ID >= 32: 落在不同的位图字上, 位图字 0 不会掩盖重复检测。
         mem[(33*16)/4 + 1] = 32'd0;          // obj33 ref_count = 0 (在 +4, 字索引 +1)
         axil_wr(R_RLIST,     32'd33);
         axil_wr(R_RLIST + 4, 32'd33);        // 同一个根再写一次
@@ -1012,7 +1011,7 @@ module tb_gc_top;
         end
 
         // ---- T-STAR: root 0 -> 1..4095, 4096 objects, one ref each ----
-        // Exercises the full object range, a full-depth queue and q_tail == marked.
+        // Full object range and full-depth queue; q_tail wraps to 0.
         begin : t_star
             integer i;
             reg [31:0] rbase;
