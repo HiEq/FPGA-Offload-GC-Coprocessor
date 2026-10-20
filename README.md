@@ -537,7 +537,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `074CF12D3DDA51185936571ECD5A37D8` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `400F47FA29E9617682B9D582109B0F1A` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,359 B | `F52565DAB9E0C451A1CCF60F50275F3E` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,303 B | `83F2BC90E6998010A8C1C639C9427F91` |
 
 下载后校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
 

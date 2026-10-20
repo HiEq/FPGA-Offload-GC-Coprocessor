@@ -204,6 +204,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "ERROR: maxN must be 64..%u (got %u)\n", N_MAX, maxN);
         return 2;
     }
+    if (trials < 1) {
+        fprintf(stderr, "ERROR: trials must be >= 1 (got %d)\n", trials);
+        return 2;
+    }
     if (maxN > N_MAX) maxN = N_MAX;
     if (avg_refs < 1) avg_refs = 1;
 
