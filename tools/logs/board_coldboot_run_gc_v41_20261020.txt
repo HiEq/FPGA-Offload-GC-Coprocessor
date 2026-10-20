@@ -1,3 +1,7 @@
+# command: sh run_gc.sh 4096 8 2
+# bitstream: 81640C7C8E5918893E0A9C2D442D2BF3   boot.bin: 6874fb5568b2ce8b6f41c5de6282039d753e417d4761624d66b8b34844a1957b
+# commit: db21eed
+# date: 2026-10-20
 ==========================================================
  FOGCCC on-board test
    script : /run/media/USERDATA-mmcblk0p2/gc_test.py

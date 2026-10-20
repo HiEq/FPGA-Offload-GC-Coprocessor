@@ -110,7 +110,8 @@ module gc_axi_read #(
     wire ready1 = !c1empty && (h1nxt < MAXO[PW-1:0]);
     wire issue0 = ready0 && (ready1 ? (last_served == 1'b1) : 1'b1);
     wire issue1 = ready1 && (ready0 ? (last_served == 1'b0) : 1'b1);
-    wire issue_any = (issue0 || issue1) && !ho_full && !flushing;
+    wire issue_any = (issue0 || issue1) && !ho_full && !flushing
+                     && !run_start && !abort;
 
     // RID 在 RVALID 有效时可用; 按 ID 分流
     wire r_is1  = (RID[0] == 1'b1);
