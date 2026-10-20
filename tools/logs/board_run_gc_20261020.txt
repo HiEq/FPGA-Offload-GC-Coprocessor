@@ -1,0 +1,67 @@
+==========================================================
+ FOGCCC on-board test
+   script : /run/media/USERDATA-mmcblk0p2/gc_test.py
+   params : maxN=4096  trials=8  avg_refs=2
+   log    : /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_125620.log
+==========================================================
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   seed=181758404   (replay exactly: --seed 181758404)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
+   MAGIC = 0x47434343   VERSION = 0x00040000
+====================================================================================
+@@TASK 5 trial 1/8  N=2820  (expect 2115)
+  [ 1/ 8] N=2820 exp=2115 | HW    365.56 us (36556 cyc) | SW    97.90 ms |  267.8x | build  223.1 ms | OK
+@@TASK 15 trial 2/8  N=1581  (expect 1185)
+  [ 2/ 8] N=1581 exp=1185 | HW    222.53 us (22253 cyc) | SW    54.31 ms |  244.1x | build  138.9 ms | OK
+@@TASK 26 trial 3/8  N=671  (expect 503)
+  [ 3/ 8] N= 671 exp= 503 | HW    114.87 us (11487 cyc) | SW    22.38 ms |  194.9x | build   52.2 ms | OK
+@@TASK 36 trial 4/8  N=3088  (expect 2316)
+  [ 4/ 8] N=3088 exp=2316 | HW    398.14 us (39814 cyc) | SW   106.48 ms |  267.4x | build  240.5 ms | OK
+@@TASK 47 trial 5/8  N=3944  (expect 2958)
+  [ 5/ 8] N=3944 exp=2958 | HW    502.68 us (50268 cyc) | SW   137.47 ms |  273.5x | build  313.9 ms | OK
+@@TASK 58 trial 6/8  N=1113  (expect 834)
+  [ 6/ 8] N=1113 exp= 834 | HW    164.17 us (16417 cyc) | SW    38.63 ms |  235.3x | build   93.3 ms | OK
+@@TASK 68 trial 7/8  N=2955  (expect 2216)
+  [ 7/ 8] N=2955 exp=2216 | HW    383.23 us (38323 cyc) | SW   103.24 ms |  269.4x | build  235.7 ms | OK
+@@TASK 79 trial 8/8  N=1646  (expect 1234)
+  [ 8/ 8] N=1646 exp=1234 | HW    231.51 us (23151 cyc) | SW    56.87 ms |  245.6x | build  133.4 ms | OK
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+ trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
+ --------------------------------------------------------------------------------------------
+     1   2820   2115    705        36556     365.56     97.90   267.8x   2115   2115  OK
+     2   1581   1185    396        22253     222.53     54.31   244.1x   1185   1185  OK
+     3    671    503    168        11487     114.87     22.38   194.9x    503    503  OK
+     4   3088   2316    772        39814     398.14    106.48   267.4x   2316   2316  OK
+     5   3944   2958    986        50268     502.68    137.47   273.5x   2958   2958  OK
+     6   1113    834    279        16417     164.17     38.63   235.3x    834    834  OK
+     7   2955   2216    739        38323     383.23    103.24   269.4x   2216   2216  OK
+     8   1646   1234    412        23151     231.51     56.87   245.6x   1234   1234  OK
+ --------------------------------------------------------------------------------------------
+  trials                : 8
+  skipped (graph too big): 0
+  seed                  : 181758404   (replay: --seed 181758404)
+  PASSED (all invariants): 8/8
+  total HW cycles        : 238269  (= 2382.69 us @100MHz)
+  end-to-end note        : graph build+write (Python) 178.9 ms avg vs HW 0.298 ms avg
+  total SW (Python)      : 617.28 ms
+  speedup min/avg/max    : 194.9x / 249.7x / 273.5x
+  N range                : 671 .. 3944
+
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done
+
+==========================================================
+ done.  log saved on the card: /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_125620.log
+ exit code: 0
+==========================================================
