@@ -43,6 +43,7 @@ module gc_regs (
     input  wire        err_rd,        // AXI 读响应错误
     input  wire        err_ref,       // 引用流失步
     input  wire        err_hdr,       // 对象头非法 (ref_count > 4096)
+    input  wire        reg_idle,      // engine_idle: state == S_IDLE
 
     output reg  [11:0] reg_bm_addr,   // 0x24: 探针地址
     input  wire [31:0] reg_bm_data,   // 0x28: 探针数据
@@ -152,7 +153,7 @@ module gc_regs (
                     12'h014: RDATA <= reg_cycles;
                     12'h018: RDATA <= {20'h0, q_head};
                     12'h01C: RDATA <= {20'h0, q_tail};
-                    12'h020: RDATA <= {28'h0, err_hdr, err_ref, err_rd, err_ovf};
+                    12'h020: RDATA <= {27'h0, reg_idle, err_hdr, err_ref, err_rd, err_ovf};
                     12'h024: RDATA <= {20'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
                     12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic

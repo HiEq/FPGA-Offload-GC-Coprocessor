@@ -175,7 +175,7 @@ def main():
     if sw != L: fails.append("T1 SW BFS %d != L %d" % (sw, L))
     wr(R_CTRL, CTRL_START)
     t0 = time.time(); ok = wait_done(300); t1 = time.time()
-    mkd = rr(R_MARKED); cyc = rr(R_CYCLES); st = rr(R_STATUS)
+    mkd = rr(R_MARKED); cyc = rr(R_CYCLES); st = (rr(R_STATUS) & 0xF)
     print("   T1: done=%s marked=%d cycles=%d status=0x%X wall=%.2f ms"
           % (ok, mkd, cyc, st, (t1 - t0) * 1000))
     if not ok:      fails.append("T1 no DONE")
@@ -192,7 +192,7 @@ def main():
     wr(R_CTRL, CTRL_START)
     time.sleep(0.0002)                      # 200 us
     ok = wait_done(30)
-    ctrl = rr(R_CTRL); mkd = rr(R_MARKED); st = rr(R_STATUS)
+    ctrl = rr(R_CTRL); mkd = rr(R_MARKED); st = (rr(R_STATUS) & 0xF)
     print("   T2: DONE=%s marked=%d status=0x%X  (expect DONE=1, marked=%d)"
           % (ok, mkd, st, L))
     if not ok:      fails.append("T2 control did not finish (test cannot distinguish abort)")
@@ -204,16 +204,16 @@ def main():
     wr(R_CTRL, CTRL_START)
     time.sleep(0.0002)
     done_pre = bool(rr(R_CTRL) & CTRL_DONE)  # did the run already finish in 200 us?
-    st_pre = rr(R_STATUS)                   # was the flag already set before the abort?
+    st_pre = (rr(R_STATUS) & 0xF)                   # was the flag already set before the abort?
     wr(R_CTRL, CTRL_ABORT)                  # CTRL[3]
-    st_post = rr(R_STATUS)                  # ... and immediately after it?
+    st_post = (rr(R_STATUS) & 0xF)                  # ... and immediately after it?
     t0 = time.time()
     done_seen = False; reads = 0
     while time.time() - t0 < 0.030:         # 30 ms = many full runs
         reads += 1
         if rr(R_CTRL) & CTRL_DONE:
             done_seen = True; break
-    st = rr(R_STATUS); mkd_stale = rr(R_MARKED); cyc_stale = rr(R_CYCLES)
+    st = (rr(R_STATUS) & 0xF); mkd_stale = rr(R_MARKED); cyc_stale = rr(R_CYCLES)
     print("   T3: already DONE before the abort = %s (N must be large enough)" % done_pre)
     if done_pre:
         fails.append("T3 inconclusive: the run finished within 200 us (increase N)")
@@ -230,7 +230,7 @@ def main():
     task(60, "T4 recovery run after abort")
     wr(R_CTRL, CTRL_START)
     ok = wait_done(300)
-    mkd = rr(R_MARKED); cyc = rr(R_CYCLES); st = rr(R_STATUS)
+    mkd = rr(R_MARKED); cyc = rr(R_CYCLES); st = (rr(R_STATUS) & 0xF)
     print("   T4: done=%s marked=%d cycles=%d status=0x%X (expect marked=%d, status=0)"
           % (ok, mkd, cyc, st, L))
     if not ok:      fails.append("T4 no DONE after abort (engine not reusable)")
@@ -255,7 +255,7 @@ def main():
           % (n2, L2, sw2))
     wr(R_CTRL, CTRL_START)
     ok = wait_done(300)
-    mkd = rr(R_MARKED); st = rr(R_STATUS)
+    mkd = rr(R_MARKED); st = (rr(R_STATUS) & 0xF)
     print("   T5: done=%s marked=%d status=0x%X (expect marked=%d, status=0)"
           % (ok, mkd, st, L2))
     if not ok:      fails.append("T5 no DONE")

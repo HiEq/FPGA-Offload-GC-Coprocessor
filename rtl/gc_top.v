@@ -229,6 +229,7 @@ module gc_top (
         .err_rd            (w_rd_err),
         .err_ref           (w_err_ref),
         .err_hdr           (w_err_hdr),
+        .reg_idle          (w_engine_idle),
         .root_wr_addr      (root_wr_addr),
         .root_wr_data      (root_wr_data),
         .root_we           (root_we),

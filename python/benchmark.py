@@ -66,16 +66,17 @@ def benchmark_full_gc(iterations: int = 50):
 
 
 def benchmark_mark_phase(iterations: int = 50):
-    """基准: 标记阶段 (第二轮collect, 无新垃圾)"""
+    """基准: 第二轮 collect (warm, 仍含 clear+sweep, 不是纯 mark)"""
     gc.disable()
     sizes = [100, 500, 1000, 2000, 4000]
     results = {}
 
     print(f"\n{'=' * 55}")
-    print("  CPython GC Mark Phase (warm)")
+    print("  CPython Full GC (warm, includes clear+sweep)")
     print("=" * 55)
     print(f"{'Objects':>8} {'Avg(us)':>12}")
     print("-" * 30)
+    print("  note: still gc.collect(); only the first pass is warm-up")
 
     for n in sizes:
         objs = build_object_graph(n)     # keep a reference: without it the graph is
@@ -109,18 +110,18 @@ def compare_with_fpga():
   2. Run FPGA test on the board:
        sudo ./bin/test_main
 
-  3. Compare:
-       ┌──────────┬──────────────┬──────────────┐
-       │ Objects  │ Python (us)  │ FPGA (us)    │
-       ├──────────┼──────────────┼──────────────┤
-       │ 100      │ ~xx.x        │ ~xx.x        │
-       │ 1000     │ ~xx.x        │ ~xx.x        │
-       │ 4000     │ ~xx.x        │ ~xx.x        │
-       └──────────┴──────────────┴──────────────┘
+  3. Compare (fill in from both outputs):
+       +----------+--------------+--------------+
+       | Objects  | Python (us)  | FPGA (us)    |
+       +----------+--------------+--------------+
+       | 100      | ~xx.x        | ~xx.x        |
+       | 1000     | ~xx.x        | ~xx.x        |
+       | 4000     | ~xx.x        | ~xx.x        |
+       +----------+--------------+--------------+
 
   4. Note: Python gc.collect() includes mark+clear+sweep
-     FPGA only does mark. For fair comparison, use the
-     'Mark Phase' numbers above.
+     FPGA only does mark. The warm pass above is still a
+     full collection; treat the ratio as an upper bound.
 """)
 
 

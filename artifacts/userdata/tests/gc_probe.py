@@ -2,13 +2,14 @@
 # ============================================================
 # gc_probe.py - time a real CPython full collection
 #
-#   usage: python3 gc_probe.py <n>
+#   usage: python3 gc_probe.py <n> [fanout]
 #   output: "<ms> <freed>"   (freed = gc.collect()'s return, i.e. unreachable
 #                             objects it collected -- NOT a mark count, so the
 #                             C side must not compare it with MARKED)
 #
-# Builds n live container objects with the same fan-out the hardware graph
-# uses (2 refs each), then times gc.collect() three times and reports the best.
+# Builds n live container objects with the requested fan-out (default 2; test_main
+# passes the same avg_refs it gives the hardware graph), then times gc.collect()
+# three times and reports the best.
 #
 # This is the CPython baseline used by test_main. It measures what CPython's
 # collector actually costs on this board (whole interpreter heap, mark+sweep),
@@ -31,7 +32,8 @@ def build(n, fanout=2):
 
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 1000
-    keep = build(n)
+    fanout = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+    keep = build(n, fanout)
     gc.collect()                      # settle whatever the build left behind
 
     best = None

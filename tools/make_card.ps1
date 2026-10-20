@@ -14,6 +14,7 @@ Copy-Item (Join-Path $root 'python\gc_probe.py') (Join-Path $dst 'tests\gc_probe
 Copy-Item (Join-Path $root 'csrc\py_bfs.py') (Join-Path $dst 'tests\py_bfs.py') -Force
 Copy-Item (Join-Path $root 'tools\tests\irq_drv_test.sh') (Join-Path $dst 'tests\irq_drv_test.sh') -Force
 Copy-Item (Join-Path $root 'python\fogccc.py') (Join-Path $dst 'py\fogccc.py') -Force
+Copy-Item (Join-Path $root 'python\benchmark.py') (Join-Path $dst 'benchmark.py') -Force
 
 Get-ChildItem $dst -Recurse -Directory -Filter '__pycache__' |
     Remove-Item -Recurse -Force

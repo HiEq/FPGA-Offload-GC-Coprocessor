@@ -230,8 +230,10 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
     while (!(dev->regs[REG_CTRL / 4] & CTRL_DONE)) {
         if (--timeout == 0) {
             printf("ERROR: FPGA mark timeout after 10M polls; aborting the engine\n");
-            /* 超时后必须 abort; 否则引擎继续运行, 下一轮会在它上面重建图。 */
+            /* abort 后必须等引擎回到 S_IDLE; 否则下一轮会在残留状态上启动 */
             dev->regs[REG_CTRL / 4] = CTRL_ABORT;
+            if (fpga_gc_wait_idle(dev, 10000) != 0)
+                printf("ERROR: engine did not return to idle after abort\n");
             if (cycles_out) *cycles_out = 0;
             return 0xFFFFFFFF;
         }
@@ -307,13 +309,28 @@ uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 // ============================================================
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
     // Bitmap probe: object x is bit (x % 32) of word x.
-    // Valid only while the engine is idle (the read port is muxed then).
+    // The probe port is muxed to the register while the engine is idle.
     if (obj_id >= 4096)
         return 0;
+    if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
+        return 0xFFFFFFFF;
     dev->regs[REG_BM_ADDR / 4] = obj_id;
     (void)dev->regs[REG_BM_ADDR / 4];      // flush the posted write
     uint32_t word = dev->regs[REG_BM_DATA / 4];
     return (word >> (obj_id & 31)) & 1U;
+}
+
+uint32_t fpga_gc_q_tail(fpga_gc_t *dev) {
+    return dev->regs[REG_Q_TAIL / 4] & 0xFFFU;
+}
+
+int fpga_gc_wait_idle(fpga_gc_t *dev, int timeout_us) {
+    for (int i = 0; i < timeout_us; i++) {
+        if (dev->regs[REG_STATUS / 4] & STATUS_IDLE)
+            return 0;
+        usleep(1);
+    }
+    return -1;
 }
 
 // ============================================================

@@ -39,6 +39,14 @@ if _lib is None:
 
 
 # ==================== C结构体定义 ====================
+# The binding targets the 32-bit ARM board build: fpga_gc_t contains two
+# pointers and a size_t-sized field, so a 64-bit host would shift the offsets.
+if ctypes.sizeof(ctypes.c_void_p) != 4:
+    sys.stderr.write("ERROR: fogccc.py targets 32-bit ARM; this Python is %d-bit\n"
+                     % (8 * ctypes.sizeof(ctypes.c_void_p)))
+    sys.exit(1)
+
+
 class FpgaGcStruct(ctypes.Structure):
     """对应 C 语言 fpga_gc_t"""
     _fields_ = [

@@ -33,12 +33,13 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 // ============================================================
 #define GC_PROBE_DEFAULT  "/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py"
 #define GC_PROBE_FALLBACK "/mnt/userdata/tests/gc_probe.py"
+#define GRAPH_AVG_REFS    3     /* same out-degree for the HW graph and the CPython probe */
 
-// 让 CPython 在同一对象数下做一次完整回收, 返回毫秒 (失败返回 -1)
-static double cpython_gc_ms(const char *probe, int n, uint32_t *freed_out) {
+// 让 CPython 在同一对象数、同样 out-degree 下做一次完整回收, 返回毫秒 (失败返回 -1)
+static double cpython_gc_ms(const char *probe, int n, int fanout, uint32_t *freed_out) {
     char cmd[512];
     if (freed_out) *freed_out = 0;
-    snprintf(cmd, sizeof cmd, "python3 '%s' %d 2>/dev/null", probe, n);
+    snprintf(cmd, sizeof cmd, "python3 '%s' %d %d 2>/dev/null", probe, n, fanout);
     FILE *p = popen(cmd, "r");
     if (!p) return -1.0;
     double ms = -1.0;
@@ -63,6 +64,7 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     int sizes[] = {10, 50, 100, 500, 1000, 2000, 4000};
     int n_sizes = (int)(sizeof(sizes) / sizeof(sizes[0]));
     int all_pass = 1;
+    int rows = 0;
 
     double best_hw_us = 0, best_py_ms = 0, best_py_x = 0;
     int    best_n = 0, best_marked = 0;
@@ -71,7 +73,11 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         int n = sizes[s];
 
         // 构建图
-        if (fpga_gc_build_graph(dev, n, 3) < 0) continue;
+        if (fpga_gc_build_graph(dev, n, GRAPH_AVG_REFS) < 0) {
+            printf("  ERROR: fpga_gc_build_graph failed for n=%d\n", n);
+            all_pass = 0;
+            continue;
+        }
 
         // 设置根集
         uint32_t roots[] = {0};
@@ -93,8 +99,12 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         // 它的返回值是"回收了多少不可达对象", 和硬件的 marked 不是一回事,
         // 只取时间; marked 的正确性由 C BFS (sw_count) 做独立 oracle.
         uint32_t py_freed = 0;
-        double py_ms = cpython_gc_ms(py_path, n, &py_freed);
+        double py_ms = cpython_gc_ms(py_path, n, (int)GRAPH_AVG_REFS, &py_freed);
         (void)py_freed;
+        if (py_ms <= 0) {
+            printf("  ERROR: CPython probe failed for n=%d (%s)\n", n, py_path);
+            all_pass = 0;
+        }
 
         // ---- 结果 ----
         int match = (fpga_count == sw_count);
@@ -112,12 +122,23 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         printf("%-8d %-8u %-11.1f %-11.1f %-13s %-8s %-9s%s\n",
                n, fpga_count, hw_us, sw_us, nbuf, cbuf, pbuf,
                match ? "" : "  <<<< MISMATCH");
+        rows++;
 
         // ---- STATUS must be clean: no overflow, no AXI error, no desync ----
         uint32_t st = fpga_gc_status(dev);
         if (st != 0) {
             printf("  STATUS=0x%X  (bit0=overflow bit1=axierr bit2=desync bit3=badhdr)\n", st);
             all_pass = 0;
+        }
+
+        // ---- queue tail must equal the mark count (one push per marked object;
+        //      the 12-bit pointer wraps at 4096) ----
+        {
+            uint32_t qt = fpga_gc_q_tail(dev);
+            if (qt != (fpga_count & 0xFFFU)) {
+                printf("  q_tail=%u != marked=%u\n", qt, fpga_count);
+                all_pass = 0;
+            }
         }
 
         // ---- bitmap readback (0x24/0x28): compare the SET, not just the count ----
@@ -154,6 +175,10 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         }
     }
 
+    if (rows != n_sizes) {
+        printf("  ERROR: %d of %d sizes produced no result row\n", n_sizes - rows, n_sizes);
+        all_pass = 0;
+    }
     printf("  Result: %s\n", all_pass ? "ALL PASS" : "SOME FAILED");
 
     if (best_py_x > 0) {
@@ -259,6 +284,7 @@ static int test_repeat(fpga_gc_t *dev) {
 
     uint32_t roots[] = {0};
     fpga_gc_set_roots(dev, roots, 1);
+    uint32_t expected = fpga_gc_sw_mark(dev, roots, 1);   /* independent oracle */
 
     uint32_t ref_count = 0;
     uint32_t min_cycles = 0xFFFFFFFF, max_cycles = 0;
@@ -276,6 +302,38 @@ static int test_repeat(fpga_gc_t *dev) {
             continue;
         }
 
+        if (count != expected) {
+            printf("  Run %d: marked %u != expected %u\n", i, count, expected);
+            pass = 0;
+        }
+        if (fpga_gc_status(dev) != 0) {
+            printf("  Run %d: STATUS=0x%X\n", i, fpga_gc_status(dev));
+            pass = 0;
+        }
+        if (fpga_gc_q_tail(dev) != (count & 0xFFFU)) {
+            printf("  Run %d: q_tail %u != marked %u\n", i, fpga_gc_q_tail(dev), count);
+            pass = 0;
+        }
+
+        // The first run also compares the full bitmap against the SW BFS.
+        if (i == 0) {
+            uint8_t *bits = (uint8_t *)calloc((size_t)n, 1);
+            if (!bits) {
+                printf("  ERROR: calloc failed for the bitmap compare\n");
+                pass = 0;
+            } else {
+                fpga_gc_sw_mark_bits(dev, roots, 1, bits);
+                for (int o = 0; o < n; o++) {
+                    if (fpga_gc_read_mark(dev, (uint32_t)o) != (uint32_t)bits[o]) {
+                        printf("  Run 0: bitmap mismatch at obj %d\n", o);
+                        pass = 0;
+                        break;
+                    }
+                }
+                free(bits);
+            }
+        }
+
         if (i == 0) {
             ref_count = count;
         } else if (count != ref_count) {
@@ -288,16 +346,13 @@ static int test_repeat(fpga_gc_t *dev) {
         if (cycles > max_cycles) max_cycles = cycles;
     }
 
-    printf("  Marked count: %u (consistent across 100 runs)\n", ref_count);
+    printf("  Expected: %u  Marked: %u (consistent across 100 runs)\n", expected, ref_count);
     printf("  Cycles: min=%u max=%u jitter=%u\n",
            min_cycles, max_cycles, max_cycles - min_cycles);
     printf("  Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
 
-// ============================================================
-// 主函数
-// ============================================================
 // ============================================================
 // Test 4: duplicate roots must be counted once
 //   roots {0,0,0} and {0} must both mark the same set. The engine

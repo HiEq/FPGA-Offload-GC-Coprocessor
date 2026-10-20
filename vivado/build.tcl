@@ -38,7 +38,7 @@ if {[llength $rtl_files] == 0} {
     puts "ERROR: No .v files in $RTL_DIR"
     exit 1
 }
-add_files -norecurse $rtl_files
+add_files -norecurse [list {*}$rtl_files]
 puts "INFO: Added [llength $rtl_files] RTL files"
 
 # ============ 创建Block Design ============
@@ -257,7 +257,7 @@ if {$wrapper_file eq ""} {
 }
 
 if {$wrapper_file ne ""} {
-    add_files -norecurse $wrapper_file
+    add_files -norecurse [list $wrapper_file]
     set_property top system_wrapper [current_fileset]
     puts "INFO: Wrapper found and set as top: $wrapper_file"
 } else {

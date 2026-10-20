@@ -11,10 +11,13 @@
 //   4. TB 内跑一遍 BFS 得到期望活跃集, 再逐位对比 DUT 的位图 BRAM
 //
 // 通过判据 (全部满足):
-//   - DONE 置位, 队列排空后 q_tail == 期望活跃对象数
+//   - DONE 置位, 队列排空后 q_tail == 期望活跃对象数 (12 位指针, 4096 时回绕为 0)
 //   - MARKED 寄存器 == 期望活跃对象数
 //   - 位图逐位与期望一致 (既不多标, 也不少标)
 //   - CYCLES 有效 (>0)
+//
+// 白盒说明: 部分定向用例 (T7 队列溢出、T-ABORT 卡死) 直接引用内部信号并
+// 使用 force, 这是有意为之; RTL 改名时这些用例需要同步修改。
 // ============================================================
 `timescale 1ns/1ps
 
@@ -422,13 +425,13 @@ module tb_gc_top;
                  dut.u_engine.pf_rc[0], dut.u_engine.pf_rc[1], dut.u_engine.pf_rc[2], dut.u_engine.pf_rc[3],
                  dut.u_engine.pf_id[0], dut.u_engine.pf_id[1], dut.u_engine.pf_id[2], dut.u_engine.pf_id[3],
                  dut.u_engine.dq_rc[0], dut.u_engine.dq_rc[1], dut.u_engine.dq_rc[2], dut.u_engine.dq_rc[3]);
-        // 新增: STATUS 寄存器必须为 0 (无溢出/无总线错误/无流失步)
+        // 新增: STATUS 的错误位必须为 0, 且引擎已回到 idle (bit4)
         axil_rd(8'h20, rd_val);
-        if (rd_val !== 32'h0) begin
-            $display("[TB][FAIL] STATUS=%h (err_ovf/err_rd/err_ref 应全为 0)", rd_val);
+        if ((rd_val & 32'h1F) !== 32'h10) begin
+            $display("[TB][FAIL] STATUS=%h (errors must be 0 and bit4=1)", rd_val);
             errors = errors + 1;
         end else begin
-            $display("[TB] STATUS=0 OK (无溢出/总线错误/流失步)");
+            $display("[TB] STATUS=0x10 OK (no errors, idle)");
         end
         axil_rd(R_MARKED, rd_val); marked_dut = rd_val;
         axil_rd(R_QTAIL,  rd_val); qtail_dut  = rd_val & 32'hFFF;
@@ -720,9 +723,9 @@ module tb_gc_top;
         // An abort must not manufacture status bits out of the abandoned run's
         // in-flight reads (board: abort_sweep.py saw STATUS[1]/STATUS[3] here).
         axil_rd(R_STATUS, rd_val);
-        $display("[TB] T-ABORT status right after abort = %h (expect 0)", rd_val);
-        if (rd_val !== 32'h0) begin
-            $display("[TB][FAIL] T-ABORT status=%h after abort", rd_val);
+        $display("[TB] T-ABORT status right after abort = %h (expect 0x10: idle, no errors)", rd_val);
+        if ((rd_val & 32'h1F) !== 32'h10) begin
+            $display("[TB][FAIL] T-ABORT status=%h after abort (expect idle + no errors)", rd_val);
             errors = errors + 1;
         end
         release dut.u_engine.q_pop_ack;
@@ -766,8 +769,8 @@ module tb_gc_top;
                  dut.u_engine.iss_cnt, dut.u_engine.con_cnt, dut.u_engine.marked_r,
                  dut.u_engine.err_ref);
         axil_rd(R_STATUS, rd_val);
-        $display("[TB] T-ABORT2 status=%h (expect 0)", rd_val);
-        if (rd_val !== 32'h0) begin
+        $display("[TB] T-ABORT2 status=%h (expect 0x10: idle, no errors)", rd_val);
+        if ((rd_val & 32'h1F) !== 32'h10) begin
             $display("[TB][FAIL] T-ABORT2 status=%h (aborted run leaked into the next run)", rd_val);
             errors = errors + 1;
         end
@@ -970,8 +973,8 @@ module tb_gc_top;
             errors = errors + 1;
         end
         axil_rd(R_STATUS, rd_val);
-        $display("[TB] T-MAXFAN STATUS=%h (expect 0)", rd_val);
-        if (rd_val !== 32'h0) begin
+        $display("[TB] T-MAXFAN STATUS=%h (expect 0x10: idle, no errors)", rd_val);
+        if ((rd_val & 32'h1F) !== 32'h10) begin
             $display("[TB][FAIL] T-MAXFAN STATUS=%h", rd_val);
             errors = errors + 1;
         end
@@ -1005,6 +1008,52 @@ module tb_gc_top;
         $display("[TB] T-ROOTCLAMP marked=%0d (expect 256, root_count=0xFFFFFFFF)", rd_val);
         if (rd_val !== 32'd256) begin
             $display("[TB][FAIL] T-ROOTCLAMP marked=%0d != 256", rd_val);
+            errors = errors + 1;
+        end
+
+        // ---- T-STAR: root 0 -> 1..4095, 4096 objects, one ref each ----
+        // Exercises the full object range, a full-depth queue and q_tail == marked.
+        begin : t_star
+            integer i;
+            reg [31:0] rbase;
+            rbase = BASE + 32'h40000;          // after 4096 * 16 bytes of headers
+            for (i = 0; i < 4096; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i == 0) ? 4095 : 0;
+                mem[(i*16)/4 + 2] = (i == 0) ? rbase : 0;
+            end
+            for (i = 0; i < 4095; i = i + 1)
+                mem[(rbase - BASE)/4 + i] = i + 1;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd4096);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 2000000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T-STAR DONE never asserted");
+            errors = errors + 1;
+        end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-STAR marked=%0d (expect 4096)", rd_val);
+        if (rd_val !== 32'd4096) begin
+            $display("[TB][FAIL] T-STAR marked=%0d != 4096", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_QTAIL, rd_val);
+        $display("[TB] T-STAR q_tail=%0d (expect 0: 4096 pushes wrap the 12-bit pointer)", rd_val);
+        if (rd_val !== 32'd0) begin
+            $display("[TB][FAIL] T-STAR q_tail=%0d (4096 & 0xFFF = 0)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T-STAR STATUS=%h (expect bit4=1, errors=0)", rd_val);
+        if (rd_val !== 32'h10) begin
+            $display("[TB][FAIL] T-STAR STATUS=%h (expect 0x10: idle, no errors)", rd_val);
             errors = errors + 1;
         end
 

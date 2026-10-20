@@ -42,6 +42,7 @@
 #define STATUS_RDERR     (1U << 1)   // AXI read response error
 #define STATUS_REFDESYNC (1U << 2)   // consumed more refs than issued
 #define STATUS_HDR       (1U << 3)   // ref_count > 4096 (corrupt header)
+#define STATUS_IDLE      (1U << 4)   // engine FSM is in S_IDLE
 
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
@@ -104,7 +105,14 @@ uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots);
 uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint8_t *out);
 
 // 读取单个对象的标记状态
+// 前置条件: 引擎 idle (STATUS[4]=1); 否则返回 0xFFFFFFFF
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id);
+
+// 队列尾指针 (只读), 用于 q_tail == marked 的不变量检查
+uint32_t fpga_gc_q_tail(fpga_gc_t *dev);
+
+// 等待引擎回到 S_IDLE; 超时返回 -1
+int fpga_gc_wait_idle(fpga_gc_t *dev, int timeout_us);
 
 // 打印标记位图
 void fpga_gc_dump_marks(fpga_gc_t *dev, int n);

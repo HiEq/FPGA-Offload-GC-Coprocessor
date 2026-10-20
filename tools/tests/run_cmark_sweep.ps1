@@ -78,7 +78,18 @@ foreach ($sw in $sweeps) {
 
 $sp.Close()
 $out = "$PSScriptRoot\..\logs\cmark_sweep.log"
-[System.IO.File]::WriteAllText($out, $sb.ToString())
+$clean = [regex]::Replace($sb.ToString(), "`e\[[0-9;]*[A-Za-z]", "")
+$lines = $clean -split "`r?`n" | Where-Object {
+    $_ -notmatch '^(root@|cd /mnt/userdata|mkdir -p /mnt/userdata|mount -t vfat)' -and
+    $_ -notmatch '^\d+_\d+_\d+_DONE$'
+}
+$hdr = @(
+    "# run_cmark_sweep.ps1 (4 groups, 72 runs), $(Get-Date -Format yyyy-MM-dd)",
+    "# command: tools/tests/run_cmark_sweep.ps1 -> ./cmark <maxN> <trials> <avg_refs>",
+    "# note: ANSI colour codes, prompts and the mount prologue were stripped; data lines unchanged",
+    "#", ""
+)
+[IO.File]::WriteAllLines($out, $hdr + $lines, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "`n=== transcript: $out ==="
 if ($fail -gt 0) { Write-Host ("SWEEP FAILED: " + $fail + " step(s) did not reach their DONE marker"); exit 1 }
 exit 0
