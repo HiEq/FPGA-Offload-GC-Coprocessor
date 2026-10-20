@@ -1,7 +1,7 @@
 #!/bin/sh
 # ============================================================
 # irq_drv_test.sh - prove the PL completion really raises IRQ_F2P[0]
-# (GIC SPI 61 -> a Linux virq the driver maps, 44 on the current image)
+# (GIC SPI 61 -> a Linux virq the driver maps; the virq number is dynamic)
 #
 #   sh irq_drv_test.sh [ko_path]
 #
@@ -28,8 +28,8 @@ echo "== state after arm (done is still 0, so no IRQ expected): $BEFORE =="
 
 echo "== run one GC test (done 0 -> 1) =="
 python3 "$D/gc_test.py" 1024 1 2 --seed 11 2>&1 | grep -E 'seed=|^  \[ *1/|PASSED'
-# Poll for the interrupt instead of a fixed sleep: a slow IRQ used to make this
-# flaky, and a second run (count already > 0) is supported below.
+# Poll for the interrupt with a timeout; a second run (count already > 0) is
+# supported below.
 n=0
 while [ $n -lt 50 ]; do
     C=$(cut -d' ' -f1 "$DEV" 2>/dev/null)

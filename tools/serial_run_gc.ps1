@@ -3,9 +3,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Port auto-detection + shared plumbing live in serial-session.ps1, which in
-# turn dot-sources serial-port.ps1. This script used to carry its own copy of
-# the open/pump/send/ANSI-strip code; keeping one copy stops the two variants
-# from drifting again.
+# turn dot-sources serial-port.ps1.
 . (Join-Path $PSScriptRoot 'serial-session.ps1')
 
 # logs directory
@@ -85,11 +83,10 @@ Cmd "cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpga-manager
 # ================= 3) run_gc.sh =================
 Write-Host "--- 3) run_gc.sh ---"
 # Only output produced from here on may satisfy the verdict pattern: the buffer
-# still holds the whole session, and an old 'FAILED' line used to report
-# finished=True a couple of seconds after the run started.
+# still holds the whole session, including earlier 'FAILED' lines.
 $from = $s.Sb.Length
 # `$? must reach the board literally: in a double-quoted string PowerShell
-# would expand it to True/False here (that bug made the RC line unusable).
+# expands it to True/False.
 SendLine "sh /mnt/userdata/run_gc.sh; echo RUN_GC_RC=`$?"
 $done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' -MaxMs 420000 -From $from
 Write-Host ("  finished = " + $done)

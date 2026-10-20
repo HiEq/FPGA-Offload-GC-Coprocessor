@@ -7,8 +7,7 @@
 #   * tail extraction (last N non-empty lines)
 #   * boundary: empty buffer
 #   * the $From offset semantics - NEGATIVE CONTROL: a stale prompt already in
-#     the buffer must NOT satisfy a wait that starts after it. That is the bug
-#     serial_cmd.ps1 still had while serial_run_gc.ps1 had already fixed it.
+#     the buffer must NOT satisfy a wait that starts after it.
 
 $ErrorActionPreference = 'Stop'
 $tools = Split-Path -Parent $PSScriptRoot

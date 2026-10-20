@@ -5,27 +5,23 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#quick-start)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-这是一个把 **CPython GC 的标记阶段**搬到 Zynq FPGA 上实现的**指针追逐原型**：
-引擎在非缓存 DDR 上比 Python 逐条遍历快**两个数量级**（约 220–260×），
-相对 CPython 自己的 `gc.collect()` 约 **26×**（4000 对象、整堆、含清扫 ⇒ 上界）。
+把 GC 的**标记阶段**卸载到 Zynq-7000 PL：BFS 指针追逐由硬件完成，对象图放在 DDR `0x1E000000`。
 
-优势不来自"算法更快"，而来自**非缓存指针追逐被硬件流水化**。同一张 4096 对象的图
-（`cmark` 第 1 组：4096 对象 / 24 轮 / `avg_refs=2`；72 次扫描全部 OK，见 `tools/logs/cmark_sweep.log`）：
+| 对比对象 | 规模 | 时间 | 相对 FPGA |
+|---|---|---|---|
+| C，逐条读 DDR（数据不在 cache）| 4096 对象 | 2.3 ms | **3.2×** |
+| C，数据在 cache | 4096 对象 | 0.63 ms | 0.9× |
+| **FPGA 标记** | 4096 对象 | **0.72 ms** | — |
+| CPython `gc.collect()`（整堆，含清扫）| 4000 对象 | 17.08 ms | **26×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **223–277×** |
 
-| 同一张图 | 时间 | 相对 FPGA |
-|---|---|---|
-| C，数据**不在** cache（逐条读 DDR）| 2.3 ms | 硬件快 **3.2×** |
-| C，数据**在** cache | 0.63 ms | 硬件 **0.9×**（打平/略慢）|
-| FPGA | 0.72 ms | — |
-
-也就是说：**赢在"指针散落在 DDR、依赖链拉满延迟"这一侧；图完全驻留 cache 时硬件没有优势**。
-堆越大、越放不进 cache，硬件的相对优势越大 —— 但这是设计推断，当前 4096 对象的上限还没法实测。
-
-另外，上面那个 26× **不是** cache 效应：4000 对象的图只有 ~130 KB，本来就能进 L2，
-CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和清扫。
-
-> **范围**：当前实现是 **stop-the-world 的 mark offload**（软件写 START、轮询 DONE），不做并发/增量标记；
-> `python/fogccc.py` 用 ctypes 驱动的是**合成对象图**，尚未接入 CPython 的 `gc` 模块与 `PyObject` 布局。
+> `FPGA` 一列只有引擎周期（`CYCLES / 100 MHz`）；构图与搬运不计入，见「端到端成本」。
+> 前三行来自 `cmark`（`tools/logs/cmark_sweep.log`），`gc.collect()` 一行来自 `test_main`
+> （`tools/logs/board_test_main_20261020.txt`），最后一行来自 `run_gc.sh`
+> （`tools/logs/board_gc_test_20261020.txt`）。
+>
+> **实现范围**：stop-the-world，写 `START`、轮询 `DONE`；对象图由 `csrc/fpga_gc.c` /
+> `python/fogccc.py` 按「对象头 + 引用数组」布局构造，**未接入** CPython 的 `gc` 模块与 `PyObject` 布局。
 
 ## 架构概览
 
@@ -64,9 +60,9 @@ CPython 慢在它每个对象都要做的引用计数、两遍 `tp_traverse` 和
 5. ARM PS 轮询完成标志，读取标记结果和周期计数
 6. CPython 据此跳过/回收未标记对象
 
-> **当前实现（别读成已接入）**：第 1、6 步还是目标形态 —— CPython 的 `gc` 模块尚未接进来。
-> 对象图由 `csrc/fpga_gc.c` / `python/fogccc.py` 按相同的「对象头 + 引用数组」布局构造，
-> 标记语义与 GC 的 mark 阶段一致，但回收动作仍由 CPython 自己完成；性能对比的基线见「测量口径」。
+> **当前实现**：第 1、6 步是目标形态，CPython 的 `gc` 模块尚未接入。
+> 对象图由 `csrc/fpga_gc.c` / `python/fogccc.py` 按「对象头 + 引用数组」布局构造；
+> 标记语义与 GC 的 mark 阶段一致，回收动作由 CPython 完成。
 
 ## Platform
 
@@ -126,7 +122,7 @@ FPGA-Offload-GC-Coprocessor/
 │   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + T-ABORT/T-ABORT2/T-MAXFAN/T-ROOTCLAMP)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
 │   ├── run_sim.bat         一键仿真
-│   ├── tb_axi_read.v       #6 未完成读事务上限的定向测试 (+ run_axi_tb.bat)
+│   ├── tb_axi_read.v       未完成读事务上限的定向测试 (+ run_axi_tb.bat)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
@@ -139,7 +135,7 @@ FPGA-Offload-GC-Coprocessor/
 │   ├── build.tcl           BD + 综合 + 实现 + XSA
 │   └── build_rtl_only.tcl  复用 BD
 ├── tools/                  宿主脚本
-│   ├── serial_run_gc.ps1 / serial_push_chunked.ps1 / make_manifest.ps1
+│   ├── serial_run_gc.ps1 / serial_push_chunked.ps1 / make_manifest.ps1 / make_card.ps1
 │   ├── tests/(功能测试)  debug/(调试工具)
 │   └── logs/               证据日志（只留 README 引用的那些，见其中的 README.md）
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
@@ -153,9 +149,8 @@ FPGA-Offload-GC-Coprocessor/
 
 ## Quick Start
 
-> 串口侧不用手填端口：`tools\` 里的脚本默认**自动识别 CH340**（换 USB 口、重装驱动或重启后
-> COM 号从 COM3 漂到 COM5 也不受影响），只有机器上插了多根串口线时才需要 `-Port COMx`。
-> 完整清单见下面的「Windows 侧快捷指令」。
+> 串口脚本自动识别 CH340；只有机器上插了多根串口线时才需要 `-Port COMx`。
+> 完整清单见「Windows 侧快捷指令」。
 
 ### 1. 生成比特流 (PC 端)
 
@@ -219,26 +214,18 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   
 4000     3766     646.6     2217.9    17.083       3.4x    26x               2.83                 16.5x
 ```
 
-- `CPython 增量 us/个` = `(CPython ms − 5.782) × 1000 / (n − 10)`，即**多这 n−10 个对象的边际成本**
-- `vs CPython(增量)` = 它 ÷ `(FPGA us / marked)`，同样是**每对象**口径
+- `vs CPython(整堆)`：一次完整回收 vs 一次标记，含解释器堆的固定成本。
+- `CPython 增量 us/个` = `(CPython ms − 5.782) × 1000 / (n − 10)`：多这 n−10 个对象的边际成本。
+- `vs CPython(增量)` = `CPython 增量 us/个` ÷ `(FPGA us / marked)`：每对象口径。
 
-所以两列回答两个不同问题：`vs CPython(整堆)` 是"一次完整回收 vs 一次标记"（含解释器堆固定成本，随 n 变化很小，n 越小时倍数越虚高）；`vs CPython(增量)` 才是"多标这些对象"的同阶段比较（**≈2–17×**）。
+小图（<100 对象）FPGA 更慢：固定启动开销约 4400 拍。`marked < Objects` 是随机图中从根 0
+不可达的对象。
 
-小图（<100 对象）FPGA 反而慢，因为固定启动开销约 4400 拍；`marked < Objects` 是随机图里
-从根 0 不可达的对象。
-
-> ⚠️ **两种对手别混**：对 Python 脚本（`py_bfs.py`，逐条读 `/dev/mem`）是 **220–260×**；
-> 对 CPython 的完整回收是 **26×**（整堆）/ **≈16.5×**（增量）。
-
-> **口径**：`CPython ms` 是**真实 CPython 收集器**（`gc.collect()`，C 实现）对整个解释器堆的
-> 一次完整回收（含清扫），不是 Python 字节码；硬件只做标记 ⇒ 主表最后一列是**上界**。
+> **口径**：`CPython ms` 来自真实 CPython 收集器（`gc.collect()`，C 实现）对整个解释器堆的
+> 一次完整回收（含清扫）；硬件只做标记，因此 `vs CPython(整堆)` 是**上界**。
 >
-> 同一份数据按"增量"再算一次（更接近同阶段）：n=10 时基线 7.295 ms，n=4000 时 16.797 ms，
-> 增量 **9.50 ms / 3990 个对象 = 2.38 µs/对象**；硬件 647.3 µs / 3766 个对象 = **0.172 µs/对象**
-> ⇒ **约 13.9×**。主表的 **26×** 里含整堆基线扫描与清扫。
->
-> 对照：`py_bfs.py`（Python 字节码实现的 BFS）在同一张图上要 169 ms，比 `gc.collect()` 慢约
-> 10 倍 —— 这也说明 CPython 的收集器确实是 C 速度的执行路径，两者不要混用。
+> 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）是 **223–277×**，不要与上面的
+> **26× / 16.5×** 混用。
 
 ### 4. Python 测试
 
@@ -274,7 +261,7 @@ python3 python/benchmark.py
 | 0x14 | CYCLES | R | 硬件周期计数 |
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
-| 0x20 | STATUS | R | [0]=队列溢出（**防御性**：对象数上限 4096 = 队列深度，正常路径不可达）[1]=AXI 读错误 [2]=引用失步 [3]=坏对象头（`ref_count>4096`）；除 [1] 按 start 清零外，其余每次 start 清零 |
+| 0x20 | STATUS | R | [0]=队列溢出（正常路径不可达：4096 对象 = 队列深度）[1]=AXI 读错误 [2]=引用失步 [3]=坏对象头（`ref_count>4096`）；除 [1] 按 start 清零外，其余每次 start 清零 |
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0~4095，只在引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据 = `mem[BM_ADDR]`（**2 拍**：BRAM 1 拍 + 探针寄存器 1 拍；两次读数之间不要改 BM_ADDR）|
 | 0x30 | MAGIC | R | 固定 `0x47434343`（"GCCC"）：软件可比对，确认 bitstream 与驱动配对 |
@@ -295,13 +282,11 @@ python3 python/benchmark.py
 | 时钟 | **FCLK0 = 100MHz** | 引擎 / AXI-Lite / AXI HP 同一域，**无 CDC** |
 | 位图 | 4096×32 = 128 Kb | 对象 x 的状态 = `mem[x]` 的第 `x%32` 位 |
 | 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满 |
-| FSM 编码 | 5 位 / 25 个 | 12 个在用，13 个**有意保留**（删掉只省 1 个触发器 + 几个已被综合删掉的译码 LUT，却要重排编码并重证 FSM）|
+| FSM 编码 | 5 位 / 25 个 | 12 个在用，13 个保留（未删除）|
 
-> **起跑排空（`run_start` flush）**：一次运行可能在命令还没发完、AR 还在途、数据还没被消费时就结束
-> （或被 abort）。这些残留如果留到下一轮，会被当成新一轮的数据：顺序错位、`STATUS[2]`（消费>发出）
-> 误报，甚至多标对象。所以 `gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
-> 并把在途响应逐拍丢掉，直到两条流的在途计数归零才开始发新命令。
-> 板级证据：`tools/tests/done_race_test.py` 的 P3（修前每轮 `STATUS=0x4`、有一轮标了 964/768）。
+> **起跑排空（`run_start` flush）**：`gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
+> 并逐拍丢弃在途响应，直到两条流的在途计数归零才发新命令。
+> 覆盖：`done_race_test.py` P3（每轮 `STATUS=0`；修复前为 `0x4`，并有一次标出 964/768）。
 
 ## Object Graph DDR Format
 
@@ -341,13 +326,9 @@ python3 python/benchmark.py
 | vs `py_bfs`（脚本）| 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
-> ⚠️ 各列的总 HW cycles 来自**不同的随机图**（活跃对象数见"活跃对象合计"行），
-> 只有 **每对象周期** 是可比的。
-> Ver4 列用**当时那版**比特流复测（`run_gc.sh` 默认参数 4096/8/2，8/8 PASSED）：
-> **240,007 拍 / 13,497 个活跃对象 = 17.8 拍/对象**（扣清位图后 15.4），加速比 220.8~279.3x。
-> ⚠️ 这一行的原始日志**没有归档**。归档的 `tools/logs/board_verify_20261019_153604.log` 是**另一次**运行：
-> **209,802 拍 / 11,585 个活跃对象 = 18.1 拍/对象**（8/8 PASSED，2026-10-19；该日志没有记录 bitstream md5）。
-> 两次数值接近但不是同一次，引用时请分开写。
+> 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
+> 本表是历史数据（`historical/unverified`）；当前可复核的 8/8 见
+> `tools/logs/board_gc_test_20261020.txt`（211,705 拍，发布镜像）。
 
 #### 测量口径
 
@@ -360,23 +341,22 @@ python3 python/benchmark.py
   `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
 - `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 220–279×
   是**另一种实现**的比值，不要和 CPython 的 26× 混用。
-- 原始串口记录：`tools/logs/board_test_main_20261019.txt`、`tools/logs/board_verify_*.log`、
-  `tools/logs/cmark_sweep*.log`。
+- 原始记录：`tools/logs/board_test_main_20261020.txt`、`tools/logs/board_gc_test_20261020.txt`、
+  `tools/logs/board_benchmark_20261020.txt`、`tools/logs/cmark_sweep*.log`。
 
-#### 端到端成本（为什么上面的加速比只是上界）
+#### 端到端成本
 
 `FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
 `gc_test.py 4096 3 2 --seed 424242` 在板上实测（2026-10-20，发布镜像，bitstream `B556EFDC…` / BOOT.BIN `FA816025…`）：
 
 | 阶段 | 时间 |
 | --- | --- |
-| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **178.8 ms / 图** |
-| 同图 Python BFS（oracle）| 74.6 ms / 图 |
-| 硬件标记（引擎）| **0.289 ms / 图**（N≈1127–2799）|
+| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **158.9 ms / 图** |
+| 同图 Python BFS（oracle）| 68.5 ms / 图 |
+| 硬件标记（引擎）| **0.265 ms / 图**（N = 881–3984）|
 
-⇒ 单次卸载的端到端成本由构图主导（约 **619×** 标记时间）。只有对象图**常驻 DDR、能反复复用**时，
-"把标记卸载到 PL"才可能划算。这里用的是 Python 构图，C 侧批量写会快得多，但同样不计入 `FPGA us`
-（`test_main` 的构图走 `fpga_gc_build_graph()`，也没有单独计时）。
+单次卸载的端到端成本由构图主导：**599×** 标记时间（`board_gc_test_20261020.txt`）。
+构图走 Python；C 侧的 `fpga_gc_build_graph()` 未单独计时，同样不计入 `FPGA us`。
 
 ### 仿真回归
 
@@ -386,11 +366,11 @@ python3 python/benchmark.py
 | --- | --- |
 | 主用例 | N=300 / 活跃 250 / 孤岛 50；标记数、队列尾、位图逐位比对 |
 | STATUS | `0x20` 必须为 0 |
-| **T1** | **连续两次运行**：`marked` 两次都必须是 2（回归 `prev_ref` 跨运行残留） |
-| **T2** | **重复根**（同一 root 写两次）：只算一次 |
-| **T3** | **流水 AW**（AW/W 双线程背靠背两笔写）：两笔都必须落到正确寄存器 |
-| **T4** | **非法对象头**（`ref_count=0xFFFFFFFF`）：必须被拒、`STATUS[3]=1`、`marked` 仍是活跃区 |
-| **T5** | **12 位寄存器地址**：`root[60]` 在 `0x130`，写地址截断到 8 位会标记 0 个对象 |
+| **T1** | 连续两次运行：`marked` 两次都必须是 2 |
+| **T2** | 重复根（同一 root 写两次）：只算一次 |
+| **T3** | 流水 AW（AW/W 背靠背两笔写）：两笔都必须落到正确寄存器 |
+| **T4** | 非法对象头（`ref_count=0xFFFFFFFF`）：被拒、`STATUS[3]=1`、`marked` 仍是活跃区 |
+| **T5** | 12 位寄存器地址：`root[60]` 在 `0x130`；写地址截断到 8 位会标记 0 个对象 |
 | **T6** | **位图探针**：`0x24/0x28` 读回必须与 BRAM 内容逐字一致；邻近编码的对象必须读出 0 |
 | **T7** | **队列溢出**：强制 `q_full` 后 `STATUS[0]=1`，且 `marked=0`（不静默丢对象） |
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
@@ -421,7 +401,8 @@ python3 gc_test.py 1024 1 2 --seed 11   # done 0 -> 1
 cat /dev/fogccc_irq           # "1 0 <virq>"  ← 中断已触发，处理函数自动关线
 ```
 
-实测：`before arm 0 0 / after arm 0 1 / after run 1 0`，`VERDICT: IRQ_DRIVEN_DONE_OK`。
+实测（发布镜像，PL 刚配置）：`before arm 0 0 / after arm 0 1 / after run 1 0`，`VERDICT: IRQ_DRIVEN_DONE_OK`。
+前提是 PL 处于 `done=0`；若 `done=1`（跑过一次），插模块就会先计一次中断，测试会报 FAIL。
 两处约束见 `driver/README.md`（hierarchy 域没有 `.map`；`fwspec.param[1]` 是
 SPI 编号 = ID − 32）。
 
@@ -445,12 +426,11 @@ SPI 编号 = ID − 32）。
 | # | 手段 | 效果 |
 |---|---|---|
 | 1 | **多笔未完成读**：`gc_axi_read` 改成"命令 FIFO + 数据 FIFO"的读命令队列，引擎可连续压入地址互不依赖的读 | 每个对象从 `2 + ref_count` 次**串行**往返 → 2 次**并发**往返 |
-| 2 | **引用阶段压入/取回交错** + **对象头投机预取**：引用命令边压边收；当前对象引用命令压完后立刻从队列弹下一个对象、把它的两笔头读也压进去 | 下一个对象的头延迟被完全掩盖 → 每个对象只暴露 **1 次往返**；同时**去掉了 `REF_MAX=64` 静默截断**的隐患 |
+| 2 | **引用阶段压入/取回交错** + **对象头投机预取**：引用命令边压边收；当前对象引用命令压完后立刻从队列弹下一个对象、把它的两笔头读也压进去 | 下一个对象的头延迟被完全覆盖 → 每个对象只暴露 **1 次往返**；无 `REF_MAX` 截断 |
 | 3 | **逐引用快路径**：位图改成读写地址独立的简单双口 BRAM；取到引用值那一拍就发读地址，下一拍"判定+置位+入队"一拍完成 | 每次引用 6 拍 → **2 拍** |
 | 4 | **引用流水**：把"发引用读命令"从主状态机剥离成独立 issuer，描述符在**对象头填好的那一刻**就入队，最多领先 4 个对象；对象头改走**独立的 AXI 流**（`ID=1`），与引用流（`ID=0`）互不阻塞 | 引用读延迟被后续对象的处理盖住：LAT 扫描斜率 **1.00 → 0.71**；每对象 **38.3 → 17.5 拍** |
 
-配套：为统一时钟域把 AXI HP 从 FCLK1 (200MHz) 挪到 FCLK0 (100MHz)，
-省掉整套 2FF CDC 同步器（本设计是**延迟受限**而非带宽受限）。
+配套：AXI HP 从 FCLK1 (200MHz) 挪到 FCLK0 (100MHz)，省掉 2FF CDC 同步器。
 
 ### 对优化 C 的参考对比
 
@@ -478,23 +458,18 @@ SPI 编号 = ID − 32）。
   （仍慢 1.1~1.7x）
 - avg_refs 越大硬件越占优（**3.4x**）
 
-#### 为什么非缓存赢、缓存输
+#### 适用条件
 
-| | CPU 取下一个对象要付 | 硬件（AXI HP，非一致）要付 |
+| 图所在位置 | CPU 每次依赖读 | 硬件（AXI HP，非一致）|
 |---|---|---|
-| 图在 DDR（非缓存） | 一整个 DDR 往返（~100 ns 级）；指针追逐**没有并发度**（下一条地址依赖上一条数据）| 同样的往返，但 **8 笔未完成读 + 对象头预取**，把延迟重叠起来 |
-| 图在 CPU cache | L1/L2 命中，几拍（~1–5 ns）| 仍要出 AXI HP 到 DDR（PL 没有 cache，HP 也不一致）|
+| DDR（非缓存）| 一次 DDR 往返，无重叠 | 同样往返，8 笔未完成读 + 对象头预取 |
+| CPU cache | L1/L2 命中，几纳秒 | 仍走 AXI HP 到 DDR |
 
-指针追逐是**延迟受限**而不是带宽受限：CPU 一次只能等一个地址。所以：
+硬件只在指针追逐被 DDR 延迟钉住时占优（**2.7–3.4×**）；图驻留 CPU cache 时为 **0.6–0.9×**。
+硬件另有固定开销（配置、清队列、清 4096 位图、drain），小图摊不薄。
 
-- 数据不在 cache 时，谁能"边等边多发几个请求"谁就赢 → 硬件有 8 笔 outstanding + 预取 ⇒ **2.7–3.4×**；
-- 数据在 cache 时，CPU 的往返只有几纳秒，而硬件仍要跨 AXI 走 DDR ⇒ 硬件反而慢 ⇒ **0.6–0.9×**；
-- 此外硬件有固定开销（配置、清队列、清 4096 位图、drain），小图摊不薄。
-
-结论：它加速的是**CPU 侧被内存延迟钉住的遍历**，不是"所有 GC"。要再快，得改引擎自身（预取深度 / 未完成事务数），而不是换存储通路。
-
-> 与 CPython 的主对比见上面的主表（`gc_probe.py` 的 `gc.collect()`）；`py_bfs.py` 只是另一种
-> Python 实现的参照（逐条读 `/dev/mem`），**不是** CPython 的 GC 本体；`cmark` 只作参考。
+> 与 CPython 的对比见主表（`gc_probe.py` 的 `gc.collect()`）；`py_bfs.py` 是 Python 字节码
+> BFS 的参照，`cmark` 是 C 侧参照。
 
 ## Debug & Monitoring
 
@@ -547,7 +522,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,704 B | `FA816025BE38E2AEFD19297C953F0DA5` |
 | `image.ub` | BOOT 分区根目录 | 43,213,279 B | `2B446CFB755CB4FC9CB9A15A159BE6E7` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `AC6FFCCB0E83C7C31D5770A8D34A71DD` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,875 B | `878E9880DB4BCEB824B6F340A7FA7036` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 56,795 B | `3DACA0AEEF15A30703625F189FD5D586` |
 
 > ⚠️ **镜像比仓库配置旧**：`image.ub` 构建于 2026-10-17；仓库里 2026-10-19 的两处配置改动
 > （`inetd.conf` 关闭 telnet/ftp、`system-user.dtsi` 给 `pl_graph@1e000000` 加 `no-map`）**还没有打进这个镜像**
@@ -593,8 +568,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 ## Windows 侧快捷指令
 
-串口脚本默认**自动识别 CH340**：换 USB 口、重装驱动或重启后 COM 号从 COM3 漂到 COM5
-也不用改脚本。机器上只插一根串口线时什么都不用填，插了多根才需要 `-Port COMx`。
+串口脚本自动识别 CH340；多根串口线时用 `-Port COMx` 指定。
 
 | 做什么 | 命令 | 说明 |
 | --- | --- | --- |
@@ -603,6 +577,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
 | 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；18 MB 的 `BOOT.BIN` 压成 ~1 MB 后约 3 分钟 |
 | 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
+| 刷新卡上副本 | `... tools\make_card.ps1` | 把 `tools/tests/`、`python/`、`csrc/` 里的脚本同步到 `artifacts/userdata/`（不动二进制）|
 | C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
 | 单条命令 | `powershell -ExecutionPolicy Bypass -File tools\serial_cmd.ps1 -Cmd "uname -a"` | 发一条命令并抓回显 |
 | 指定串口 | 上面任意一条加 `-Port COM7` | 只在自动识别失败（多根串口线）时才需要 |

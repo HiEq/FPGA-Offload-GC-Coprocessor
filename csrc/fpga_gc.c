@@ -230,8 +230,7 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
     while (!(dev->regs[REG_CTRL / 4] & CTRL_DONE)) {
         if (--timeout == 0) {
             printf("ERROR: FPGA mark timeout after 10M polls; aborting the engine\n");
-            /* Without this the engine keeps running and the next run rebuilds the
-             * graph under it (review item: timeout returned without aborting). */
+            /* 超时后必须 abort; 否则引擎继续运行, 下一轮会在它上面重建图。 */
             dev->regs[REG_CTRL / 4] = CTRL_ABORT;
             if (cycles_out) *cycles_out = 0;
             return 0xFFFFFFFF;

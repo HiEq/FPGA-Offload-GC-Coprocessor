@@ -91,7 +91,7 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
 
         // ---- CPython 参照: 同对象数下一次完整的 gc.collect() ----
         // 它的返回值是"回收了多少不可达对象", 和硬件的 marked 不是一回事,
-        // 所以只取时间; marked 的正确性由 C BFS (sw_count) 做独立 oracle.
+        // 只取时间; marked 的正确性由 C BFS (sw_count) 做独立 oracle.
         uint32_t py_freed = 0;
         double py_ms = cpython_gc_ms(py_path, n, &py_freed);
         (void)py_freed;
@@ -121,8 +121,7 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         }
 
         // ---- bitmap readback (0x24/0x28): compare the SET, not just the count ----
-        // A right-sized count with the wrong objects used to pass here; the
-        // probe is now checked object by object against the software BFS.
+        // The probe is checked object by object against the software BFS.
         {
             uint8_t *sw_bits = (uint8_t *)calloc((size_t)n, 1);
             int bm_bad = 0;
