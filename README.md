@@ -21,11 +21,11 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 | C，数据在 cache | 4096 对象 | 0.63 ms | 0.9× |
 | **FPGA 标记**（`cmark`）| 4096 对象 | **0.72 ms** | — |
 | **FPGA 标记**（`test_main`）| 4000 对象 | **0.645 ms** | — |
-| CPython `gc.collect()`（整堆，含清扫）| 4000 对象 | 17.89 ms | **28×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **223–277×** |
+| CPython `gc.collect()`（整堆，含清扫）| 4000 对象 | 17.88 ms | **28×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **225–278×** |
 
-> `28×` = 17.89 ms ÷ 0.645 ms（同一张 4000 对象图，`test_main`）；`0.72 ms` 是 `cmark` 的
-> 4096 对象，不与 17.89 ms 相除。`FPGA` 一列只有引擎周期（`CYCLES / 100 MHz`），构图与
+> `28×` = 17.88 ms ÷ 0.645 ms（同一张 4000 对象图，`test_main`）；`0.72 ms` 是 `cmark` 的
+> 4096 对象，不与 17.88 ms 相除。`FPGA` 一列只有引擎周期（`CYCLES / 100 MHz`），构图与
 > 搬运不计入，见「端到端成本」。
 > 前三行来自 `cmark`（`tools/logs/cmark_sweep.log`），`gc.collect()` 与 `0.645 ms` 来自
 > `test_main`（`tools/logs/board_test_main_20261020.txt`），最后一行来自 `run_gc.sh`
@@ -217,17 +217,17 @@ sudo ./bin/test_main
 
 ```
 Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   CPython 增量 us/个   vs CPython(增量)
-10       9        44.1      14.0      5.711        0.3x    130x              —                    —
-50       47       48.7      29.2      5.809        0.6x    119x              2.45                 2.4x
-100      96       56.7      58.7      6.040        1.0x    107x              3.66                 6.2x
-500      474      113.5     261.8     7.159        2.3x    63x               2.96                 12.3x
-1000     945      196.1     514.4     8.632        2.6x    44x               2.95                 14.2x
-2000     1882     340.7     1055.6    11.648       3.1x    34x               2.98                 16.5x
-4000     3766     645.0     2152.3    17.894       3.3x    28x               3.05                 17.8x
+10       9        44.0      14.5      5.799        0.3x    132x              —                    —
+50       47       48.7      29.7      5.851        0.6x    120x              1.30                 1.3x
+100      96       56.9      58.5      6.028        1.0x    106x              2.54                 4.3x
+500      474      114.1     258.6     7.195        2.3x    63x               2.85                 11.8x
+1000     945      185.3     517.4     8.624        2.8x    47x               2.85                 14.6x
+2000     1882     340.2     1052.0    11.706       3.1x    34x               2.97                 16.4x
+4000     3766     645.0     2146.0    17.875       3.3x    28x               3.03                 17.7x
 ```
 
 - `vs CPython(整堆)`：一次完整回收 vs 一次标记，含解释器堆的固定成本。
-- `CPython 增量 us/个` = `(CPython ms − 5.711) × 1000 / (n − 10)`：多这 n−10 个对象的边际成本。
+- `CPython 增量 us/个` = `(CPython ms − 5.799) × 1000 / (n − 10)`：多这 n−10 个对象的边际成本。
 - `vs CPython(增量)` = `CPython 增量 us/个` ÷ `(FPGA us / marked)`：每对象口径。
 
 小图（<100 对象）FPGA 更慢：固定启动开销约 4400 拍。`marked < Objects` 是随机图中从根 0
@@ -236,8 +236,8 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   
 > **口径**：`CPython ms` 来自真实 CPython 收集器（`gc.collect()`，C 实现）对整个解释器堆的
 > 一次完整回收（含清扫）；硬件只做标记，因此 `vs CPython(整堆)` 是**上界**。
 >
-> 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）是 **223–277×**，不要与上面的
-> **28× / 17.8×** 混用。
+> 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）是 **225–278×**，不要与上面的
+> **28× / 17.7×** 混用。
 
 ### 4. Python 测试
 
@@ -326,8 +326,8 @@ python3 python/benchmark.py
 
 > **可复现**：`gc_test.py` 支持 `--seed N` 并会把种子打印在日志里
 > （不传则从时钟取一个并打印），同一种子的两次运行图**完全一致**。
-> 本次 8 轮的种子是 `183778173`（`--seed 183778173` 可重放）。
-> 同一张图重复跑 100 次（`test_main` Test 3），cycles 在 18392–18677 之间，极差 1.5%。
+> 本次 8 轮的种子是 `180811581`（`--seed 180811581` 可重放）。
+> 同一张图重复跑 100 次（`test_main` Test 3），cycles 在 18372–18809 之间，极差 2.4%。
 
 |                | 原始设计 Ver1<br>(单笔未完成读) | Ver2<br>(多笔未完成读 + 快路径) | Ver3<br>(+ 对象头预取 + 竞态修复) | Ver4 [H]<br>(+ 引用流水 + 6 项修复) |
 | -------------- | ------------------------------- | ------------------------------- | --------------------------------- | ------------------------------- |
@@ -340,7 +340,7 @@ python3 python/benchmark.py
 
 > 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
 > 本表是历史数据（`historical/unverified`）；当前可复核的 8/8 见
-> `tools/logs/board_gc_test_20261020.txt`（247,060 拍，发布镜像）。
+> `tools/logs/board_gc_test_20261020.txt`（218,429 拍，发布镜像）。
 
 #### 测量口径
 
@@ -348,10 +348,9 @@ python3 python/benchmark.py
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
 - `CPython ms`：`test_main` 经 `popen` 调用 `tests/gc_probe.py`，在同样对象数下做三次完整
   `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
-- **同规模对比以主表为准**（4000 对象 **28×**）；`gc.collect()` 含清扫、硬件只做标记。
-- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
+- **同规模对比以主表为准**（4000 对象 **28×**）；`gc.collect()` 含清扫、硬件只做标记。- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
   `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
-- `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 220–279×
+- `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 225–278×
   是**另一种实现**的比值，不要和 CPython 的 28× 混用。
 - 原始记录：`tools/logs/board_test_main_20261020.txt`、`tools/logs/board_gc_test_20261020.txt`、
   `tools/logs/board_benchmark_20261020.txt`、`tools/logs/cmark_sweep*.log`。
@@ -363,11 +362,11 @@ python3 python/benchmark.py
 
 | 阶段 | 时间 |
 | --- | --- |
-| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **187.9 ms / 图** |
-| 同图 Python BFS（oracle）| 81.2 ms / 图 |
-| 硬件标记（引擎）| **0.309 ms / 图**（N = 834–4091）|
+| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **164.0 ms / 图** |
+| 同图 Python BFS（oracle）| 71.4 ms / 图 |
+| 硬件标记（引擎）| **0.273 ms / 图**（N = 885–3967）|
 
-单次卸载的端到端成本由构图主导：**608×** 标记时间（`board_gc_test_20261020.txt`）。
+单次卸载的端到端成本由构图主导：**601×** 标记时间（`board_gc_test_20261020.txt`）。
 构图走 Python；C 侧的 `fpga_gc_build_graph()` 未单独计时，同样不计入 `FPGA us`。
 
 ### 仿真回归
@@ -588,8 +587,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
 | 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
 | **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
-| 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；18 MB 的 `BOOT.BIN` 压成 ~1 MB 后约 3 分钟 |
-| 大文件续传 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每块落到卡上 `parts/`，记录进度；掉线/断电后重跑同一条命令从断点继续（43 MB 的 `image.ub` 用这条）|
+| 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；115200 下 18 MB 约 35 分钟 |
+| 大文件续传 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每块落到卡上 `parts/`，记录进度；掉线/断电后重跑同一条命令从断点继续（43 MB 的 `image.ub` 用这条，约 90 分钟）|
 | 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
 | 刷新卡上副本 | `... tools\make_card.ps1` | 把 `tools/tests/`、`python/`、`csrc/` 里的脚本同步到 `artifacts/userdata/`（不动二进制）|
 | C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
