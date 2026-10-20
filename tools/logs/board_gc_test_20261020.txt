@@ -1,0 +1,60 @@
+# run_gc.sh 4096 8 2 on the RELEASE image (PetaLinux 2026.1, Python 3.12.12), 2026-10-20
+# BOOT.BIN FA816025..., bitstream B556EFDC...
+# note: the card's clock was 2018-03-09 (no RTC, no time sync on this boot)
+#
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   seed=180722952   (replay exactly: --seed 180722952)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
+   MAGIC = 0x47434343   VERSION = 0x00040000
+====================================================================================
+@@TASK 5 trial 1/8  N=1670  (expect 1252)
+  [ 1/ 8] N=1670 exp=1252 | HW    232.96 us (23296 cyc) | SW    58.55 ms |  251.3x | build  134.9 ms | OK
+@@TASK 15 trial 2/8  N=2737  (expect 2052)
+  [ 2/ 8] N=2737 exp=2052 | HW    357.46 us (35746 cyc) | SW    96.06 ms |  268.7x | build  234.2 ms | OK
+@@TASK 26 trial 3/8  N=937  (expect 702)
+  [ 3/ 8] N= 937 exp= 702 | HW    143.99 us (14399 cyc) | SW    32.75 ms |  227.4x | build   77.9 ms | OK
+@@TASK 36 trial 4/8  N=3984  (expect 2988)
+  [ 4/ 8] N=3984 exp=2988 | HW    508.77 us (50877 cyc) | SW   141.10 ms |  277.3x | build  315.5 ms | OK
+@@TASK 47 trial 5/8  N=881  (expect 660)
+  [ 5/ 8] N= 881 exp= 660 | HW    137.72 us (13772 cyc) | SW    30.72 ms |  223.0x | build   76.1 ms | OK
+@@TASK 58 trial 6/8  N=990  (expect 742)
+  [ 6/ 8] N= 990 exp= 742 | HW    149.45 us (14945 cyc) | SW    33.97 ms |  227.3x | build   77.3 ms | OK
+@@TASK 68 trial 7/8  N=2674  (expect 2005)
+  [ 7/ 8] N=2674 exp=2005 | HW    349.51 us (34951 cyc) | SW    94.40 ms |  270.1x | build  212.7 ms | OK
+@@TASK 79 trial 8/8  N=1697  (expect 1272)
+  [ 8/ 8] N=1697 exp=1272 | HW    237.19 us (23719 cyc) | SW    60.12 ms |  253.5x | build  142.6 ms | OK
+@@TASK 96 summarising
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+sed: sed: No such file or directory
+sed: 29,60p: No such file or directory
+====================================================================================
+ trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
+ --------------------------------------------------------------------------------------------
+     1   1670   1252    418        23296     232.96     58.55   251.3x   1252   1252  OK
+     2   2737   2052    685        35746     357.46     96.06   268.7x   2052   2052  OK
+     3    937    702    235        14399     143.99     32.75   227.4x    702    702  OK
+     4   3984   2988    996        50877     508.77    141.10   277.3x   2988   2988  OK
+     5    881    660    221        13772     137.72     30.72   223.0x    660    660  OK
+     6    990    742    248        14945     149.45     33.97   227.3x    742    742  OK
+     7   2674   2005    669        34951     349.51     94.40   270.1x   2005   2005  OK
+     8   1697   1272    425        23719     237.19     60.12   253.5x   1272   1272  OK
+ --------------------------------------------------------------------------------------------
+  trials                : 8
+  skipped (graph too big): 0
+  seed                  : 180722952   (replay: --seed 180722952)
+  PASSED (all invariants): 8/8
+  total HW cycles        : 211705  (= 2117.05 us @100MHz)
+  end-to-end note        : graph build+write (Python) 158.9 ms avg vs HW 0.265 ms avg
+  total SW (Python)      : 547.66 ms
+  speedup min/avg/max    : 223.0x / 249.8x / 277.3x
+  N range                : 881 .. 3984
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done

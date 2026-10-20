@@ -55,6 +55,7 @@ tools/logs/*
 !tools/logs/cmark_sweep*.log
 !tools/logs/board_benchmark_*.txt
 !tools/logs/board_test_main_*.txt
+!tools/logs/board_gc_test_*.txt
 !tools/logs/xsim_*.log
 !tools/logs/board_coldboot_*.log
 tools/__pycache__/

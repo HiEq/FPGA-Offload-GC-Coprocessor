@@ -1,7 +1,8 @@
-# test_main on the board (XC7Z100), 2026-10-19 - full output, all four tests
+# test_main on the RELEASE image (PetaLinux 2026.1, Python 3.12.12), 2026-10-20
 # command: cd /mnt/userdata && ./bin/test_main
-# bitstream md5 EC59DFAAA2A0FC57E169D2A880A7A0DA (BOOT.BIN 442B4400...)
+# BOOT.BIN md5 FA816025BE38E2AEFD19297C953F0DA5 (bitstream B556EFDC...)
 #
++--------------------------------------------+
 |  FOGCCC GC Coprocessor Test Suite          |
 |  Platform: Xilinx Zynq-7000 XC7Z100        |
 +--------------------------------------------+
@@ -15,24 +16,23 @@
 Objects  marked   FPGA us     C us        CPython ms    vs C     vs CPython
 -------- -------- ----------- ----------- ------------- -------- ---------
 [FOGCCC] Graph: 10 objects, 4236 bytes, avg_refs=3
-10       9        44.0        13.3        6.661         0.3x     152x     
+10       9        44.0        14.1        5.782         0.3x     132x     
 [FOGCCC] Graph: 50 objects, 4860 bytes, avg_refs=3
-50       47       48.7        30.0        6.811         0.6x     140x     
+50       47       48.7        29.1        5.869         0.6x     121x     
 [FOGCCC] Graph: 100 objects, 5756 bytes, avg_refs=3
-100      96       57.0        58.8        6.887         1.0x     121x     
+100      96       57.0        57.6        5.980         1.0x     105x     
 [FOGCCC] Graph: 500 objects, 16328 bytes, avg_refs=3
-500      474      113.7       260.5       7.673         2.3x     67x      
+500      474      114.0       259.1       7.025         2.3x     62x      
 [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
-1000     945      184.3       515.5       8.797         2.8x     48x      
+1000     945      185.1       515.0       8.370         2.8x     45x      
 [FOGCCC] Graph: 2000 objects, 64624 bytes, avg_refs=3
-2000     1882     339.2       1054.5      11.037        3.1x     33x      
-
-
-4000     3766     644.7       2135.2      15.520        3.3x     24x      
+2000     1882     339.9       1059.3      11.282        3.1x     33x      
+[FOGCCC] Graph: 4000 objects, 129824 bytes, avg_refs=3
+4000     3766     646.6       2217.9      17.083        3.4x     26x      
   Result: ALL PASS
-  >>> 3766 objects marked in 644.7 us (171.2 ns/obj)
-  >>> CPython needs 15.52 ms for the same graph
-  >>> FPGA is 24x FASTER than CPython
+  >>> 3766 objects marked in 646.6 us (171.7 ns/obj)
+  >>> CPython needs 17.08 ms for the same graph
+  >>> FPGA is 26x FASTER than CPython
 =============================================
   Test 2: Cycle Graph
 =============================================
@@ -45,12 +45,11 @@ Objects  marked   FPGA us     C us        CPython ms    vs C     vs CPython
 =============================================
 [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
   Marked count: 945 (consistent across 100 runs)
-  Cycles: min=18386 max=18579 jitter=193
+  Cycles: min=18399 max=18567 jitter=168
   Result: PASS
 =============================================
   Test 4: duplicate roots
-
-
+=============================================
 [FOGCCC] Graph: 200 objects, 7352 bytes, avg_refs=3
   roots={0}      -> marked=183  STATUS=0x0
   roots={0,0,0}  -> marked=183  STATUS=0x0
@@ -58,10 +57,10 @@ Objects  marked   FPGA us     C us        CPython ms    vs C     vs CPython
 --- Hardware Statistics ---
   Marked objects : 183
   STATUS         : 0x0
-  HW cycles      : 6909
-  HW time        : 69.09 us (@100MHz)
+  HW cycles      : 6870
+  HW time        : 68.70 us (@100MHz)
   Queue head/tail: 183 / 183 (depth=0)
-  Throughput     : 2.65 M objects/sec
+  Throughput     : 2.66 M objects/sec
 =============================================
   SUMMARY
 =============================================
