@@ -1,0 +1,32 @@
+# tests/irq_drv_test.sh on the release rootfs, 2026-10-20
+# command: cd /mnt/userdata && D=/mnt/userdata sh tests/irq_drv_test.sh
+# bitstream: 02D52FCC401DEF9D3A57D3282F627FEB (freshly JTAG-configured)
+# commit: 5a21a7c (binaries: artifacts/SHA256SUMS)
+# note: the PL must be freshly configured (done=0)
+#
+
+== insmod /mnt/userdata/ko/fogccc-irq.ko ==
+fogccc: domain ':axi:interrupt-controller@f8f01000' map=no alloc=yes
+fogccc: virq 48 chip=0xc0821598 hwirq=61
+fogccc: using virq 48 (hwirq 61)
+fogccc: ready, /dev/fogccc_irq (virq 48, hwirq 61)
+fogccc: virq 48 chip=0xc0821598 hwirq=61
+fogccc: using virq 48 (hwirq 61)
+fogccc: ready, /dev/fogccc_irq (virq 48, hwirq 61)
+== state before arm: 0 0 48 ==
+== state after arm (done is still 0, so no IRQ expected): 0 1 48 ==
+== run one GC test (done 0 -> 1) ==
+   seed=11   (replay exactly: --seed 11)
+fogccc: irq fired (#1), line disabled
+  [ 1/ 1] N= 591 exp= 443 | HW    106.56 us (10656 cyc) | SW    20.35 ms |  191.0x | build   46.1 ms | OK
+  PASSED (all invariants): 1/1
+== state after run: 1 0 48 ==
+fogccc: using virq 48 (hwirq 61)
+fogccc: ready, /dev/fogccc_irq (virq 48, hwirq 61)
+fogccc: irq fired (#1), line disabled
+VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1 48' after='1 0 48')
+== rmmod ==
+fogccc: unloaded after 1 interrupts
+fogccc: irq fired (#1), line disabled
+fogccc: unloaded after 1 interrupts
+IRQ_RC=0

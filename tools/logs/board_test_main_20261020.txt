@@ -49,3 +49,27 @@ Objects  marked   FPGA us     C us        CPython ms    vs C     vs CPython
   Expected: 945  Marked: 945 (consistent across 100 runs)
   Cycles: min=18372 max=18809 jitter=437
   Result: PASS
+=============================================
+  Test 4: duplicate roots
+=============================================
+[FOGCCC] Graph: 200 objects, 7352 bytes, avg_refs=3
+  roots={0}      -> marked=183  STATUS=0x0
+  roots={0,0,0}  -> marked=183  STATUS=0x0
+  PASS (duplicate roots must not double count, expect 183 == 183)
+--- Hardware Statistics ---
+  Marked objects : 183
+  STATUS         : 0x0
+  HW cycles      : 6913
+  HW time        : 69.13 us (@100MHz)
+  Queue head/tail: 183 / 183 (depth=0)
+  Throughput     : 2.65 M objects/sec
+=============================================
+  SUMMARY
+=============================================
+  Test 1 (Correctness) : PASS
+  Test 2 (Cycle)       : PASS
+  Test 3 (Repeat)      : PASS
+  Test 4 (Dup roots)   : PASS
+  -------------------------------------------
+  Overall: *** ALL PASS ***
+=============================================

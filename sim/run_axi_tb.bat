@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem ============================================================
 rem run_axi_tb.bat - directed unit test for gc_axi_read (outstanding cap)
 rem   Caches/logs go to Desktop\Cache\axi_tb.
