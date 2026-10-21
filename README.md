@@ -195,7 +195,7 @@ source ~/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi
 $CC -O2 -o test_main csrc/fpga_gc.c csrc/test_main.c
 
 # 拷到 USERDATA 分区后，在板上运行（需要 root）
-cd /run/media/USERDATA-mmcblk0p2        # udev 按卷标自动挂；仓库脚本用的 /mnt/userdata 见「上板流程」
+cd /mnt/userdata                        # /etc/fstab 开机自动挂载；旧镜像可能用 /run/media/USERDATA-mmcblk0p2
 sudo ./bin/test_main
 ```
 
@@ -203,8 +203,8 @@ sudo ./bin/test_main
 > `CROSS=arm-linux-gnueabihf-` 不适用于 PetaLinux 2026.1 SDK，改用 `$CC`。
 
 `test_main` 会用 `popen` 调用 `tests/gc_probe.py`，在**同样的对象数、同样的 avg_refs=3** 下跑真实的 CPython
-`gc.collect()`（三次取最快）。默认路径是 `/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py`；
-如果 udev 没自动挂载、分区在 `/mnt/userdata`，程序会自动改用备用路径，也支持显式传参。
+`gc.collect()`（三次取最快）。默认路径是 `/mnt/userdata/tests/gc_probe.py`；
+如果分区在 `/run/media/USERDATA-mmcblk0p2`，程序会自动改用备用路径，也支持显式传参。
 表里三个时间都是实测：
 
 | 列 | 来源 |
@@ -251,7 +251,7 @@ $CC -O2 -shared -fPIC -o libfogccc.so csrc/fpga_gc.c
 
 ```bash
 # 板上（把 libfogccc.so + fogccc.py 放到卡上 py/ 目录后）
-cd /run/media/USERDATA-mmcblk0p2/py
+cd /mnt/userdata/py
 python3 fogccc.py        # 三方对账：FPGA / C / 位图读回 + STATUS
 ```
 
@@ -576,9 +576,9 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 ② 板子上电
    出现 linux login:
 ③ root + 回车 → 空密码（`CONFIG_imagefeature-empty-root-password=y`）
-④ 数据分区 p2 每次开机由 udev 按卷标挂在 /run/media/USERDATA-mmcblk0p2，直接 cd 进去就能用
-   （仓库脚本走 /mnt/userdata：sh /mnt/boot/mount_data.sh 或手动 mount；两条路径是同一个分区，写哪边都一样）
-⑤ sh <上面任一条路径>/run_gc.sh
+④ 数据分区 p2 由 /etc/fstab 开机自动挂在 /mnt/userdata，直接 cd 进去就能用
+   （旧镜像若走 udev，则在 /run/media/USERDATA-mmcblk0p2；两条路径是同一个分区。临时手动挂载：sh /mnt/boot/mount_data.sh）
+⑤ sh /mnt/userdata/run_gc.sh
 ```
 
 测试输出同时打印到窗口并写入 `USERDATA` 分区上的 `gc_run_<时间戳>.log`。
@@ -609,10 +609,9 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 
 ## 板上测试命令速查
 
-数据分区 p2 每次开机由 udev 按卷标自动挂在 `/run/media/USERDATA-mmcblk0p2`，登录后直接可用；
-仓库脚本另外把它挂到 `/mnt/userdata`（`sh /mnt/boot/mount_data.sh`，这一步**不是**开机自动的）。
-两条路径是同一个分区，同时挂着也正常，写哪边都一样——下面命令里的 `/mnt/userdata`
-都可以换成 `/run/media/USERDATA-mmcblk0p2`。以下命令均需 root。
+数据分区 p2 由 `/etc/fstab` 开机自动挂在 `/mnt/userdata`，登录后直接可用；
+旧镜像若走 udev，路径是 `/run/media/USERDATA-mmcblk0p2`。两条路径是同一个分区，
+写哪边都一样；临时手动挂载：`sh /mnt/boot/mount_data.sh`。以下命令均需 root。
 
 ### 1. 中断通路验证
 
@@ -646,12 +645,12 @@ sh run_gc.sh 2048 5 3
 ### 3. 三方对比（FPGA / C / Python）
 
 ```sh
-cd /run/media/USERDATA-mmcblk0p2
+cd /mnt/userdata
 ./bin/test_main
 ```
 
-`test_main` 默认就用 `/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py`（udev 按卷标挂载）；
-若分区在 `/mnt/userdata`，程序会自动回退到那条路径，也支持显式传参。需要 root。
+`test_main` 默认就用 `/mnt/userdata/tests/gc_probe.py`（`/etc/fstab` 开机挂载）；
+若分区在 `/run/media/USERDATA-mmcblk0p2`，程序会自动回退到那条路径，也支持显式传参。需要 root。
 
 输出一张三方对比表（三个时间都是实测）：
 
