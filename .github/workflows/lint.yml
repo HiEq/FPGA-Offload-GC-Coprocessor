@@ -2,9 +2,10 @@ name: lint
 
 # Scope: this workflow checks that the sources PARSE (shell, Python,
 # PowerShell), compiles the RTL with Icarus, and runs the two directed
-# command-FIFO / stale-R regressions. It does not run xsim, Vivado or anything
-# that needs a licence, so a green run is not evidence that the full design
-# works - see README's "测量口径" and AGENTS.md's evidence ladder.
+# command-FIFO / stale-R regressions. It does not run xsim, Vivado, PetaLinux,
+# board tests, or anything that needs a licence, so a green run is not evidence
+# that the full design works - see README's "测量口径" and AGENTS.md's evidence
+# ladder.
 
 on:
   push:
