@@ -65,6 +65,8 @@ module tb_axi_read;
         .data1_out   (d1),
         .data1_valid (d1v),
         .data1_ready (1'b1),
+        .run_start   (1'b0),
+        .abort       (1'b0),
         .err         (err),
         .ARADDR      (araddr),
         .ARID        (arid),

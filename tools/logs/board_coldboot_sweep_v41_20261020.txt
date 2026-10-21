@@ -1,3 +1,7 @@
+# command: python3 tests/abort_sweep.py
+# bitstream: 81640C7C8E5918893E0A9C2D442D2BF3   boot.bin: 6874fb5568b2ce8b6f41c5de6282039d753e417d4761624d66b8b34844a1957b
+# commit: db21eed
+# date: 2026-10-20
 ====================================================================================
  FOGCCC  abort phase sweep   N=4096 L=3072 avg_refs=2 seed=20261019
    MAGIC=0x47434343 VERSION=0x00040000

@@ -60,10 +60,14 @@ tools/logs/*
 !tools/logs/board_irq_*.txt
 !tools/logs/xsim_*.log
 !tools/logs/board_coldboot_*.log
+!tools/logs/board_abort_test_*.txt
+!tools/logs/board_abort_sweep_*.txt
+!tools/logs/board_done_race_*.txt
 tools/__pycache__/
 
 # 本地存档：改造前的 XSA/bitstream（17 MB，不入库）
 vivado/artifacts_before_axi_fix/
+vivado/artifacts_before_p1/
 
 # 卡镜像里的 Python 绑定必须随卡发布（板上没有 gcc，不能现编）
 !artifacts/userdata/py/libfogccc.so
