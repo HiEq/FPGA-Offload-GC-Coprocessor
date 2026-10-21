@@ -175,9 +175,12 @@ module tb_runstart_race;
             rlast  = 1'b1;
             rdata  = {32'h0, stale};
             #1;
+            // A window miss must fail: a PASS here would mean the TB never
+            // exercised the same-cycle RREADY/flush hole it claims to test.
             if (!rready) begin
-                $display("[RACE][WARN] %s: RREADY=0 in the flush cycle; window not hit",
+                $display("[RACE][FAIL] %s: RREADY=0 in the flush cycle; window not hit",
                          use_abort ? "abort" : "run_start");
+                errors = errors + 1;
             end
             @(posedge clk);
             @(negedge clk);

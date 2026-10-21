@@ -1,9 +1,10 @@
 name: lint
 
-# Scope: this workflow only checks that the sources PARSE (shell, Python,
-# PowerShell). It does not run xsim, Vivado or anything that needs a licence,
-# so a green run is not evidence that the design works - see README's
-# "测量口径" and AGENTS.md's evidence ladder.
+# Scope: this workflow checks that the sources PARSE (shell, Python,
+# PowerShell), compiles the RTL with Icarus, and runs the two directed
+# command-FIFO / stale-R regressions. It does not run xsim, Vivado or anything
+# that needs a licence, so a green run is not evidence that the full design
+# works - see README's "测量口径" and AGENTS.md's evidence ladder.
 
 on:
   push:
@@ -40,6 +41,21 @@ jobs:
           iverilog -g2005 -tnull -s gc_top \
               rtl/gc_top.v rtl/gc_mark_engine.v rtl/gc_axi_read.v \
               rtl/gc_regs.v rtl/gc_bitmap.v rtl/gc_queue.v
+
+      - name: directed RTL tests (Icarus)
+        run: |
+          set -e
+          iverilog -g2012 -o /tmp/tb_cmdfifo \
+              rtl/gc_axi_read.v sim/tb_cmdfifo_flush.v
+          vvp /tmp/tb_cmdfifo | tee /tmp/tb_cmdfifo.log
+          ! grep -q '\[CMDFIFO\]\[FAIL\]' /tmp/tb_cmdfifo.log
+          grep -q '\[CMDFIFO\] ==================== PASS' /tmp/tb_cmdfifo.log
+
+          iverilog -g2012 -o /tmp/tb_race \
+              rtl/gc_axi_read.v sim/axi_proto_check.v sim/tb_runstart_race.v
+          vvp /tmp/tb_race | tee /tmp/tb_race.log
+          ! grep -q '\[RACE\]\[FAIL\]' /tmp/tb_race.log
+          grep -q '\[RACE\] ==================== PASS' /tmp/tb_race.log
 
       - name: C warnings (gcc -Wall -Wextra -Werror)
         run: |
