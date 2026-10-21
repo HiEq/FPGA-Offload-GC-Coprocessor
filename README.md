@@ -19,17 +19,21 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 |---|---|---|---|
 | C，逐条读 DDR（数据不在 cache）| 4096 对象 | 2.3 ms | **3.2×** |
 | C，数据在 cache | 4096 对象 | 0.63 ms | 0.9× |
-| **FPGA 标记**（`cmark`）| 4096 对象 | **0.72 ms** | — |
-| **FPGA 标记**（`test_main`）| 4000 对象 | **0.645 ms** | — |
-| CPython `gc.collect()`（整堆，含清扫）| 4000 对象 | 17.88 ms | **28×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **225–278×** |
+| **FPGA 标记**（`cmark`，bitstream `02D52FCC`）| 4096 对象 | **0.72 ms** | — |
+| **FPGA 标记**（`test_main`，bitstream `3590FBB5`）| 4000 对象 | **0.644 ms** | — |
+| CPython `gc.collect()`（整堆，含清扫）| 4000 对象 | 17.66 ms | **27×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **199–251×** |
 
-> `28×` = 17.88 ms ÷ 0.645 ms（同一张 4000 对象图，`test_main`）；`0.72 ms` 是 `cmark` 的
-> 4096 对象，不与 17.88 ms 相除。`FPGA` 一列只有引擎周期（`CYCLES / 100 MHz`），构图与
+> `27×` = 17.66 ms ÷ 0.644 ms（同一张 4000 对象图，P1 `test_main`）；`0.72 ms` 是 `cmark` 的
+> 4096 对象，不与 17.66 ms 相除。`FPGA` 一列只有引擎周期（`CYCLES / 100 MHz`），构图与
 > 搬运不计入，见「端到端成本」。
-> 前三行来自 `cmark`（`tools/logs/cmark_sweep.log`），`gc.collect()` 与 `0.645 ms` 来自
-> `test_main`（`tools/logs/board_test_main_20261020.txt`），最后一行来自 `run_gc.sh`
-> （`tools/logs/board_gc_test_20261020.txt`）。
+> `cmark` 行来自 `02D52FCC` 的 `tools/logs/cmark_sweep.log`（当前 `3590FBB5` **未重跑 cmark**）；
+> `test_main` / `gc.collect()` 来自 P1 镜像 `3590FBB5` / `board_test_main_p1_20261021.txt`，
+> 最后一行来自 `board_gc_test_p1_20261021.txt`。旧 v4.1 `81640C7C` / boot `074CF12D` 的
+> 645.0 µs、28×、225–278× 只作历史对照。
+> 旧 2026-10-20 证据有两套 boot 标识：`board_test_main_20261020` / `board_gc_test_20261020`
+> 是 boot md5 `074CF12D`；`board_coldboot_*_v41_20261020` 是 boot SHA256 `6874fb55…`。
+> 两者都属于旧 bitstream `81640C7C` 基线，不是当前 P1 `3590FBB5`。
 >
 > **实现范围**：stop-the-world，写 `START`、轮询 `DONE`；对象图由 `csrc/fpga_gc.c` /
 > `python/fogccc.py` 按「对象头 + 引用数组」布局构造，**未接入** CPython 的 `gc` 模块与 `PyObject` 布局。
@@ -132,8 +136,10 @@ FPGA-Offload-GC-Coprocessor/
 ├── sim/                    xsim 自检仿真
 │   ├── tb_gc_top.v         自检 testbench (主用例 + T1..T8 + T-ABORT/T-ABORT2/T-MAXFAN/T-ROOTCLAMP)
 │   ├── axi_proto_check.v   AXI3 读通道协议检查器 (ARSIZE/ARLEN/ARBURST/对齐/VALID 稳定)
-│   ├── run_sim.bat         一键仿真
-│   ├── tb_axi_read.v       未完成读事务上限的定向测试 (+ run_axi_tb.bat)
+│   ├── run_sim.bat/.sh     只跑 tb_gc_top
+│   ├── tb_axi_read.v       未完成读事务上限的定向测试 (+ run_axi_tb.bat/.sh)
+│   ├── tb_runstart_race.v  同拍旧 R beat 定向测试 (+ run_race_tb.bat/.sh)
+│   ├── tb_cmdfifo_flush.v  同拍命令 FIFO 定向测试 (+ run_cmdfifo_tb.bat/.sh)
 │   └── lat_sweep.bat       延迟扫描 LAT=1..32
 ├── csrc/                   C 源码 (PS 端 Linux)
 │   ├── fpga_gc.h / .c      驱动
@@ -147,7 +153,7 @@ FPGA-Offload-GC-Coprocessor/
 │   └── build_rtl_only.tcl  复用 BD
 ├── tools/                  宿主脚本
 │   ├── serial_run_gc.ps1 / serial_push_chunked.ps1 / make_manifest.ps1 / make_card.ps1
-│   ├── reproduce_all.ps1    宿主侧一键复现（manifest + PS 单测 + 两套 xsim）
+│   ├── reproduce_all.ps1    宿主侧一键复现（manifest + PS 单测 + 四组 xsim）
 │   ├── tests/(功能测试)  debug/(调试工具)
 │   └── logs/               证据日志（只留 README 引用的那些，见其中的 README.md）
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
@@ -213,21 +219,21 @@ sudo ./bin/test_main
 | `C us` | `fpga_gc_sw_mark()`，同一张图、同一套 BFS 的 C 实现（同时是 `marked` 的独立 oracle）|
 | `CPython ms` | `gc_probe.py`：独立进程里 n 个对象（同样的 avg_refs）做一次完整 `gc.collect()`（含 mark+sweep，**上界**）|
 
-实测（XC7Z100，PL 100 MHz，**v4.1 发布镜像 PetaLinux 2026.1 / Python 3.12.12**，2026-10-20，`tools/logs/board_test_main_20261020.txt`）：
+实测（XC7Z100，PL 100 MHz，**P1 修复镜像：bitstream `3590FBB5…` / BOOT `7487463a…`**，2026-10-21，`tools/logs/board_test_main_p1_20261021.txt`）：
 
 ```
 Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   CPython 增量 us/个   vs CPython(增量)
-10       9        44.0      14.5      5.799        0.3x    132x              —                    —
-50       47       48.7      29.7      5.851        0.6x    120x              1.30                 1.3x
-100      96       56.9      58.5      6.028        1.0x    106x              2.54                 4.3x
-500      474      114.1     258.6     7.195        2.3x    63x               2.85                 11.8x
-1000     945      185.3     517.4     8.624        2.8x    47x               2.85                 14.6x
-2000     1882     340.2     1052.0    11.706       3.1x    34x               2.97                 16.4x
-4000     3766     645.0     2146.0    17.875       3.3x    28x               3.03                 17.7x
+10       9        44.0      14.0      7.198        0.3x    164x              —                    —
+50       47       48.7      30.1      7.375        0.6x    151x              4.43                 4.3x
+100      96       58.7      58.3      7.481        1.0x    127x              3.14                 5.1x
+500      474      113.8     261.5     8.320        2.3x    73x               2.29                 9.5x
+1000     945      185.0     514.9     9.610        2.8x    52x               2.44                 12.4x
+2000     1882     339.4     1132.0    12.176       3.3x    36x               2.50                 13.9x
+4000     3766     644.0     2202.5    17.662       3.4x    27x               2.62                 15.3x
 ```
 
 - `vs CPython(整堆)`：一次完整回收 vs 一次标记，含解释器堆的固定成本。
-- `CPython 增量 us/个` = `(CPython ms − 5.799) × 1000 / (n − 10)`：多这 n−10 个对象的边际成本。
+- `CPython 增量 us/个` = `(CPython ms − 7.198) × 1000 / (n − 10)`：多这 n−10 个对象的边际成本。
 - `vs CPython(增量)` = `CPython 增量 us/个` ÷ `(FPGA us / marked)`：每对象口径。
 
 小图（<100 对象）FPGA 更慢：固定启动开销约 4400 拍。`marked < Objects` 是随机图中从根 0
@@ -236,8 +242,8 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   
 > **口径**：`CPython ms` 来自真实 CPython 收集器（`gc.collect()`，C 实现）对整个解释器堆的
 > 一次完整回收（含清扫）；硬件只做标记，因此 `vs CPython(整堆)` 是**上界**。
 >
-> 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）是 **225–278×**，不要与上面的
-> **28× / 17.7×** 混用。
+> 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）P1 为 **199–251×**，旧
+> `81640C7C` / `074CF12D` 为 **225–278×**；不要与上面的 **27× / 15.3×** 混用。
 
 ### 4. Python 测试
 
@@ -319,15 +325,17 @@ python3 python/benchmark.py
 
 ## 版本对比（历史数据）
 
-历史版本 Ver1–Ver4 的对照表，用于说明每步优化的效果。v4.1 发布镜像的可复核数据见「三方对比」
-（`board_test_main_20261020.txt`）与 `run_gc.sh`（`board_gc_test_20261020.txt`）。
+历史版本 Ver1–Ver4 的对照表，用于说明每步优化的效果。P1 当前镜像的可复核数据见「三方对比」
+（`board_test_main_p1_20261021.txt`）与 `run_gc.sh`（`board_gc_test_p1_20261021.txt`）。
+旧 `board_test_main_20261020.txt` / `board_gc_test_20261020.txt` 是旧 `81640C7C` 基线
+（boot `074CF12D`）；`board_coldboot_*_v41_20261020` 是同一旧的冷启动证据（boot `6874fb55…`）。
 **下表没有对应的归档日志（`historical/unverified`）**。
 "每对象周期" = HW cycles ÷ 活跃对象数（已扣除固定的 4096 拍清位图）。
 
 > **可复现**：`gc_test.py` 支持 `--seed N` 并会把种子打印在日志里
 > （不传则从时钟取一个并打印），同一种子的两次运行图**完全一致**。
-> 本次 8 轮的种子是 `180811581`（`--seed 180811581` 可重放）。
-> 同一张图重复跑 100 次（`test_main` Test 3），cycles 在 18372–18809 之间，极差 2.4%。
+> P1 本次 8 轮的种子是 `1419464340`（`--seed 1419464340` 可重放）。
+> 同一张图重复跑 100 次（`test_main` Test 3），P1 cycles 在 18406–18517 之间，极差 0.6%。
 
 |                | 原始设计 Ver1<br>(单笔未完成读) | Ver2<br>(多笔未完成读 + 快路径) | Ver3<br>(+ 对象头预取 + 竞态修复) | Ver4 [H]<br>(+ 引用流水 + 6 项修复) |
 | -------------- | ------------------------------- | ------------------------------- | --------------------------------- | ------------------------------- |
@@ -339,8 +347,8 @@ python3 python/benchmark.py
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
-> 本表是历史数据（`historical/unverified`）；v4.1 发布镜像可复核的 8/8 见
-> `tools/logs/board_gc_test_20261020.txt`（218,429 拍）。
+> 本表是历史数据（`historical/unverified`）；P1 当前镜像可复核的 8/8 见
+> `tools/logs/board_gc_test_p1_20261021.txt`（184,767 拍）。旧 `81640C7C` 的 218,429 拍只作历史对照。
 
 #### 测量口径
 
@@ -348,31 +356,43 @@ python3 python/benchmark.py
 - `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。
 - `CPython ms`：`test_main` 经 `popen` 调用 `tests/gc_probe.py`，在同样对象数下做三次完整
   `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
-- **同规模对比以主表为准**（4000 对象 **28×**）；`gc.collect()` 含清扫、硬件只做标记。- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
+- **同规模对比以主表为准**（4000 对象 **27×**）；`gc.collect()` 含清扫、硬件只做标记。
+- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
   `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
-- `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle，那个 225–278×
-  是**另一种实现**的比值，不要和 CPython 的 28× 混用。
-- 原始记录：`tools/logs/board_test_main_20261020.txt`、`tools/logs/board_gc_test_20261020.txt`、
-  `tools/logs/board_benchmark_20261020.txt`、`tools/logs/cmark_sweep*.log`。
+- `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle；P1 为 **199–251×**，
+  旧 `81640C7C` / `074CF12D` 为 **225–278×**。这是**另一种实现**的比值，不要和 CPython 的 27× 混用。
+- 原始记录（当前 P1）：`tools/logs/board_test_main_p1_20261021.txt`、
+  `tools/logs/board_gc_test_p1_20261021.txt`、`tools/logs/board_benchmark_20261020.txt`、
+  `tools/logs/cmark_sweep*.log`。旧 `board_test_main_20261020.txt` / `board_gc_test_20261020.txt`
+  是 `81640C7C` 的历史对照，不再作为主表来源。
 
 #### 端到端成本
 
 `FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
-`gc_test.py 4096 8 2` 在板上实测（2026-10-20，v4.1 发布镜像，bitstream `81640C7C…`；新 `3590FBB5` 未重跑性能）：
+`gc_test.py 4096 8 2` 在板上实测（2026-10-21，P1 镜像 bitstream `3590FBB5…` / BOOT `7487463a…`，`tools/logs/board_gc_test_p1_20261021.txt`）：
 
 | 阶段 | 时间 |
 | --- | --- |
-| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **164.0 ms / 图** |
-| 同图 Python BFS（oracle）| 71.4 ms / 图 |
-| 硬件标记（引擎）| **0.273 ms / 图**（N = 885–3967）|
+| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **103.7 ms / 图平均**（51.5–216.8 ms）|
+| 同图 Python BFS（oracle）| **53.5 ms / 图平均**（25.4–113.3 ms）|
+| 硬件标记（引擎）| **0.231 ms / 图平均**（0.127–0.451 ms；N = 784–3523）|
 
-单次卸载的端到端成本由构图主导：**601×** 标记时间（`board_gc_test_20261020.txt`）。
+单次卸载的端到端成本由构图主导：**449×** 标记时间（103.7 / 0.231，P1 日志）。
 构图走 Python；C 侧的 `fpga_gc_build_graph()` 未单独计时，同样不计入 `FPGA us`。
+旧 `81640C7C` / `074CF12D` 的 164.0 ms、0.273 ms、601× 只作历史对照。
 
 ### 仿真回归
 
-`sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）一次跑完下面全部检查：
-`tools\reproduce_all.ps1` 串起 manifest、PS 单测与两套仿真。
+`sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）**只跑 `tb_gc_top`**，
+覆盖下面的主用例、T1–T8、T-ABORT/T-ABORT2、T-MAXFAN/T-ROOTCLAMP/T-STAR 和 AXI 协议检查。
+定向回归要单独跑：
+
+- `sim\run_axi_tb.bat` / `sim/run_axi_tb.sh` —— `tb_axi_read`（未完成读事务上限）
+- `sim\run_race_tb.bat` / `sim/run_race_tb.sh` —— `tb_runstart_race`（同拍旧 R beat）
+- `sim\run_cmdfifo_tb.bat` / `sim\run_cmdfifo_tb.sh` —— `tb_cmdfifo_flush`（同拍命令 FIFO）
+
+`tools\reproduce_all.ps1` 串起 manifest、PS 单测和**四组 xsim**：
+`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush`。
 
 | 检查 | 内容 |
 | --- | --- |
@@ -388,8 +408,8 @@ python3 python/benchmark.py
 | **T8** | **AXI 读错误**：注入 `RRESP=SLVERR` 后 `STATUS[1]=1`，且引擎不挂死 |
 | **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
 | **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle、无错误）|
-| **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 当拍到达的旧响应必须被丢弃；未修复时数据 FIFO 留下上一轮的字，新 run 的第一笔 ref 被顶掉（`sim/run_race_tb.bat`）|
-| **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；未修复时 `c0r=1→2` 且残留 `ARADDR=0x30000008`，修复后 `c0r=1→4`、无残留（`sim/run_cmdfifo_tb.bat`）|
+| **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 当拍到达的旧响应必须被丢弃；未修复时数据 FIFO 留下上一轮的字，新 run 的第一笔 ref 被顶掉。每次必须命中 `RREADY=0` 窗口，未命中直接 FAIL（`sim/run_race_tb.bat` / `.sh`）|
+| **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；未修复时 `c0r=1→2` 且残留 `ARADDR=0x30000008`，修复后 `c0r=1→4`、无残留（`sim/run_cmdfifo_tb.bat` / `.sh`）|
 | **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
 | **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
 | **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
@@ -536,6 +556,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > 关闭 telnet/ftp 并给 `pl_graph@1e000000` 加 `no-map`。校验清单见 `artifacts/SHA256SUMS.release`。
 > 2026-10-21 上板（从该 `BOOT.BIN` 冷启动，`/boot/BOOT.BIN` SHA256 一致）：`test_main` 4/4、
 > `run_gc.sh 4096 8 2` 8/8、`abort_test` T1–T5、`abort_sweep` 11/11、`done_race` P3 20/20（P1/P2 0/300）。
+> P1 归档的是各命令输出与哈希头（`tools/logs/board_*_p1_20261021.txt`），**不是完整串口 transcript**；
+> 完整冷启动 transcript 未归档。
 
 | 资产 | 放到哪 | 大小 | SHA256 |
 | --- | --- | --- | --- |
@@ -543,6 +565,11 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
 | `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 61,327 B | `0e372aff7b18fa291132d18e6f44efe878598812a691e225f73b72da82b123d2` |
+
+> **`card-userdata.zip` 的 `cmark` 重建说明**：最早一次上传的 zip 里是重编译前的 `cmark`；
+> 随后 `cmark` 增加 `trials >= 1` 防护并重新交叉编译（当前 `cmark` SHA256
+> `9ad738838ba8ab14f491db9b524a986512c3e8c6e0d8fe8dfb4a2a7ac7c65256`，23,256 B），
+> 卡包因此重打为当前 61,327 B / `0e372a…`。`BOOT.BIN`、`image.ub`、`card-boot.zip` 不受影响。
 
 下载后校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
 

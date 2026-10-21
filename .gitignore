@@ -60,9 +60,11 @@ tools/logs/*
 !tools/logs/board_irq_*.txt
 !tools/logs/xsim_*.log
 !tools/logs/board_coldboot_*.log
+!tools/logs/board_coldboot_*.txt
 !tools/logs/board_abort_test_*.txt
 !tools/logs/board_abort_sweep_*.txt
 !tools/logs/board_done_race_*.txt
+!tools/logs/board_run_gc_*.txt
 tools/__pycache__/
 
 # 本地存档：改造前的 XSA/bitstream（17 MB，不入库）
