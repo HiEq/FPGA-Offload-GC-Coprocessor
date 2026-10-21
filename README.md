@@ -534,6 +534,8 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > `BOOT.BIN` 用 `bootgen` 重打（SHA256 `7487463a…`，内含 bitstream md5 `3590FBB5…`，
 > WNS `+1.435 ns` / WHS `+0.046 ns`）；`image.ub` 为 `5b66851f…`（未变），
 > 关闭 telnet/ftp 并给 `pl_graph@1e000000` 加 `no-map`。校验清单见 `artifacts/SHA256SUMS.release`。
+> 2026-10-21 上板（从该 `BOOT.BIN` 冷启动，`/boot/BOOT.BIN` SHA256 一致）：`test_main` 4/4、
+> `run_gc.sh 4096 8 2` 8/8、`abort_test` T1–T5、`abort_sweep` 11/11、`done_race` P3 20/20（P1/P2 0/300）。
 
 | 资产 | 放到哪 | 大小 | SHA256 |
 | --- | --- | --- | --- |

@@ -1,0 +1,76 @@
+# command: cd /mnt/userdata && ./bin/test_main
+# bitstream: 3590FBB586305FD47D681D4BF1FEA541
+# boot.bin: 7487463acf9e34b6e2da8102229059ced67e505111fa81b21130f8aa14d1eb25
+# commit: b95cfd1
+# date: 2026-10-21
+cd /mnt/userdata && ./bin/test_main
++--------------------------------------------+
+|  FOGCCC GC Coprocessor Test Suite          |
+|  Platform: Xilinx Zynq-7000 XC7Z100        |
++--------------------------------------------+
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040000
+=============================================================
+  Test 1: correctness + speed (FPGA vs C vs CPython)
+=============================================================
+Objects  marked   FPGA us     C us        CPython ms    vs C     vs CPython
+-------- -------- ----------- ----------- ------------- -------- ---------
+[FOGCCC] Graph: 10 objects, 4236 bytes, avg_refs=3
+10       9        44.0        14.0        7.198         0.3x     164x     
+[FOGCCC] Graph: 50 objects, 4860 bytes, avg_refs=3
+50       47       48.7        30.1        7.375         0.6x     151x     
+[FOGCCC] Graph: 100 objects, 5756 bytes, avg_refs=3
+100      96       58.7        58.3        7.481         1.0x     127x     
+[FOGCCC] Graph: 500 objects, 16328 bytes, avg_refs=3
+500      474      113.8       261.5       8.320         2.3x     73x      
+[FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
+1000     945      185.0       514.9       9.610         2.8x     52x      
+[FOGCCC] Graph: 2000 objects, 64624 bytes, avg_refs=3
+2000     1882     339.4       1132.0      12.176        3.3x     36x      
+[FOGCCC] Graph: 4000 objects, 129824 bytes, avg_refs=3
+4000     3766     644.0       2202.5      17.662        3.4x     27x      
+  Result: ALL PASS
+  >>> 3766 objects marked in 644.0 us (171.0 ns/obj)
+  >>> CPython needs 17.66 ms for the same graph
+  >>> FPGA is 27x FASTER than CPython
+=============================================
+  Test 2: Cycle Graph
+=============================================
+[FOGCCC] Graph: 5 objects, 4136 bytes, avg_refs=2
+  Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
+  Roots: {0, 3}
+  Expected: 4  SW: 4  FPGA: 4  => PASS
+=============================================
+  Test 3: Repeat Consistency (100 runs)
+=============================================
+[FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
+  Expected: 945  Marked: 945 (consistent across 100 runs)
+  Cycles: min=18406 max=18517 jitter=111
+  Result: PASS
+=============================================
+  Test 4: duplicate roots
+=============================================
+[FOGCCC] Graph: 200 objects, 7352 bytes, avg_refs=3
+  roots={0}      -> marked=183  STATUS=0x0
+  roots={0,0,0}  -> marked=183  STATUS=0x0
+  PASS (duplicate roots must not double count, expect 183 == 183)
+--- Hardware Statistics ---
+  Marked objects : 183
+  STATUS         : 0x0
+  HW cycles      : 6872
+  HW time        : 68.72 us (@100MHz)
+  Queue head/tail: 183 / 183 (depth=0)
+  Throughput     : 2.66 M objects/sec
+=============================================
+  SUMMARY
+=============================================
+  Test 1 (Correctness) : PASS
+  Test 2 (Cycle)       : PASS
+  Test 3 (Repeat)      : PASS
+  Test 4 (Dup roots)   : PASS
+  -------------------------------------------
+  Overall: *** ALL PASS ***
+=============================================
+[root@zynq7100 userdata]# 

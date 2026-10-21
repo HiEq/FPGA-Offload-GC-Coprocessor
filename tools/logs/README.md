@@ -25,6 +25,11 @@
 | `board_coldboot_sweep_v41_20261020.txt` | 冷启动 `tests/abort_sweep.py`（11/11）| AGENTS #16 |
 | `board_coldboot_race_v41_20261020.txt` | 冷启动 `tests/done_race_test.py`（P3 20/20）| AGENTS #16 |
 | `board_coldboot_run_gc_v41_20261020.txt` | 冷启动 `sh run_gc.sh 4096 8 2`（8/8）| AGENTS #16 |
+| `board_test_main_p1_20261021.txt` | 新镜像 `./bin/test_main`（4/4）| README / AGENTS #17 |
+| `board_gc_test_p1_20261021.txt` | 新镜像 `sh run_gc.sh 4096 8 2`（8/8）| README / AGENTS #17 |
+| `board_abort_test_p1_20261021.txt` | 新镜像 `tests/abort_test.py`（T1–T5）| AGENTS #17 |
+| `board_abort_sweep_p1_20261021.txt` | 新镜像 `tests/abort_sweep.py`（11/11）| AGENTS #17 |
+| `board_done_race_p1_20261021.txt` | 新镜像 `tests/done_race_test.py`（P3 20/20）| AGENTS #17 |
 | `board_benchmark_20261020.txt` | `python3 benchmark.py`（CPython `gc.collect()` 10–4000 梯度）| README「测量口径」 |
 | `board_coldboot_20261020.log` | 从发布 `BOOT.BIN` 冷启动的串口记录 + `md5sum` + `abort_sweep` | README Release 说明 |
 | `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1`（72 次参数扫描）| README 的 C 基线表 |
