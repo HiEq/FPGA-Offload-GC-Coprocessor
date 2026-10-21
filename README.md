@@ -6,8 +6,15 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-> `CI` 只检查 shell/Python/PowerShell 语法、`gcc -fsyntax-only` 与 `SHA256SUMS`；
-> **不跑 RTL 仿真或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
+> `CI` 做静态检查与定向回归：shell/Python/PowerShell 语法、`iverilog` RTL 解析、
+> `gcc -fsyntax-only`、`SHA256SUMS`，以及 `tb_runstart_race` / `tb_cmdfifo_flush`
+> 两个定向测试。
+> **CI 不跑 Vivado 综合/实现、xsim、PetaLinux 或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
+>
+> **P1 证据边界（2026-10-21）**：
+> ① `board_*_p1_20261021.txt` 是命令输出与哈希头，**不是完整冷启动串口 transcript**；
+> ② `3590FBB5` **未重跑** `cmark` / `benchmark.py`，C 基线与 CPython 梯度来自 `02D52FCC`；
+> ③ 当前 P1 证据没有对应的 Vivado 综合/实现、xsim、PetaLinux 重跑记录。
 
 Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quick-start) ·
 [寄存器](#register-map) · [对象图格式](#object-graph-ddr-format) · [版本对比](#版本对比历史数据) ·
@@ -357,14 +364,16 @@ python3 python/benchmark.py
 - `CPython ms`：`test_main` 经 `popen` 调用 `tests/gc_probe.py`，在同样对象数下做三次完整
   `gc.collect()` 取最快 —— 是整个解释器堆的回收（mark+sweep），**只能当上界**。
 - **同规模对比以主表为准**（4000 对象 **27×**）；`gc.collect()` 含清扫、硬件只做标记。
-- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度，原始输出
-  `tools/logs/board_benchmark_20261020.txt`），用于画曲线；单点对比直接用 `test_main`。
+- `python/benchmark.py` 是同一口径的批量版（10–4000 对象梯度），用于画曲线；单点对比直接用 `test_main`。
+  其归档输出 `tools/logs/board_benchmark_20261020.txt` 属于旧 `02D52FCC` 证据，P1 未重跑。
 - `py_bfs.py`（普通 Python 脚本逐条读 `/dev/mem`）仍保留作独立 oracle；P1 为 **199–251×**，
   旧 `81640C7C` / `074CF12D` 为 **225–278×**。这是**另一种实现**的比值，不要和 CPython 的 27× 混用。
 - 原始记录（当前 P1）：`tools/logs/board_test_main_p1_20261021.txt`、
-  `tools/logs/board_gc_test_p1_20261021.txt`、`tools/logs/board_benchmark_20261020.txt`、
-  `tools/logs/cmark_sweep*.log`。旧 `board_test_main_20261020.txt` / `board_gc_test_20261020.txt`
-  是 `81640C7C` 的历史对照，不再作为主表来源。
+  `tools/logs/board_gc_test_p1_20261021.txt`。
+- 旧证据（非 P1）：`tools/logs/board_benchmark_20261020.txt`、`tools/logs/cmark_sweep.log`
+  来自 bitstream `02D52FCC` / commit `5a21a7c`；P1 `3590FBB5` **未重跑** `cmark` / `benchmark.py`。
+  旧 `board_test_main_20261020.txt` / `board_gc_test_20261020.txt` 是 `81640C7C` 的历史对照，
+  不再作为主表来源。
 
 #### 端到端成本
 

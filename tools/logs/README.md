@@ -31,7 +31,7 @@
 | `board_abort_sweep_p1_20261021.txt` | 当前 P1 镜像 `tests/abort_sweep.py`（11/11）| AGENTS #17 |
 | `board_done_race_p1_20261021.txt` | 当前 P1 镜像 `tests/done_race_test.py`（P3 20/20）| AGENTS #17 |
 | `board_run_gc_20261020.txt` | 早一轮 `run_gc.sh` 的完整输出（历史对照，未进入主表）| 历史对照 |
-| `board_benchmark_20261020.txt` | `python3 benchmark.py`（CPython `gc.collect()` 10–4000 梯度）| README「测量口径」 |
+| `board_benchmark_20261020.txt` | `python3 benchmark.py`（CPython `gc.collect()` 10–4000 梯度；bitstream `02D52FCC`）| README「测量口径」 |
 | `board_coldboot_20261020.log` | 旧发布 `BOOT.BIN` 冷启动的 U-Boot/Linux 串口记录；只有启动段，**不含** `md5sum` / `abort_sweep` | README Release 说明 |
 | `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1`（72 次参数扫描，bitstream `02D52FCC`）| README 的 C 基线表 |
 | `board_irq_20261020.txt` | `D=/mnt/userdata sh tests/irq_drv_test.sh`（PL 刚配置）| README「中断链路」 |
@@ -42,6 +42,9 @@
 > 是旧 81640 基线的启动段，不能用来证明 P1 冷启动。
 > 旧基线有两套 boot 标识：`board_test_main_20261020` / `board_gc_test_20261020` 是 md5
 > `074CF12D`；`board_coldboot_*_v41_20261020` 是 SHA256 `6874fb55…`。
+>
+> **P1 未重跑 cmark / benchmark 边界**：`cmark_sweep.log` 与 `board_benchmark_20261020.txt`
+> 来自 bitstream `02D52FCC` / commit `5a21a7c`，不能当作 `3590FBB5` 的证据。
 
 命名约定：
 
