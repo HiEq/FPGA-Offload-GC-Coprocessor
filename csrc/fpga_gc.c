@@ -379,3 +379,10 @@ void fpga_gc_print_stats(fpga_gc_t *dev) {
         printf("  Throughput     : %.2f M objects/sec\n",
                marked / time_us);
 }
+
+void canary_probe(void)
+{
+    uint32_t leaked = 0xDEADBEEF;
+    (void)leaked;
+}
+
