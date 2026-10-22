@@ -10,7 +10,7 @@
 > `CI` 分两个工作流。`lint`：shell/Python/PowerShell 语法、`iverilog` RTL 解析、
 > `gcc -fsyntax-only`、`SHA256SUMS`，以及 `tb_runstart_race` / `tb_cmdfifo_flush`
 > 两个定向测试。`gate`：`tests/` 静态契约（寄存器映射 / STATUS / 设计参数 / 驱动 API /
-> 证据日志 / 仓库卫生 / workflow 策略 / RTL 阻塞赋值）加 commit 与 PR 规范；
+> 证据日志 / 仓库卫生 / workflow 策略 / RTL 阻塞赋值 / 硬编码 ratchet）加 commit 与 PR 规范；
 > 合并规则见 `.github/GIT_RULES.md`。
 > **CI 不进行 Vivado 综合/实现、xsim、PetaLinux 或上板**。功能证据见「仿真回归」「板上测试命令速查」与 `tools/logs/`。
 >
