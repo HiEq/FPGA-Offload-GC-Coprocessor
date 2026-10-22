@@ -26,7 +26,8 @@ Windows 上把 `python3` 换成 `python`。只依赖标准库。
 - `magic`：`≥1000` 的十进制、`≥3` 位十六进制、Verilog 带位宽字面量；
   `#define` / `parameter` / `localparam` / `const` 声明行豁免（那正是"命名"）。
 - `seed`：`random.seed(<字面量>)` / `random.Random(<字面量>)`，种子必须来自 `--seed`。
-- `path`：`C:\...`、`/home/<user>/...`、`COM<n>`、IPv4；`/mnt/userdata` 是板子契约，不算。
+- `path`：代码文件（含 `.bat`/`.cmd`）里的 `C:\...`、`/home/<user>/...`、`COM<n>`、IPv4；`/mnt/userdata` 是板子契约，不算。
+- `hostpath`：`.md`/`.yml` 等文档只查 `C:\...`、`/home/<user>/`、`/Users/<user>/`，不查 COM/IPv4，避免示例误报。
 - `secret`：私钥块、`AKIA…`、`ghp_…`、`xox…-`、`sk-…`。**这条不能进 baseline**。
 
 测试文件（`sim/`、`tools/tests/`、`tb_*`、`test_*`）不参与前三类：按 `AGENTS.md` §4.3，

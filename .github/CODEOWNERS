@@ -7,8 +7,13 @@
 # Syntax: <pattern> <owner>...   (last matching pattern wins)
 
 # CI definitions, PR gates and the branch rules themselves must not be changed
-# by the person the gate is meant to stop.
+# by the person the gate is meant to stop.  This is a tripwire, not a merge
+# block: the ruleset keeps required_approving_review_count at 0.
 /.github/    @ChalkCalliope
+
+# The executable oracles are part of the gate too; a red check must not be
+# fixed by editing/removing the assertion.
+/tests/      @ChalkCalliope
 
 # The engineering contract the gates implement.
 /AGENTS.md   @ChalkCalliope

@@ -12,6 +12,7 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:        # dev-hieq.yml runs the same contract on every draft push
 
 permissions:
   contents: read
@@ -37,7 +38,9 @@ jobs:
         run: python3 tests/gate.py range "origin/${{ github.base_ref }}" HEAD
 
   pr-policy:
-    if: github.event_name == 'pull_request'
+    # This job hardcodes "base == default branch".  Skip it for PRs whose base
+    # is a draft branch such as dev-hieq; those still get lint/contract/commit.
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4

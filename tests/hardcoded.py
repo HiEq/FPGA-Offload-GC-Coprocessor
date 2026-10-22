@@ -6,7 +6,7 @@ people to bypass it. This one fails only when a file gains literals beyond its
 baseline (`tests/hardcoded_baseline.txt`), so cleanup is never punished and new
 hardcoding still needs a decision.
 
-Four categories:
+Five categories:
 
   magic   numeric literals >= 1000, hex >= 3 digits, Verilog sized literals.
           A `#define` / `parameter` / `localparam` / `const` line is exempt: that
@@ -15,6 +15,9 @@ Four categories:
           evidence and must come from `--seed` or a named constant.
   path    host paths (`C:\\...`, `/home/<user>/...`), `COM<n>`, IPv4 literals.
           Device paths such as `/mnt/userdata` are a board contract, not a host path.
+          Scanned in code files only (including `.bat`/`.cmd`).
+  hostpath  the same absolute host paths in docs/config (`C:\\`, `/home/<user>/`,
+          `/Users/<user>/`).  COM/IPv4 are not flagged in prose.
   secret  private-key blocks, cloud/token prefixes. Never baseline-able.
 
 Escape hatch: a line containing `allow-hardcoded: <reason>` is skipped.
@@ -41,8 +44,8 @@ ALLOW = "allow-hardcoded"
 SKIP_PREFIXES = ("artifacts/", "tools/logs/", "tests/")
 SKIP_FILES = {"tests/hardcoded_baseline.txt", "AGENTS.md"}
 
-CODE_EXTENSIONS = {".v", ".c", ".h", ".py", ".sh", ".ps1", ".tcl"}
-TEXT_EXTENSIONS = CODE_EXTENSIONS | {".md", ".txt", ".yml", ".yaml", ".json", ".cfg", ".conf", ".bb"}
+CODE_EXTENSIONS = {".v", ".c", ".h", ".py", ".sh", ".ps1", ".tcl", ".bat", ".cmd"}
+TEXT_EXTENSIONS = CODE_EXTENSIONS | {".md", ".txt", ".yml", ".yaml", ".json", ".cfg", ".conf", ".bb", ".mk"}
 
 
 def is_test_file(rel):
@@ -78,6 +81,13 @@ PATH = [
     re.compile(r"\bCOM\d{1,2}\b"),
     re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"),
 ]
+# Docs/config: only absolute host paths.  A COM port or an IP in prose is
+# often an example, so those stay in the code-only `path` rule.
+HOST_PATH = [
+    re.compile(r"\b[A-Za-z]:\\"),
+    re.compile(r"/home/[A-Za-z0-9._-]+/"),
+    re.compile(r"/Users/[A-Za-z0-9._-]+/"),
+]
 SECRET = [
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
@@ -86,8 +96,9 @@ SECRET = [
     re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"),
 ]
 
-RULES = (("secret", SECRET), ("seed", SEED), ("path", PATH), ("magic", MAGIC))
-BASELINE_ABLE = {"magic", "seed", "path"}
+RULES = (("secret", SECRET), ("seed", SEED), ("path", PATH),
+         ("hostpath", HOST_PATH), ("magic", MAGIC))
+BASELINE_ABLE = {"magic", "seed", "path", "hostpath"}
 
 
 def tracked_text_files():
@@ -106,19 +117,24 @@ def scan_text(rel, text, categories):
 
     `categories` lets the tests exercise one rule at a time.
     """
-    code_file = Path(rel).suffix.lower() in CODE_EXTENSIONS
+    suffix = Path(rel).suffix.lower()
+    code_file = suffix in CODE_EXTENSIONS
     for number, raw in enumerate(text.replace("\r\n", "\n").split("\n"), start=1):
         if ALLOW in raw:
             continue
         line = raw
         if code_file:
             line = COMMENT.sub("", line)
-            if Path(rel).suffix.lower() in {".py", ".ps1", ".sh", ".tcl"}:
+            if suffix in {".py", ".ps1", ".sh", ".tcl"}:
                 line = re.sub(r"#.*$", "", line)
+            if suffix in {".bat", ".cmd"}:
+                line = re.sub(r"(?i)^\s*(rem\b|::).*$", "", line)
         for category, patterns in RULES:
             if category not in categories:
                 continue
-            if category != "secret" and (not code_file or is_test_file(rel)):
+            if category not in ("secret", "hostpath") and (not code_file or is_test_file(rel)):
+                continue
+            if category == "hostpath" and is_test_file(rel):
                 continue
             if category == "magic" and NAMED_CONSTANT.match(raw):
                 continue

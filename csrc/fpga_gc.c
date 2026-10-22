@@ -11,6 +11,11 @@
 #include <string.h>
 #include <time.h>
 
+/* Sentinel shared with the hardware: an errored/invalid reference is
+ * 0xFFFFFFFF, and the object limit is the same 4096 the engine enforces. */
+#define GC_SW_MARK_ERR  0xFFFFFFFFu
+#define GC_MAX_OBJECTS  4096
+
 // ============================================================
 // 初始化
 // ============================================================
@@ -193,6 +198,8 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
 // 设置根集
 // ============================================================
 void fpga_gc_set_roots(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
+    if (n_roots < 0)
+        n_roots = 0;
     // 寄存器地址已扩到 12 位: 0x40..0x43F 共 256 项
     if (n_roots > 256) {
         printf("WARNING: root count %d > 256, truncated\n", n_roots);
@@ -252,13 +259,22 @@ uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint
     uint8_t *base        = (uint8_t *)dev->graph_vaddr;
     uint32_t graph_paddr = dev->graph_paddr;
     int      n           = dev->obj_count;
+    uint32_t result      = GC_SW_MARK_ERR;
 
-    uint8_t  *marked = (uint8_t *)calloc(n, 1);
-    uint32_t *queue  = (uint32_t *)malloc(n * 4);
+    if (n == 0)
+        return 0;
+    if (n < 0 || n > GC_MAX_OBJECTS) {
+        printf("ERROR: software BFS object count %d is outside 0..%d\n",
+               n, GC_MAX_OBJECTS);
+        return GC_SW_MARK_ERR;
+    }
+
+    uint8_t  *marked = (uint8_t *)calloc((size_t)n, 1);
+    uint32_t *queue  = (uint32_t *)malloc((size_t)n * 4);
     if (!marked || !queue) {                 /* OOM must not segfault below */
         free(marked); free(queue);
         printf("ERROR: out of memory for the software BFS (n=%d)\n", n);
-        return 0xFFFFFFFF;
+        return GC_SW_MARK_ERR;
     }
     uint32_t  head = 0, tail = 0, count = 0;
 
@@ -280,24 +296,49 @@ uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint
         uint32_t hdr_off    = cur * 16;
         uint32_t ref_count  = *(uint32_t *)(base + hdr_off + 4);
         uint32_t ref_phys   = *(uint32_t *)(base + hdr_off + 8);
-        uint32_t ref_offset = ref_phys - graph_paddr;
 
-        // 遍历引用
-        for (uint32_t j = 0; j < ref_count; j++) {
-            uint32_t target = *(uint32_t *)(base + ref_offset + j * 4);
-            if (target == 0xFFFFFFFF) break;
-            if (target < (uint32_t)n && !marked[target]) {
-                marked[target] = 1;
-                queue[tail++] = target;
-                count++;
+        // 与硬件 err_hdr 对齐: ref_count > 4096 是坏头, 不再继续读.
+        if (ref_count > (uint32_t)GC_MAX_OBJECTS) {
+            printf("ERROR: object %u ref_count %u exceeds %d (bad header)\n",
+                   cur, ref_count, GC_MAX_OBJECTS);
+            goto done;
+        }
+
+        if (ref_count > 0) {
+            if (ref_phys < graph_paddr) {
+                printf("ERROR: object %u ref_addr 0x%08X is below the graph\n",
+                       cur, ref_phys);
+                goto done;
+            }
+            uint32_t ref_offset = ref_phys - graph_paddr;
+            if (ref_offset > (uint32_t)GRAPH_MAP_SIZE ||
+                ref_count > ((uint32_t)GRAPH_MAP_SIZE - ref_offset) / 4u) {
+                printf("ERROR: object %u ref array 0x%08X+%u is outside the graph\n",
+                       cur, ref_phys, ref_count);
+                goto done;
+            }
+
+            // 遍历引用
+            for (uint32_t j = 0; j < ref_count; j++) {
+                uint32_t target = *(uint32_t *)(base + ref_offset + j * 4);
+                if (target == 0xFFFFFFFF) break;
+                if (target < (uint32_t)n && !marked[target]) {
+                    marked[target] = 1;
+                    queue[tail++] = target;
+                    count++;
+                }
             }
         }
     }
 
-    if (out) memcpy(out, marked, (size_t)n);
+    result = count;
+
+done:
+    if (out && result != GC_SW_MARK_ERR)
+        memcpy(out, marked, (size_t)n);
     free(marked);
     free(queue);
-    return count;
+    return result;
 }
 
 uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {

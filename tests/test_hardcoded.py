@@ -61,6 +61,20 @@ class RuleTest(unittest.TestCase):
                 self.assertEqual(len(self.findings("tools/x.ps1", line, ("path",))), 1)
         self.assertEqual(self.findings("csrc/x.c", 'p = "/mnt/userdata/tests";', ("path",)), [])
 
+    def test_bat_paths_are_scanned_and_rem_is_a_comment(self):
+        self.assertEqual(
+            len(self.findings("tools/x.bat", r"set P=C:\Users\bob\f.log", ("path",))), 1)
+        self.assertEqual(self.findings("tools/x.bat", r"rem C:\Users\bob\f.log", ("path",)), [])
+        self.assertEqual(self.findings("tools/x.bat", r":: C:\Users\bob\f.log", ("path",)), [])
+
+    def test_doc_host_paths_are_flagged_without_com_noise(self):
+        self.assertEqual(
+            len(self.findings("docs/x.md", r"D:\Vivado\bin\xsdb.bat", ("hostpath",))), 1)
+        self.assertEqual(
+            len(self.findings("docs/x.md", "p = /home/bob/f.log", ("hostpath",))), 1)
+        self.assertEqual(
+            self.findings("docs/x.md", "use COM7 on the console", ("hostpath",)), [])
+
     def test_tests_are_exempt_except_for_secrets(self):
         self.assertTrue(hardcoded.is_test_file("sim/tb_gc_top.v"))
         self.assertTrue(hardcoded.is_test_file("tools/tests/gc_test.py"))

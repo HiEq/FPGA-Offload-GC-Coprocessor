@@ -13,7 +13,7 @@
 ## 用法
 
 ```powershell
-D:\AMDDesignTools\2026.1\Vivado\bin\vivado.bat -mode batch `
+$env:XILINX_VIVADO\bin\vivado.bat -mode batch `
     -source tools\debug\hw_program.tcl `
     -tclargs vivado\fogccc_proj\fogccc_z7100.runs\impl_1\system_wrapper.bit
 ```

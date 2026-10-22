@@ -155,15 +155,20 @@ module gc_axi_read #(
                 d0r <= d0w;                 // data nobody consumed
                 d1r <= d1w;
                 flushing <= 1'b1;           // discard responses still in flight
-            end else if (flushing && h0empty && h1empty) begin
+                // A pending AR (ARVALID=1, ARREADY=0) has not been accepted by
+                // the bus. Drop it; otherwise it handshakes after the flush
+                // window and its response is consumed by the next run.
+                if (ARVALID && !ar_hs)
+                    ARVALID <= 1'b0;
+            end else if (flushing && h0empty && h1empty && !ARVALID) begin
                 flushing <= 1'b0;           // every pre-flush AR has come back
             end
 
-            if (cmd0_valid && cmd0_ready) begin
+            if (cmd0_valid && cmd0_ready && !run_start && !abort) begin
                 c0f[c0w] <= {cmd0_addr[2], cmd0_addr};
                 c0w <= c0w + 1'b1;
             end
-            if (cmd1_valid && cmd1_ready) begin
+            if (cmd1_valid && cmd1_ready && !run_start && !abort) begin
                 c1f[c1w] <= {cmd1_addr[2], cmd1_addr};
                 c1w <= c1w + 1'b1;
             end
@@ -236,9 +241,11 @@ module gc_axi_read #(
                 end
             end
 
-            if (data0_valid && data0_ready)
+            // run_start/abort own d*r this cycle (see the flush branch above);
+            // a consumer handshake must not override that nonblocking write.
+            if (data0_valid && data0_ready && !run_start && !abort)
                 d0r <= d0r + 1'b1;
-            if (data1_valid && data1_ready)
+            if (data1_valid && data1_ready && !run_start && !abort)
                 d1r <= d1r + 1'b1;
         end
     end

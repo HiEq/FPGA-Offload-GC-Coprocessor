@@ -1,0 +1,17 @@
+name: dev-hieq
+
+# Non-blocking feedback for the long-lived draft branch.  It is not a required
+# check and there is no ruleset on dev-hieq: a red run stays visible in the
+# Actions tab, but it cannot block a push.  lint.yml already runs on every
+# push (so the RTL/C/ruff steps are not duplicated here); this workflow adds
+# the static contract on dev-hieq pushes.
+on:
+  push:
+    branches: [dev-hieq]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    uses: ./.github/workflows/gate.yml
