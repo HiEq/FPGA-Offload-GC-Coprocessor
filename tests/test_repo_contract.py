@@ -383,7 +383,10 @@ class WorkflowPolicyTest(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             with self.subTest(workflow=path.name):
                 self.assertRegex(text, r"(?m)^name:\s*\S", "workflow needs a top-level name")
-                self.assertIn("pull_request", text, "workflow must run on pull_request")
+                # dev-hieq.yml is deliberately push-only feedback for the draft
+                # branch; the same checks still run on every PR via gate.yml.
+                if path.name != "dev-hieq.yml":
+                    self.assertIn("pull_request", text, "workflow must run on pull_request")
                 self.assertRegex(text, r"(?m)^permissions:\s*$",
                                  "workflow needs an explicit top-level permissions block")
                 self.assertRegex(text, r"(?m)^\s+contents:\s*read\s*$",

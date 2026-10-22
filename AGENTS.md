@@ -578,3 +578,44 @@ They do not record why a past change was made, what it improved, or what went
 wrong before it. A test comment names the condition and the expected result; the
 negative control is the test, not a story in prose. One fact per line; headings
 and table cells stay short.
+
+---
+
+## 11. Collaboration rules for HiEq
+
+These rules apply to the human developer, not only to the agent. The main
+branch ruleset is the authority; this section explains how to work with it.
+
+### 11.1 `dev-hieq` is a draft, not an integration branch
+
+- `dev-hieq` is a scratch branch. Do not open a pull request from `dev-hieq`
+  to `main`: `pr-policy` requires the head branch to be `<type>/<slug>`.
+- To land work, create a short-lived branch from the current `main` (or from
+  `dev-hieq`), for example `fix/axi-flush` or `feat/gc-root-clamp`, commit
+  there, and open the PR from that branch.
+- Merge `main` into `dev-hieq` regularly so the draft does not drift. Do not
+  merge `dev-hieq` into `main` directly.
+
+### 11.2 Do not edit the gate to make a red run green
+
+- `.github/` and `tests/` are the gate. `CODEOWNERS` sends a review request to
+  `@ChalkCalliope` when a PR touches them; it is a tripwire, not a merge block.
+- A failing check is fixed in the code under test. Do not delete, weaken, skip,
+  or rewrite an assertion, and do not regenerate `tests/hardcoded_baseline.txt`
+  just to silence a finding.
+- The only valid reason to change the gate is a demonstrated gate bug: provide
+  a minimal reproduction, the command that fails, and the expected result, and
+  make that change in its own PR with an explanation. "The check is
+  inconvenient" is not a gate bug.
+- If a check is wrong, prove it. If the code is wrong, fix the code.
+
+### 11.3 The draft workflow is feedback, not a required check
+
+- `.github/workflows/dev-hieq.yml` runs the static contract on every push to
+  `dev-hieq`; `lint.yml` already runs the RTL, C, and ruff checks on that push.
+  Neither is a required check and there is no ruleset on `dev-hieq`.
+- A red run there is still a real failure. Read the failing step, fix it, and
+  push again. Do not ignore a red run because "it is only the draft branch".
+- The PR body must keep the `verified:` and `unverified:` lines accurate. The
+  template is in `.github/pull_request_template.md`; the claims are evidence,
+  not decoration.

@@ -122,7 +122,7 @@ sudo umount /mnt/boot
 # 登录: root，密码为空
 
 # JTAG 调试:
-D:\AMDDesignTools\2026.1\Vivado\bin\xsdb.bat -eval "connect; targets"
+$XILINX_VIVADO/bin/xsdb.bat -eval "connect; targets"
 ```
 
 ## 从零构建（不依赖已有的 PetaLinux 工程）

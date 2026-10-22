@@ -57,7 +57,7 @@ ci: pin the checkout action to a commit SHA
 
 | 检查 | 工作流 | 内容 | 不是什么 |
 | --- | --- | --- | --- |
-| `lint` | `.github/workflows/lint.yml` | shell/Python/PowerShell 语法、`iverilog` 解析、`gcc -fsyntax-only`、`SHA256SUMS`、`tb_runstart_race` / `tb_cmdfifo_flush` | 不综合、不 xsim、不上板 |
+| `lint` | `.github/workflows/lint.yml` | shell/Python/PowerShell 语法、`ruff`（未定义名/语法）、`iverilog` 解析、`gcc -fsyntax-only`、`SHA256SUMS`、`tb_runstart_race` / `tb_cmdfifo_flush` / `tb_stale_ar_flush` / `tb_flush_data` / `tb_start_while_busy`、C 驱动 host 单测 | 不综合、不 xsim、不上板 |
 | `contract` | `.github/workflows/gate.yml` | `tests/` 静态契约：寄存器/STATUS/参数/API/证据日志/仓库卫生/EOL/workflow 策略/RTL 阻塞赋值/硬编码 ratchet | 不证明时序与功能 |
 | `commit-policy` | 同上 | PR 范围内每个非 merge commit 的格式 | 不检查内容正确性 |
 | `pr-policy` | 同上 | PR 标题、head 分支名、目标分支、证据两行 | 不检查正文质量 |
