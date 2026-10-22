@@ -5,7 +5,7 @@
 // The expected BFS result is a hand-written graph, not produced by fpga_gc.c.
 //
 // Build/run (CI):
-//   gcc -O2 -Wall -Wextra -Werror -pthread -I csrc \
+//   gcc -O2 -Wall -Wextra -Werror -pthread -I csrc
 //       csrc/fpga_gc.c csrc/test_fpga_gc_host.c -o /tmp/test_fpga_gc_host
 //   /tmp/test_fpga_gc_host
 // ============================================================
