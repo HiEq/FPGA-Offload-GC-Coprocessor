@@ -1,0 +1,14 @@
+# Review ownership.
+#
+# `require_code_owner_review` is on in .github/rulesets/main.json, so a PR that
+# touches a path below needs an approval from the listed owner before it can be
+# merged (the author cannot approve their own PR).
+#
+# Syntax: <pattern> <owner>...   (last matching pattern wins)
+
+# CI definitions, PR gates and the branch rules themselves must not be changed
+# by the person the gate is meant to stop.
+/.github/    @ChalkCalliope
+
+# The engineering contract the gates implement.
+/AGENTS.md   @ChalkCalliope

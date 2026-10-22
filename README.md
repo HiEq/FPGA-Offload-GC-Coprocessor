@@ -5,10 +5,13 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](#2-快速开始)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
+[![gate](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/gate.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/gate.yml)
 
-> `CI` 进行静态检查与定向回归：shell/Python/PowerShell 语法、`iverilog` RTL 解析、
+> `CI` 分两个工作流。`lint`：shell/Python/PowerShell 语法、`iverilog` RTL 解析、
 > `gcc -fsyntax-only`、`SHA256SUMS`，以及 `tb_runstart_race` / `tb_cmdfifo_flush`
-> 两个定向测试。
+> 两个定向测试。`gate`：`tests/` 静态契约（寄存器映射 / STATUS / 设计参数 / 驱动 API /
+> 证据日志 / 仓库卫生 / workflow 策略 / RTL 阻塞赋值）加 commit 与 PR 规范；
+> 合并规则见 `.github/GIT_RULES.md`。
 > **CI 不进行 Vivado 综合/实现、xsim、PetaLinux 或上板**。功能证据见「仿真回归」「板上测试命令速查」与 `tools/logs/`。
 >
 > **P1 证据边界（2026-10-21）**：
@@ -161,7 +164,9 @@ FPGA-Offload-GC-Coprocessor/
 ├── driver/                 内核中断驱动 + PetaLinux 模块 recipe
 ├── petalinux/              工程骨架 (config/rootfs_config/meta-user) + 命令构建
 ├── artifacts/              要拷到 TF 卡的构建产物 + SHA256SUMS（二进制清单）
-├── .github/workflows/      CI: lint + iverilog 定向回归 + gcc + SHA256SUMS 校验
+├── .github/                workflows/(lint + gate)、CODEOWNERS、GIT_RULES.md、rulesets/
+├── tests/                  静态契约测试（CI `gate` 运行；不碰硬件）
+├── .githooks/              本地 commit-msg / pre-push 门禁（可选）
 ├── AGENTS.md               本项目对 AI 参与者的工程约束
 ├── petalinux/BUILD_GUIDE.md 构建步骤
 └── README.md               本文件

@@ -1,0 +1,45 @@
+name: gate
+
+# Static contract and policy gates. Nothing here compiles RTL, runs xsim,
+# touches Vivado/PetaLinux or a board, so a green run means "the repository is
+# internally consistent", not "the design works" (AGENTS.md 4.2).
+#
+# Required checks for main are listed in .github/rulesets/main.json; the job ids
+# below must match those contexts (tests/test_repo_contract.py enforces it).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0        # tests read `git ls-files --eol` and the index
+      - name: repository contracts
+        run: python3 -m unittest discover -s tests -p "test_*.py" -v
+
+  commit-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0
+      - name: conventional commits in the PR range
+        run: python3 tests/gate.py range "origin/${{ github.base_ref }}" HEAD
+
+  pr-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - name: PR title, branch and evidence block
+        run: python3 tests/gate.py pr "$GITHUB_EVENT_PATH"

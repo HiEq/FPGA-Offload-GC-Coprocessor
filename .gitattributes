@@ -13,6 +13,9 @@ Makefile  text eol=lf
 *.bat     text eol=crlf
 *.ps1     text eol=crlf
 
+# Git hooks run under sh; a CRLF here breaks "#!/bin/sh" on Windows checkouts.
+.githooks/* text eol=lf
+
 # Binaries: never try to diff or convert them
 *.BIN   binary
 *.bin   binary

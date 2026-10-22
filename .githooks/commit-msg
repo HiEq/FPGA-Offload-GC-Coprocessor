@@ -1,0 +1,16 @@
+#!/bin/sh
+# Conventional-Commits gate for one commit message.
+# The same rule runs in CI (tests/gate.py commit-msg / commit range).
+set -u
+[ -f .git/MERGE_HEAD ] && exit 0        # a real merge is not a subject to lint
+
+if command -v python3 >/dev/null 2>&1; then
+    PY=python3
+elif command -v python >/dev/null 2>&1; then
+    PY=python
+else
+    echo "commit-msg: python not found, gate skipped" >&2
+    exit 0
+fi
+
+exec "$PY" tests/gate.py commit-msg "$1"
