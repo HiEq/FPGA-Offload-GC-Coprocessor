@@ -62,3 +62,9 @@ python3 tests/hardcoded.py --write-baseline   # 3) 确认要保留，就更新 b
 2. 把解析逻辑拆成纯函数（输入是文本），再用一个改坏的字符串做反向验证。
 3. 如果检查会挡住别人的正常改动，先和 owner 商量，再放宽或加 `ci-allow-*` 标记；
    不要偷偷把断言删掉。
+
+## Gate status
+
+The strict `Protect main` ruleset (`.github/rulesets/main.json`) is applied: `main`
+takes squash merges of pull requests whose four gate checks are green, with a linear
+history and no bypass actors.
