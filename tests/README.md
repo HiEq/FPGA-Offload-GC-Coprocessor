@@ -16,6 +16,38 @@ Windows 上把 `python3` 换成 `python`。只依赖标准库。
 | --- | --- |
 | `test_repo_contract.py` | 寄存器偏移（`fpga_gc.h` ↔ `gc_regs.v` ↔ README 表）；STATUS 位顺序与 RTL 拼接顺序；MAGIC/VERSION；`MAXO`/`QD`/`PD`/`DQD`/对象上限（RTL ↔ README ↔ HP 口 `NUM_READ_OUTSTANDING`）；驱动 API（头文件 ↔ 实现）；ctypes 绑定（只调用导出符号、调用必有 `argtypes`）；`make card` 副本与源文件逐字节一致；README 引用的证据日志存在且已入库；Release 哈希与 `SHA256SUMS.release` 一致；仓库卫生（二进制/1 MiB 上限/UTF-8/EOL）；testbench 无孤儿；`sim/run_*` 两种 shell 齐全；workflow 权限最小化 + action 固定 SHA；ruleset 要求的检查名真的存在；RTL 时钟块里没有阻塞赋值 |
 | `test_gate.py` | `gate.py` 每条规则的**反向验证**：合规输入通过、违规输入必须失败 |
+| `hardcoded.py` | 硬编码 ratchet 的扫描器：`--check` 与 `--write-baseline` |
+| `test_hardcoded.py` | ratchet 每条规则的反向验证 + 全仓库只允许"不超过 baseline" |
+
+## 硬编码 ratchet
+
+`contract` job 会跑 `test_hardcoded.py`。规则是**只拦新增**：
+
+- `magic`：`≥1000` 的十进制、`≥3` 位十六进制、Verilog 带位宽字面量；
+  `#define` / `parameter` / `localparam` / `const` 声明行豁免（那正是"命名"）。
+- `seed`：`random.seed(<字面量>)` / `random.Random(<字面量>)`，种子必须来自 `--seed`。
+- `path`：`C:\...`、`/home/<user>/...`、`COM<n>`、IPv4；`/mnt/userdata` 是板子契约，不算。
+- `secret`：私钥块、`AKIA…`、`ghp_…`、`xox…-`、`sk-…`。**这条不能进 baseline**。
+
+测试文件（`sim/`、`tools/tests/`、`tb_*`、`test_*`）不参与前三类：按 `AGENTS.md` §4.3，
+期望值必须是独立 oracle，写死常量是正确做法。
+
+新增一个字面量时，按优先级处理：
+
+```c
+// 1) 命名成常量（首选）
+#define GC_CAP 4096
+uint32_t cap = GC_CAP;
+
+// 2) 确实是契约，就单行豁免，并写理由
+uint32_t cap = 4096;  // allow-hardcoded: FIFO 深度与队列 BRAM 深度一致
+```
+
+```bash
+python3 tests/hardcoded.py --write-baseline   # 3) 确认要保留，就更新 baseline
+```
+
+把 baseline 改小永远放行；`git diff` 里看到 baseline 变大，PR 里必须解释。
 
 ## 不覆盖什么
 
