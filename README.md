@@ -6,28 +6,28 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-> `CI` 做静态检查与定向回归：shell/Python/PowerShell 语法、`iverilog` RTL 解析、
+> `CI` 进行静态检查与定向回归：shell/Python/PowerShell 语法、`iverilog` RTL 解析、
 > `gcc -fsyntax-only`、`SHA256SUMS`，以及 `tb_runstart_race` / `tb_cmdfifo_flush`
 > 两个定向测试。
-> **CI 不跑 Vivado 综合/实现、xsim、PetaLinux 或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
+> **CI 不进行 Vivado 综合/实现、xsim、PetaLinux 或上板**。功能证据见「仿真回归」「板级测试」与 `tools/logs/`。
 >
 > **P1 证据边界（2026-10-21）**：
 > ① `board_*_p1_20261021.txt` 是命令输出与哈希头，**不是完整冷启动串口 transcript**；
-> ② `3590FBB5` **未重跑** `cmark` / `benchmark.py`，C 基线与 CPython 梯度来自 `02D52FCC`；
-> ③ 当前 P1 证据没有对应的 Vivado 综合/实现、xsim、PetaLinux 重跑记录。
+> ② `3590FBB5` 未重新运行 `cmark` / `benchmark.py`，C 基线与 CPython 梯度来自 `02D52FCC`；
+> ③ 当前 P1 证据没有对应的 Vivado 综合/实现、xsim、PetaLinux 重构建记录。
 
 Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quick-start) ·
 [寄存器](#register-map) · [对象图格式](#object-graph-ddr-format) · [版本对比](#版本对比历史数据) ·
 [正确性](#正确性) · [中断](#中断链路) · [发布与上板](#下载启动镜像release) · [测试命令](#板上测试命令速查)
 
-把 GC 的**标记阶段**卸载到 Zynq-7000 PL：BFS 指针追逐由硬件完成，对象图放在 DDR `0x1E000000`。
+把 GC 的**标记阶段**卸载到 Zynq-7000 PL：BFS 指针追逐由硬件完成，对象图放在DDR内。
 
-| 对比对象 | 规模 | 时间 | 相对 FPGA |
+| 对比对象 | 规模 | 时间 | 与各项对比 |
 |---|---|---|---|
-| C，逐条读 DDR（数据不在 cache）| 4096 对象 | 2.3 ms | **3.2×** |
-| C，数据在 cache | 4096 对象 | 0.63 ms | 0.9× |
 | **FPGA 标记**（`cmark`，bitstream `02D52FCC`）| 4096 对象 | **0.72 ms** | — |
 | **FPGA 标记**（`test_main`，bitstream `3590FBB5`）| 4000 对象 | **0.644 ms** | — |
+| C，逐条读 DDR（数据不在 cache）| 4096 对象 | 2.3 ms | **3.2×** |
+| C，数据在 cache | 4096 对象 | 0.63 ms | 0.9× |
 | CPython `gc.collect()`（整堆，含清扫）| 4000 对象 | 17.66 ms | **27×** |
 | Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **199–251×** |
 
@@ -99,8 +99,8 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 | PS 内存      | DDR3 @ 533.33MHz                                  |
 | 工具链       | Vivado 2026.1 / PetaLinux 2026.1                                  |
 | 时钟域       | 单一时钟域 FCLK0 = 100MHz —— 引擎 / AXI-Lite / AXI HP 同一域，无 CDC |
-| 实测资源占用（本板） | LUT 7,600 (2.74%) ／ FF 18,215 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
-| 时序（本板） | WNS +1.435 ns ／ WHS +0.046 ns                                    |
+| 实测资源占用 | LUT 7,600 (2.74%) ／ FF 18,215 (3.28%) ／ BRAM 5.5 (0.73%) ／ DSP 0 |
+| 时序 | WNS +1.435 ns ／ WHS +0.046 ns                                    |
 | AXI HP 位宽  | 64-bit（每次读 1 拍 = 2 个 32-bit 字，8 字节对齐 + 半字选择）     |
 
 > 资源与时序数字来自 `vivado/build.tcl` 的实现报告；`fogccc_proj/` 不入库，可用该脚本重新生成。
@@ -113,7 +113,7 @@ Contents: [架构](#架构概览) · [平台](#platform) · [快速开始](#quic
 | PetaLinux | 2026.1（SDK `release-S06060014`） |
 | 交叉编译器 | gcc 13.4.0（`arm-amd-linux-gnueabi-gcc`，`-mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard`） |
 | GNU Make | 4.3 |
-| CMake | 3.28.3（SDK 自带；本仓不使用） |
+| CMake | 3.28.3（SDK 自带；本项目暂时不使用） |
 | 构建主机 | Ubuntu 22.04.5 LTS（WSL2） |
 | 目标 glibc | 2.39（发布镜像与 SDK sysroot 一致）|
 | 目标 BusyBox / OpenSSL | 1.36.1 / 3.2.6 |
@@ -174,7 +174,7 @@ FPGA-Offload-GC-Coprocessor/
 
 ## Quick Start
 
-> 串口脚本自动识别 CH340；只有机器上插了多根串口线时才需要 `-Port COMx`。
+> 串口脚本自动识别 CH340；如果需要指定COM口可加 `-Port COMx`。
 > 完整清单见「Windows 侧快捷指令」。
 
 ### 1. 生成比特流 (PC 端)
@@ -193,14 +193,14 @@ vivado -mode batch -source build.tcl
 Open Hardware Manager → Auto Connect → Program Device → 选择 .bit
 ```
 
-**方式 B: Linux 动态加载 (板卡上)**
+**方式 B: Linux 动态加载**
 ```bash
 sudo cp system_wrapper.bit /lib/firmware/fogccc.bit
 echo fogccc.bit > /sys/class/fpga_manager/fpga0/firmware
 cat /sys/class/fpga_manager/fpga0/state
 ```
 
-### 3. 编译并运行测试 (板上没有 gcc，在 PC 上交叉编译)
+### 3. 编译并运行测试（需要在PC上交叉编译）
 
 ```bash
 # PC: 用 PetaLinux SDK 交叉编译
@@ -215,7 +215,7 @@ sudo ./bin/test_main
 > 工具链版本见「Platform → 构建工具链版本」。根 `Makefile` 的
 > `CROSS=arm-linux-gnueabihf-` 不适用于 PetaLinux 2026.1 SDK，改用 `$CC`。
 
-`test_main` 会用 `popen` 调用 `tests/gc_probe.py`，在**同样的对象数、同样的 avg_refs=3** 下跑真实的 CPython
+`test_main` 会用 `popen` 调用 `tests/gc_probe.py`，在**同样的对象数、同样的 avg_refs=3** 下运行 CPython
 `gc.collect()`（三次取最快）。默认路径是 `/mnt/userdata/tests/gc_probe.py`；
 如果分区在 `/run/media/USERDATA-mmcblk0p2`，程序会自动改用备用路径，也支持显式传参。
 表里三个时间都是实测：
@@ -246,7 +246,7 @@ Objects  marked   FPGA us   C us      CPython ms   vs C    vs CPython(整堆)   
 小图（<100 对象）FPGA 更慢：固定启动开销约 4400 拍。`marked < Objects` 是随机图中从根 0
 不可达的对象。
 
-> **口径**：`CPython ms` 来自真实 CPython 收集器（`gc.collect()`，C 实现）对整个解释器堆的
+> `CPython ms` 来自真实 CPython 收集器（`gc.collect()`，C 实现）对整个解释器堆的
 > 一次完整回收（含清扫）；硬件只做标记，因此 `vs CPython(整堆)` 是**上界**。
 >
 > 对 Python 字节码 BFS（`py_bfs.py`，逐条读 `/dev/mem`）P1 为 **199–251×**，旧
@@ -309,7 +309,7 @@ python3 python/benchmark.py
 | 队列 | 4096×12 = 48 Kb | 带 `count` 判空/满 |
 | FSM 编码 | 5 位 / 25 个 | 12 个在用，13 个保留（未删除）|
 
-> **起跑排空（`run_start` flush）**：`gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
+> `gc_axi_read` 在 `run_start` 时清空命令 FIFO 与数据 FIFO，
 > 并逐拍丢弃在途响应，直到两条流的在途计数归零才发新命令。
 > 覆盖：`done_race_test.py` P3（每轮 `STATUS[3:0]=0` 且 `[4]=1`；修复前为 `0x4`，并有一次标出 964/768）。
 
@@ -346,11 +346,11 @@ python3 python/benchmark.py
 
 |                | 原始设计 Ver1<br>(单笔未完成读) | Ver2<br>(多笔未完成读 + 快路径) | Ver3<br>(+ 对象头预取 + 竞态修复) | Ver4 [H]<br>(+ 引用流水 + 6 项修复) |
 | -------------- | ------------------------------- | ------------------------------- | --------------------------------- | ------------------------------- |
-| 判定           | 8/8                             | 8/8                             | **8/8**                           | **8/8**                         |
-| 总 HW cycles   | 1,804,791                       | 557,091                         | **484,034**                       | 240,007 [H]                     |
+| 判定           | 8/8                             | 8/8                             | 8/8                           | 8/8                         |
+| 总 HW cycles   | 1,804,791                       | 557,091                         | 484,034                       | 240,007 [H]                     |
 | 活跃对象合计   | ~20,010                         | 14,441                          | 12,449                            | 13,497                          |
-| 每对象周期     | **90.2**                        | 38.6                            | **38.9**（扣清位图 36.3）         | **15.4**（扣清位图）            |
-| vs `py_bfs`（脚本）| 37.5~39.5x                      | 100~126x                        | **104~123x**                      | **220.8~279.3x**                |
+| 每对象周期     | 90.2                        | 38.6                            | 38.9         | 15.4            |
+| vs `py_bfs`（脚本）| 37.5~39.5x                      | 100~126x                        | 104~123x                      | 220.8~279.3x                |
 | N 范围         | 541~3895                        | 529~4048                        | 639~3872                          | 816~3840                        |
 
 > 各列来自不同的随机图（见"活跃对象合计"行），只有**每对象周期**可比。
@@ -433,7 +433,7 @@ python3 python/benchmark.py
 > 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
 > （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
 
-### 中断链路
+### 中断链路（本项目使用轮询并未设计中断项目，仅作为验证测试使用）
 
 `gc_top.irq_o = done` 接到 `ps7_0/IRQ_F2P[0]`，即 **GIC 中断 ID 61**
 （`ISPENDR1` bit 29）。`driver/` 里有一个最小模块验证整条链路：
@@ -568,7 +568,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > P1 归档的是各命令输出与哈希头（`tools/logs/board_*_p1_20261021.txt`），**不是完整串口 transcript**；
 > 完整冷启动 transcript 未归档。
 
-| 资产 | 放到哪 | 大小 | SHA256 |
+| 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `7487463acf9e34b6e2da8102229059ced67e505111fa81b21130f8aa14d1eb25` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
@@ -580,9 +580,9 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 > `9ad738838ba8ab14f491db9b524a986512c3e8c6e0d8fe8dfb4a2a7ac7c65256`，23,256 B），
 > 卡包因此重打为当前 61,327 B / `0e372a…`。`BOOT.BIN`、`image.ub`、`card-boot.zip` 不受影响。
 
-下载后校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
+校验：`sha256sum -c artifacts/SHA256SUMS.release`（四个资产放在同一目录）。
 
-> **开箱步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
+> **烧录步骤**（两个 FAT32 分区，卷标分别 `BOOT` / `USERDATA`）：
 
 1. BOOT 分区：放 `BOOT.BIN`、`image.ub`，再解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）
 2. USERDATA 分区：解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `cmark` / `bin/test_main` / `py/` / `tests/` / `ko/`）
@@ -627,7 +627,7 @@ MIT（见 `LICENSE`）。例外与第三方组件见 [`NOTICE`](NOTICE)。
 | --- | --- | --- |
 | 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
 | 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
-| **一键跑 GC 基准** | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
+| 运行 GC 基准 | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
 | 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；115200 下 18 MB 约 35 分钟 |
 | 大文件续传 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每块落到卡上 `parts/`，记录进度；掉线/断电后重跑同一条命令从断点继续（43 MB 的 `image.ub` 用这条，约 90 分钟）|
 | 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
