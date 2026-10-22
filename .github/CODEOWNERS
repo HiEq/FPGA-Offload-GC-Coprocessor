@@ -1,8 +1,8 @@
 # Review ownership.
 #
-# `require_code_owner_review` is on in .github/rulesets/main.json, so a PR that
-# touches a path below needs an approval from the listed owner before it can be
-# merged (the author cannot approve their own PR).
+# The ruleset keeps `required_approving_review_count` at 0, so this file does not
+# block a merge: GitHub only auto-requests the owners below as reviewers. It still
+# records who owns the gates themselves.
 #
 # Syntax: <pattern> <owner>...   (last matching pattern wins)
 
