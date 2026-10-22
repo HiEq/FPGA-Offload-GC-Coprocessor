@@ -1,4 +1,4 @@
-# artifacts/ —— 上卡文件
+# artifacts/ —— TF卡烧录文件
 
 卡上分两个分区，文件按分区放置
 
@@ -12,12 +12,12 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 | `image.ub` | 43.2 MB | 内核 + 设备树 + initramfs |
 | `boot.scr` / `uEnv.txt` | — | U-Boot 启动脚本与默认环境 |
 | `system.dtb` | 18 KB | 设备树，与 `image.ub` 内的一致 |
-| `zynq_fsbl.elf` | 347 KB | 厂商 FSBL 原始 ELF，`BOOT.BIN` 的**构建输入**；不入库、不随 Release 发布，只在本机保留 |
+| `zynq_fsbl.elf` | 347 KB | 厂商 FSBL 原始 ELF，`BOOT.BIN` 的**构建输入**；考虑到版权问题暂不入库、不随 Release 发布 |
 | `mount_data.sh` | 1.2 KB | 板上把两个分区挂到 `/mnt/boot`、`/mnt/userdata` |
 
 ## `userdata/` → USERDATA 分区
 
-FAT32，卷标 `USERDATA`。当前 rootfs 的 `/etc/fstab` 把它开机自动挂到 `/mnt/userdata`
+FAT32，卷标 `USERDATA`。当前 rootfs 的 `/etc/fstab` 会自动挂载到 `/mnt/userdata`
 （`nofail,umask=000`）；旧 rootfs 可能由 udev 挂到 `/run/media/USERDATA-mmcblk0p2`。
 `mount_data.sh` 仍可用于临时手动挂载。两条路径是同一个分区，固定用一个即可。
 

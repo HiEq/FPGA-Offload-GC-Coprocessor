@@ -12,7 +12,7 @@
 petalinux-config --get-hw-description=<directory containing system.xsa>
 ```
 
-XSA 必须来自**修好的 Vivado 工程**（`vivado/build.tcl`）。PS7 的关键点：
+XSA 来自 Vivado 工程（`vivado/build.tcl`）。PS7 的关键点（按照本项目使用的开发板 **opensoc xc7z100ffg900-2核心板+lite底板**，其他开发板可参照厂商随板发布的datasheet）：
 
 | 项 | 值 | 备注 |
 |---|---|---|
