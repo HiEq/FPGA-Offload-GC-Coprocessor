@@ -1,0 +1,8 @@
+#!/bin/sh
+# Block direct pushes to main; main only moves through a pull request.
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ "$remote_ref" = "refs/heads/main" ] || continue
+    echo "pre-push: direct push to main is blocked; open a PR (see .github/GIT_RULES.md)" >&2
+    exit 1
+done
+exit 0
