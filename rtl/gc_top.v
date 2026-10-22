@@ -337,7 +337,10 @@ module gc_top (
         .data1_valid (w_hdr_data_valid),
         .data1_ready (w_hdr_data_ready),
 
-        .run_start   (w_start),
+        // gc_mark_engine only accepts START in S_IDLE. Gate the read-engine
+        // flush with the same condition, so a duplicate START while the engine
+        // is busy is ignored instead of dropping its in-flight reads.
+        .run_start   (w_start && w_engine_idle),
         .abort       (w_abort),     // drop the abandoned run's in-flight reads too
         .err         (w_rd_err),
 
