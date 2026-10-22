@@ -46,12 +46,12 @@ ci: pin the checkout action to a commit SHA
 - 合并方式只有 **squash**；合并后删除 head 分支。
 - 通过条件（全部，缺一不可）：
   1. `lint`、`contract`、`commit-policy`、`pr-policy` 四个检查全绿；
-  2. 分支与 `main` 同步（`strict_required_status_checks_policy`）；
-  3. 至少 1 个 approval，且来自 `CODEOWNERS` 里的 owner；
-  4. 该 approval 之后没有人再 push（`require_last_push_approval`）；
-  5. 所有 review 线程已 resolve。
-- 作者不能批准自己的 PR。仓库当前只有 `HiEq`（admin）与 `@ChalkCalliope`（write）：
-  **任何一方开的 PR 都需要另一方的 approval**。
+  2. 分支与 `main` 同步（`strict_required_status_checks_policy`）。
+- **不要求 approval**：`required_approving_review_count = 0`，
+  `require_code_owner_review = false`，`require_last_push_approval = false`。
+  `CODEOWNERS` 仍然存在，但只用于自动请求 reviewer，不参与合并判断。
+- 分支名、commit 格式、PR 标题与证据两行是 **CI 检查**（`commit-policy` /
+  `pr-policy`），不是 approval 检查；它们失败时 PR 直接红，无需人工 Review。
 
 ## 4. CI 检查
 
@@ -78,8 +78,8 @@ gh api --method PUT repos/HiEq/FPGA-Offload-GC-Coprocessor/rulesets/25292330 `
 
 方式 B —— 网页：**Settings → Rules → Rulesets → `Protect main` → Edit**，逐项对齐
 `.github/rulesets/main.json`：Block force pushes、Restrict deletions、Require linear
-history、Require a pull request（1 approval / dismiss stale / require code owner /
-require approval of the latest push / require conversation resolution / squash only）、
+history、Require a pull request（**0 approvals**，不要勾 code owner review / last push
+approval / conversation resolution，合并方式只留 squash）、
 Require status checks（`lint`、`contract`、`commit-policy`、`pr-policy`，勾选
 "Require branches to be up to date"）。
 
