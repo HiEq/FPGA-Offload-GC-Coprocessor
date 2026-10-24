@@ -8,7 +8,7 @@
 
 - `sim\run_axi_tb.bat` / `sim/run_axi_tb.sh` —— `tb_axi_read`（未完成读事务上限）
 - `sim\run_race_tb.bat` / `sim/run_race_tb.sh` —— `tb_runstart_race`（同拍旧 R beat）
-- `sim\run_cmdfifo_tb.bat` / `sim/run_cmdfifo_tb.sh` —— `tb_cmdfifo_flush`（同拍命令 FIFO）
+- `sim\run_cmdfifo_tb.bat` / `sim/run_cmdfifo_tb.sh` —— `tb_cmdfifo_flush`（同拍命令 FIFO：issued AR 与同拍 enqueue）
 - `sim\run_regs_aww_tb.bat` —— `tb_regs_aww`（`gc_regs` 的 AW/W 配对契约；`P4` 只打印 AGENTS #20 的引脚级上限）
 - `sim\run_port_tb.bat` / `.sh` —— `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy`（start/abort 交接窗口）
 
@@ -34,7 +34,7 @@
 | **T-ABORT** | `CTRL[3]` 把挂死的引擎拉回 `S_IDLE` 并清 `DONE`；随后可再次完整运行 |
 | **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle、无错误）|
 | **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 当拍到达的旧响应必须被丢弃；未修复时数据 FIFO 留下上一轮的字，新 run 的第一笔 ref 被顶掉。每次必须命中 `RREADY=0` 窗口，未命中直接 FAIL（`sim/run_race_tb.bat` / `.sh`）|
-| **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；未修复时 `c0r=1→2` 且残留 `ARADDR=0x30000008`，修复后 `c0r=1→4`、无残留（`sim/run_cmdfifo_tb.bat` / `.sh`）|
+| **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；同拍 `cmd_valid` 的 enqueue 也必须被丢弃（脉冲后 `c0w==c0r`、`c1w==c1r`）。未修复时第二阶段报 `c0r=4 c0w=5` / `c1r=0 c1w=1`，修复后 `c0r=c0w=4`、`c1r=c1w=0`（`sim/run_cmdfifo_tb.bat` / `.sh`）|
 | **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
 | **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
 | **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |

@@ -159,11 +159,14 @@ module gc_axi_read #(
                 flushing <= 1'b0;           // every pre-flush AR came back AND none is pending
             end
 
-            if (cmd0_valid && cmd0_ready) begin
+            // The flush owns the queue pointers on the pulse cycle: a command
+            // handshaking in that same cycle belongs to the run being dropped,
+            // so it must not advance c*w past the reloaded c*r.
+            if (cmd0_valid && cmd0_ready && !run_start && !abort) begin
                 c0f[c0w] <= {cmd0_addr[2], cmd0_addr};
                 c0w <= c0w + 1'b1;
             end
-            if (cmd1_valid && cmd1_ready) begin
+            if (cmd1_valid && cmd1_ready && !run_start && !abort) begin
                 c1f[c1w] <= {cmd1_addr[2], cmd1_addr};
                 c1w <= c1w + 1'b1;
             end
