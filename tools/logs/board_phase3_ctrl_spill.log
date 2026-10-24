@@ -1,12 +1,11 @@
 # command: tools/debug/run_phase3_board.ps1 -> python3 -u tests/ctrl_spill_test.py
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: f39c844   VERSION=0x00040200
+# commit: 2e30ffc   VERSION=0x00040200
 # date: 2026-10-24
-cd /run/media/USERDATA-mmcblk0p2 && pyt
-thon3 -u tests/ctrl_spill_test.py
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/ctrl_spill_test.py
 magic/version OK: 0x47434343 / 0x00040200
-run 1 spilled CLEAR_Q: marked=200 q_tail=200 (expect 200 / 200)
-run 2 spilled START  : marked=200 q_tail=200 (expect 200 / 200)
+run 1 spilled CLEAR_Q: marked=3000 q_tail=3000 (expect 3000 / 3000, attempt 1)
+run 2 spilled START  : marked=3000 q_tail=3000 (expect 3000 / 3000)
 CTRL_SPILL_RESULT OK
 DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

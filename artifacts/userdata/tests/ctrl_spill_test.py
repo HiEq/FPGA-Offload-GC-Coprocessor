@@ -27,9 +27,11 @@ R_CTRL, R_BASE, R_COUNT, R_ROOTS, R_MARKED = 0x00, 0x04, 0x08, 0x0C, 0x10
 R_QHEAD, R_QTAIL, R_STATUS = 0x18, 0x1C, 0x20
 R_RLIST = 0x40
 CTRL_START, CTRL_CLEAR_Q, CTRL_DIRTY_FLUSH, CTRL_DONE = 1, 4, (1 << 5), (1 << 31)
+STATUS_IDLE = 1 << 4
 BASE = C.GRAPH_BASE
-N = 200                      # root -> 1..199: a fan, so the queue really holds work
-REFS = BASE + 0x8000
+N = 3000                     # root -> 1..N-1: long enough to place the spill mid-run
+REFS_OFF = 0x20000            # past N*16 (3000 objs = 0xBB80), inside the 1 MB graph
+REFS = BASE + REFS_OFF
 
 fd = os.open('/dev/mem', os.O_RDWR | os.O_SYNC)
 regs = mmap.mmap(fd, 4096, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, offset=C.REG_BASE)
@@ -50,14 +52,6 @@ def wait_done(timeout=20.0):
     return (rr(R_CTRL) & CTRL_DONE) != 0
 
 
-def wait_queue_nonempty(limit=20000):
-    """poll until the BFS queue holds work (the fan is about to be walked)"""
-    for _ in range(limit):
-        if (rr(R_QHEAD) & 0xFFF) != (rr(R_QTAIL) & 0xFFF):
-            return True
-    return False
-
-
 def main():
     if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040200:
         print('FAIL magic/version 0x%08X/0x%08X (need v4.2 with spill protection)'
@@ -71,8 +65,8 @@ def main():
         gw(i * 16 + 4, (N - 1) if i == 0 else 0)
         gw(i * 16 + 8, REFS)
     for i in range(N - 1):
-        gw(0x8000 + i * 4, i + 1)
-    gw(0x8000 + (N - 1) * 4, 0xFFFFFFFF)          # terminator slot
+        gw(REFS_OFF + i * 4, i + 1)
+    gw(REFS_OFF + (N - 1) * 4, 0xFFFFFFFF)          # terminator slot
 
     wr(R_BASE, BASE)
     wr(R_COUNT, N)
@@ -82,16 +76,39 @@ def main():
     time.sleep(0.002)
 
     # ---- run 1: spill a CLEAR_Q while the engine is mid-run --------------------
-    wr(R_CTRL, CTRL_START)
-    if not wait_queue_nonempty():
-        print('FAIL: never observed a non-empty BFS queue (cannot place the spill)')
+    # The write only proves anything if the engine is still running when it lands:
+    # after DONE a CLEAR_Q is a legal idle clear.  Retry the run until a spill
+    # actually lands while busy; a missed window is not a test failure.
+    m1 = t1 = None
+    attempts = 0
+    for attempts in range(1, 6):
+        wr(R_CTRL, CTRL_START)
+        # DONE is sticky from the previous run until this START is accepted.
+        t0 = time.time()
+        while (rr(R_CTRL) & CTRL_DONE) and time.time() - t0 < 0.01:
+            pass
+        busy = False
+        for _ in range(20000):
+            if rr(R_CTRL) & CTRL_DONE:
+                break
+            if (rr(R_QHEAD) & 0xFFF) != (rr(R_QTAIL) & 0xFFF):
+                busy = True
+                break
+        if not busy:
+            continue
+        wr(R_CTRL, CTRL_CLEAR_Q)                   # the spilled store
+        if rr(R_STATUS) & STATUS_IDLE:             # finished before it landed
+            continue
+        if not wait_done():
+            print('FAIL run 1: DONE never asserted')
+            return 1
+        m1, t1 = rr(R_MARKED), rr(R_QTAIL) & 0xFFF
+        break
+    if m1 is None:
+        print('FAIL run 1: could not place CLEAR_Q while the engine was busy')
         return 1
-    wr(R_CTRL, CTRL_CLEAR_Q)                       # the spilled store
-    if not wait_done():
-        print('FAIL run 1: DONE never asserted')
-        return 1
-    m1, t1 = rr(R_MARKED), rr(R_QTAIL) & 0xFFF
-    print('run 1 spilled CLEAR_Q: marked=%d q_tail=%d (expect %d / %d)' % (m1, t1, N, N))
+    print('run 1 spilled CLEAR_Q: marked=%d q_tail=%d (expect %d / %d, attempt %d)'
+          % (m1, t1, N, N, attempts))
     if m1 != N:
         print('FAIL run 1: marked=%d != %d' % (m1, N))
         fails.append('m1')
