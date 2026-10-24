@@ -135,6 +135,8 @@ uint32_t fpga_gc_dirty_popped(fpga_gc_t *dev);   // 上次 flush 以来消费的
 
 // 软件BFS标记 (对照组, 验证正确性)
 uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots);
+uint32_t fpga_gc_sw_mark_cached(fpga_gc_t *dev, uint32_t *roots, int n_roots);
+uint32_t fpga_gc_sw_mark_us(fpga_gc_t *dev, uint32_t *roots, int n_roots, int cached, double *us_out);
 /* same BFS, but also writes the per-object bitmap into out[0..obj_count-1] */
 uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint8_t *out);
 

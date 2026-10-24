@@ -87,6 +87,22 @@ _lib.fpga_gc_sw_mark.argtypes = [
     ctypes.c_int,
 ]
 
+_lib.fpga_gc_sw_mark_cached.restype = ctypes.c_uint32
+_lib.fpga_gc_sw_mark_cached.argtypes = [
+    ctypes.POINTER(FpgaGcStruct),
+    ctypes.POINTER(ctypes.c_uint32),
+    ctypes.c_int,
+]
+
+_lib.fpga_gc_sw_mark_us.restype = ctypes.c_uint32
+_lib.fpga_gc_sw_mark_us.argtypes = [
+    ctypes.POINTER(FpgaGcStruct),
+    ctypes.POINTER(ctypes.c_uint32),
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.POINTER(ctypes.c_double),
+]
+
 _lib.fpga_gc_clear.restype = None
 _lib.fpga_gc_clear.argtypes = [ctypes.POINTER(FpgaGcStruct)]
 
@@ -237,6 +253,23 @@ class FOGCCC:
         """软件BFS标记 (对照组)"""
         arr = (ctypes.c_uint32 * len(roots))(*roots)
         return _lib.fpga_gc_sw_mark(
+            ctypes.byref(self._dev), arr, len(roots)
+        )
+
+    def mark_sw_us(self, roots: list, cached: bool = False):
+        """(count, us) with the BFS timed inside C; cached uses a heap copy."""
+        arr = (ctypes.c_uint32 * len(roots))(*roots)
+        us = ctypes.c_double(0.0)
+        count = _lib.fpga_gc_sw_mark_us(
+            ctypes.byref(self._dev), arr, len(roots), 1 if cached else 0,
+            ctypes.byref(us)
+        )
+        return count, us.value
+
+    def mark_sw_cached(self, roots: list) -> int:
+        """C BFS on a heap-resident copy of the same graph (cache-resident bound)"""
+        arr = (ctypes.c_uint32 * len(roots))(*roots)
+        return _lib.fpga_gc_sw_mark_cached(
             ctypes.byref(self._dev), arr, len(roots)
         )
 

@@ -55,8 +55,9 @@ SDK_ENV=<sdk> ./csrc/build_c_bins.sh      # test_main / libfogccc.so / cmark
 
 ```sh
 cd /run/media/USERDATA-mmcblk0p2
-./bin/test_main                 # 4 项
+./bin/test_main                 # 4 项（FPGA vs C）
 sh run_gc.sh 4096 8 2           # 8 轮随机图，判据 PASSED (all invariants): 8/8
+python3 tests/three_way.py      # 同一张图：FPGA / C 未缓存 / C 缓存 / Python
 ```
 
 宿主回归：
@@ -158,7 +159,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 根目录 | 93,320 B | `1317b9c5c9cbe009b78b58197fc5c4cde7edd98f40f5da458827427a10b991f1` |
+| `card-userdata.zip` | 解压到 USERDATA 根目录 | 96,690 B | `76f2c4c7dc133bb5bc3da9fe33fe36074b6c9f41c7ac963e4ba4aeaf688cd9ec` |
 
 校验：四个资产置于同一目录，`sha256sum -c artifacts/SHA256SUMS.release`。
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)。

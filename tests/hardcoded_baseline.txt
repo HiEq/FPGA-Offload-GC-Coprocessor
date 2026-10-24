@@ -2,7 +2,7 @@
 # Regenerate with `python3 tests/hardcoded.py --write-baseline` after an
 # intentional addition; removing entries is always allowed.
 7 magic csrc/cmark.c
-24 magic csrc/fpga_gc.c
+31 magic csrc/fpga_gc.c
 1 magic csrc/fpga_gc.h
 2 magic csrc/py_bfs.py
 1 magic driver/fogccc_irq.c

@@ -70,6 +70,7 @@ tools/logs/*
 !tools/logs/board_regs_aww*.log
 !tools/logs/board_run_gc.log
 !tools/logs/board_dirty_*.log
+!tools/logs/board_three_way.log
 !tools/logs/tag_leak_probe_*.log
 !tools/logs/xsim_*.log
 tools/__pycache__/

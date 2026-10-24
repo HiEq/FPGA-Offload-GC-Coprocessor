@@ -130,6 +130,7 @@ sh run_repeat.sh 10          # 默认 10 次
 ```sh
 python3 gc_test.py 4096 8 2 --seed 12345   # 指定种子可复现
 python3 tests/freelist_contract_test.py    # Phase 2 free-list 软件契约负控（A/B/C/D 四段）
+python3 tests/three_way.py                 # 同一张图：FPGA / C 未缓存 / C 缓存 / Python
 python3 tests/dirty_set_test.py            # Phase 3A 脏集（A0/A/B/C/D + D-neg）
 python3 tests/dirty_concurrent_test.py     # Phase 3B 并发 mutator + remark（5 轮 + 负控）
 python3 tests/dirty_overflow_test.py       # Phase 3A 溢出契约 + 退回全标记

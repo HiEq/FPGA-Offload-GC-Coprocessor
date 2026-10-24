@@ -370,6 +370,172 @@ uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 }
 
 // ============================================================
+// 同一张图、cache 驻留口径：拷到堆上并改写引用指针，只计 BFS。
+// 与 cmark 的 C-cached 列同义（拷贝与指针修正不计时）。
+// ============================================================
+
+// ============================================================
+// 计时版：cached=0 走 DDR，cached=1 走堆副本（拷贝不计时）。
+// 返回标记数，*us_out 是 BFS 本体的微秒数（C 内 clock_gettime）。
+// ============================================================
+static uint32_t bfs_ddr(uint8_t *base, uint32_t gp, uint32_t n,
+                        uint32_t *roots, int n_roots,
+                        uint8_t *marked, uint32_t *queue) {
+    uint32_t head = 0, tail = 0, count = 0;
+    for (int i = 0; i < n_roots; i++) {
+        uint32_t r = roots[i];
+        if (r < n && !marked[r]) { marked[r] = 1; queue[tail++] = r; count++; }
+    }
+    while (head < tail) {
+        uint32_t cur = queue[head++];
+        uint32_t *h = (uint32_t *)(base + cur * 16u);
+        uint32_t rc = h[1];
+        uint32_t off = h[2] - gp;
+        for (uint32_t j = 0; j < rc; j++) {
+            uint32_t t = *(uint32_t *)(base + off + j * 4u);
+            if (t == 0xFFFFFFFFu) break;
+            if (t < n && !marked[t]) { marked[t] = 1; queue[tail++] = t; count++; }
+        }
+    }
+    return count;
+}
+
+static uint32_t bfs_heap(uint8_t *buf, uint32_t n,
+                         uint32_t *roots, int n_roots,
+                         uint8_t *marked, uint32_t *queue) {
+    uint32_t head = 0, tail = 0, count = 0;
+    for (int i = 0; i < n_roots; i++) {
+        uint32_t r = roots[i];
+        if (r < n && !marked[r]) { marked[r] = 1; queue[tail++] = r; count++; }
+    }
+    while (head < tail) {
+        uint32_t cur = queue[head++];
+        uint32_t *h = (uint32_t *)(buf + cur * 16u);
+        uint32_t rc = h[1];
+        uint32_t *refs = (uint32_t *)(uintptr_t)h[2];
+        for (uint32_t j = 0; j < rc; j++) {
+            uint32_t t = refs[j];
+            if (t == 0xFFFFFFFFu) break;
+            if (t < n && !marked[t]) { marked[t] = 1; queue[tail++] = t; count++; }
+        }
+    }
+    return count;
+}
+
+uint32_t fpga_gc_sw_mark_us(fpga_gc_t *dev, uint32_t *roots, int n_roots,
+                            int cached, double *us_out) {
+    uint8_t  *base = (uint8_t *)dev->graph_vaddr;
+    uint32_t  gp   = dev->graph_paddr;
+    uint32_t  n    = (uint32_t)dev->obj_count;
+    if (us_out) *us_out = 0.0;
+    if (n == 0) return 0;
+
+    uint8_t  *marked = (uint8_t *)calloc(n, 1);
+    uint32_t *queue  = (uint32_t *)malloc(n * 4u);
+    if (!marked || !queue) {
+        free(marked); free(queue);
+        printf("ERROR: out of memory for the software BFS (n=%u)\n", n);
+        return 0xFFFFFFFF;
+    }
+
+    uint8_t *buf = NULL;
+    if (cached) {
+        uint32_t used = n * 16u;
+        for (uint32_t i = 0; i < n; i++) {
+            uint32_t *h = (uint32_t *)(base + i * 16u);
+            uint32_t end = (h[2] - gp) + h[1] * 4u + 4u;
+            if (end > used) used = end;
+        }
+        if (used > GRAPH_MAP_SIZE) used = GRAPH_MAP_SIZE;
+        buf = (uint8_t *)malloc(used);
+        if (!buf) {
+            free(marked); free(queue);
+            printf("ERROR: out of memory for the cached copy\n");
+            return 0xFFFFFFFF;
+        }
+        memcpy(buf, base, used);
+        for (uint32_t i = 0; i < n; i++) {
+            uint32_t *h = (uint32_t *)(buf + i * 16u);
+            h[2] = (uint32_t)(uintptr_t)(buf + (h[2] - gp));
+        }
+    }
+
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    uint32_t count = cached
+        ? bfs_heap(buf, n, roots, n_roots, marked, queue)
+        : bfs_ddr(base, gp, n, roots, n_roots, marked, queue);
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    if (us_out)
+        *us_out = (t1.tv_sec - t0.tv_sec) * 1e6
+                + (t1.tv_nsec - t0.tv_nsec) / 1e3;
+
+    free(marked); free(queue); free(buf);
+    return count;
+}
+
+uint32_t fpga_gc_sw_mark_cached(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
+    uint8_t  *base = (uint8_t *)dev->graph_vaddr;
+    uint32_t  gp   = dev->graph_paddr;
+    uint32_t  n    = (uint32_t)dev->obj_count;
+    if (n == 0) return 0;
+
+    uint32_t used = n * 16u;
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t *h = (uint32_t *)(base + i * 16u);
+        uint32_t end = (h[2] - gp) + h[1] * 4u + 4u;
+        if (end > used) used = end;
+    }
+    if (used > GRAPH_MAP_SIZE) used = GRAPH_MAP_SIZE;
+
+    uint8_t *buf = (uint8_t *)malloc(used);
+    if (!buf) {
+        printf("ERROR: out of memory for the cached copy\n");
+        return 0xFFFFFFFF;
+    }
+    memcpy(buf, base, used);
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t *h = (uint32_t *)(buf + i * 16u);
+        h[2] = (uint32_t)(uintptr_t)(buf + (h[2] - gp));
+    }
+
+    uint8_t  *marked = (uint8_t *)calloc(n, 1);
+    uint32_t *queue  = (uint32_t *)malloc(n * 4u);
+    if (!marked || !queue) {
+        free(marked); free(queue); free(buf);
+        printf("ERROR: out of memory for the software BFS (n=%u)\n", n);
+        return 0xFFFFFFFF;
+    }
+
+    uint32_t head = 0, tail = 0, count = 0;
+    for (int i = 0; i < n_roots; i++) {
+        uint32_t r = roots[i];
+        if (r < n && !marked[r]) {
+            marked[r] = 1;
+            queue[tail++] = r;
+            count++;
+        }
+    }
+    while (head < tail) {
+        uint32_t cur  = queue[head++];
+        uint32_t *h   = (uint32_t *)(buf + cur * 16u);
+        uint32_t  rc  = h[1];
+        uint32_t *refs = (uint32_t *)(uintptr_t)h[2];
+        for (uint32_t j = 0; j < rc; j++) {
+            uint32_t t = refs[j];
+            if (t == 0xFFFFFFFFu) break;
+            if (t < n && !marked[t]) {
+                marked[t] = 1;
+                queue[tail++] = t;
+                count++;
+            }
+        }
+    }
+    free(marked); free(queue); free(buf);
+    return count;
+}
+
+// ============================================================
 // 读取单个对象的标记状态
 // ============================================================
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
