@@ -22,7 +22,7 @@
 
 **当前证据集**（位流 md5 `3332D8D631A8DB5D8091972DFEE5565E` / BOOT sha256 `ac8d31cc…` / `VERSION=0x0004_0200`；
 > 历史负控（`*_neg_*`、`board_phase3_leftover`、`board_regs_aww_verified`、`board_regs_aww_probe_forge_*`）与 `xsim_*_20261022/23` 属各自测过的那一版，文件头保留原样；
-> 2026-10-24：镜像由板端串口写入（`tools/serial_push_image.ps1`，回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
+> 2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
 > `board_phase3_dirty_api.log` 与 `board_dirty_api.log` 记录的是同一脚本、同一镜像，已删除前者。
 > 这次断电上电的串口文本没抓到（这块板子的 USB-UART 在断电期间没有从 Windows 消失）；`board_coldboot_20261024.raw.log` 是同一次上电（落在 archlinux）的启动记录，`board_coldboot_reboot_20261024.raw.log` 是随后切到 fogccclinux 的 reboot 记录。
 

@@ -7,9 +7,6 @@ FOGCCC 串口控制台 —— 使用说明
                   - 进入 shell 后切换为仪表盘：TASK / CPU0 / CPU1 / MEM / TEMP
                   - 键盘输入直通板子，可登录并执行命令
   log.bat       打开 logs\serial.log，串口原始输出，追加写入
-  serial_push_image.ps1
-                镜像推送（无读卡器）: 主机 gzip + 分块 base64 + 板端 dd/openssl + 每块 md5 + 整份 sha256
-                BOOT.BIN 18.6MB(gzip 2.3MB) 实测 4 分 37 秒；旧镜像留 .bak，改名是原子的
   serial_push_chunked.ps1
                 小文件推送: stty -echo + 按提示符同步 + 128KB 分块 + 每块 md5 + 失败重试
                 （逐行走 shell，约 2 KB/s，只适合脚本/小文件）
