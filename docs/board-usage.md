@@ -1,7 +1,18 @@
-# 上板操作：Windows 快捷指令与板上测试速查
+# 上板操作：烧录、卡布局、串口与板上测试
 
-> 主 [`README.md`](../README.md) 的「2. 快速开始」「5. 发布与上板」只保留构建与烧录要点；
-> 日常操作细节放在这里。
+## 烧录与卡布局
+
+两个 FAT32 分区，卷标 `BOOT` / `USERDATA`：
+
+| 分区 | 卷标 | 内容 |
+|---|---|---|
+| p1 | `BOOT` | `BOOT.BIN`、`image.ub`，解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）|
+| p2 | `USERDATA` | 解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `cmark` / `bin/` / `py/` / `tests/` / `ko/`）|
+
+`USERDATA` 必须是 FAT32（内核未编 exFAT）。Windows 图形界面无法创建 >32 GB 的 FAT32，
+可用 `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`。
+
+上电：`linux login:` → `root`（空密码）→ 数据分区由 udev 挂在 `/run/media/USERDATA-mmcblk0p2`。
 
 ## Windows 侧快捷指令
 
@@ -31,10 +42,9 @@
 
 ## 板上测试命令速查
 
-数据分区 p2 的开机挂载点取决于镜像：本镜像（stock `/etc/fstab` 里**没有** p2 条目）由 udev 挂到
-`/run/media/USERDATA-mmcblk0p2`；**`/mnt/userdata` 需要自己挂**（`sh /mnt/boot/mount_data.sh`，
-主机脚本 `serial_run_gc.ps1` / `run_cmark_sweep.ps1` / `serial_push_resume.ps1` 也会 `mkdir` + `mount`）。
-两条路径是同一个分区，固定用一个即可。下面命令里的 `<datadir>` 用实际挂载的那条，也可以让脚本自己探测：
+数据分区 p2 由 udev 挂到 `/run/media/USERDATA-mmcblk0p2`（stock `/etc/fstab` 没有 p2 条目）；
+`/mnt/userdata` 需自己挂（`sh /mnt/boot/mount_data.sh`，主机脚本也会 `mkdir` + `mount`）。
+两条路径是同一个分区，下面命令里的 `<datadir>` 用实际挂载的那条：
 
 ```sh
 D=$(for d in /run/media/USERDATA-mmcblk0p2 /mnt/userdata; do [ -d "$d/tests" ] && echo $d && break; done)
@@ -79,10 +89,9 @@ cd /mnt/userdata
 
 `test_main` 直接读器件并跑图，不需要额外脚本；需要 root。
 
-输出与判读见主 README「三方对比（FPGA / C 未缓存 / Python 脚本）」与 [`measurement.md`](measurement.md)。
+数据表与口径见 [`measurement.md`](measurement.md)。
 
-与另外两条命令的分工：`test_main` 是**主对比**（FPGA vs 同图 C BFS）；`run_gc.sh` 跑可靠性 +
-对照它自己的 Python BFS；`run_cmark.sh` 只比 FPGA vs C（未缓存 / cache 两种口径）。
+分工：`test_main` 是主对比（FPGA vs 同图 C BFS）；`run_gc.sh` 跑可靠性；`run_cmark.sh` 只比 FPGA vs C。
 
 ### 4. C 基准（FPGA vs C）
 

@@ -352,16 +352,10 @@ module gc_top (
 
     assign w_clear_q_eff = w_clear_q & w_engine_idle;
 
-    // Phase 3A follow-up (2026-10-23): arm-and-consume DIRTY_FLUSH.
-    // This platform redelivers every AXI-Lite store and the copies are not always
-    // adjacent, so a full-mark's DIRTY_FLUSH can arrive again much later - even while
-    // the engine is idle, after the mutator has already pushed records for the next
-    // epoch.  The write therefore only ARMS the flush; it is applied at the next
-    // accepted START with BM_KEEP=0 (a full mark, which wants the FIFO cleared anyway)
-    // and DISCARDED by an incremental (BM_KEEP=1) start.  No interleaving of
-    // redeliveries can silently drop a pending barrier record that way.  A flush bit
-    // in the same write as START also counts, so a combined CTRL write behaves like
-    // the driver's two-write sequence.
+    // DIRTY_FLUSH is arm-and-consume: the write only ARMS it, it is applied at the
+    // next accepted START with BM_KEEP=0 (a full mark, which clears the FIFO anyway)
+    // and DISCARDED by an incremental start.  A flush bit in the same write as START
+    // also counts.  Late store copies therefore cannot drop a pending record.
     // Evidence: sim T-DIRTY-FLUSHIDLE / T-DIRTY-FLUSHSPILL.
     reg  flush_armed;
     always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin

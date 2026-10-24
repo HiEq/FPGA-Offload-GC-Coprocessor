@@ -2,13 +2,9 @@
 // ============================================================
 // tb_flush_data.v — abort/run_start must own the data FIFO pointers.
 //
-// Covered hole: when a consumer handshake and abort/run_start happen in the
-// same cycle, the old RTL executed `d0r <= d0w` and then the later
-// `d0r <= d0r + 1`, so one stale beat remained in the FIFO.  The next run
-// could consume it.
-//
-// Pass: after the pulse, data0_valid stays low.  Negative control: pre-fix
-// RTL leaves one beat visible.
+// Condition: a consumer handshake and abort/run_start in the same cycle.
+// Pass: data0_valid stays low after the pulse.
+// Negative control: the pre-fix RTL leaves one beat visible.
 // ============================================================
 module tb_flush_data;
 

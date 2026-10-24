@@ -1,44 +1,70 @@
-# 测量口径与证据边界
+# 测量口径与证据
 
-> 主 [`README.md`](../README.md) 的「4. 正确性、性能与测量」只给对比表；本文件解释每个数字的口径、
-> 边界与出处。
+> 主 [`README.md`](../README.md) 只给汇总表；逐组数据、口径与出处在这里。
+> 当前证据位流 `3D3A9F1D…` / `BOOT.BIN` `63e52587…`（2026-10-24）。
 
-## 测量口径
+## 三方对比（`test_main` Test 1）
 
-- `FPGA us` = `CYCLES` / 100 MHz：**只含引擎时间**，不含构图/写对象头/清队列轮询/驱动 `usleep`。
-- `C us`：同一张图、同一套 BFS 的 C 实现，与 FPGA 同阶段，可比。`test_main` 的图在 DDR 内、
-  驱动不做 cache 维护，所以这是**未缓存（DDR 逐条读）**口径。
-- `C（缓存）`：`cmark` 同一张图数据常驻 cache 时测得；cache 命中时 C 会快过引擎，必须一起报
-  （见主 README「对优化 C 的参考对比」表）。
-- `py_bfs.py` 是独立的 Python 脚本 BFS（逐条读 `/dev/mem`），量级 **212–282×**，只作上下文，
-  不与三方对比表相除。
-- 原始记录：`tools/logs/board_test_main.log`、`tools/logs/board_gc_test.log`、`tools/logs/cmark_sweep.log`、
-  `tools/logs/board_phase3_test_main.log`；旧 `81640C7C` / `3590FBB5` 的证据仅作历史对照。
+同一张图、同一个 `avg_refs=3`，FPGA 标记与同一套 BFS 的 C 实现（`fpga_gc_sw_mark`）对比；
+C 同时是 `marked` 的独立 oracle。
 
-## 证据边界
+```
+Objects  marked   FPGA us   C us      vs C
+10       9        44.2      13.8      0.3x
+50       47       48.7      29.7      0.6x
+100      96       57.0      58.2      1.0x
+500      474      113.5     261.9     2.3x
+1000     945      184.4     519.9     2.8x
+2000     1882     339.9     1056.9    3.1x
+4000     3766     646.2     2159.6    3.3x
+```
 
-`tools/logs/` 中的日志是命令输出与哈希头；`board_coldboot_20261023.raw.log` 是一次完整启动的串口 transcript
-（U-Boot → Linux → `login:`），更早的 P1 日志只有命令输出与哈希头、没有完整 transcript；
-每个数字在其日志文件头注明命令、bitstream/BOOT 哈希与日期，引用前先核对哈希；
-更早 bitstream 下的 C 基线（如 `board_*_p1_20261021.txt`）与测量位流不可直接比较。
+出处 `tools/logs/board_test_main.log`。`vs C` > 1 表示 FPGA 更快；小图更慢是固定启动开销
+（≈4400 拍）。`marked < Objects` 是随机图中从根 0 不可达的对象。
 
-2026-10-23 新增一条**开放**边界：PL 刚配置后的第一批 `DIRTY_PUSH` 写可能被本板的重投递打乱
-（AW/W 乱配 ⇒ 伪造或丢失一条记录）。同一份脚本在暖机时是 `occ=4 marked=6`
-（`tools/logs/board_phase3_dirty_set.log`），作"重启后第一个测试"时是 `occ=3 marked=2`
-（`tools/logs/board_phase3_dirty_set_boot_neg_20261023.log`）；分析与影响面见 AGENTS #20。
-引用 dirty 相关数字前先确认日志属于哪一种状态。
+## C 基准（`cmark`，同图同跑）
+
+72 次、4 组参数；三个实现（HW / C 非缓存 / C 缓存）的标记数都等于真值 L。
+
+| 组 | maxN / trials / avg_refs | HW 拍/对象 | C-uncached | C-cached | HW / C-unc | HW / C-cac |
+| -- | ------------------------ | ---------- | ---------- | -------- | ---------- | ---------- |
+| 1  | 4096 / 24 / 2            | 17.5       | 560 ns     | 168 ns   | 3.2x       | 1.0x       |
+| 2  | 4096 / 16 / 4            | 20.2       | 678 ns     | 183 ns   | 3.4x       | 0.9x       |
+| 3  | 4096 / 16 / 1            | 17.7       | 491 ns     | 136 ns   | 2.8x       | 0.8x       |
+| 4  | 2048 / 16 / 2            | 20.6       | 550 ns     | 130 ns   | 2.7x       | 0.6x       |
+
+出处 `tools/logs/cmark_sweep.log`；命令 `tools/tests/run_cmark_sweep.ps1`。C 侧波动约 ±3%。
+
+### 适用条件
+
+| 图所在位置 | CPU 每次依赖读 | 硬件（AXI HP，非一致） |
+|---|---|---|
+| DDR（非缓存） | 一次 DDR 往返，无重叠 | 同样往返，8 笔未完成读 + 对象头预取 |
+| CPU cache | L1/L2 命中，几纳秒 | 仍走 AXI HP 到 DDR |
+
+硬件只在指针追逐被 DDR 延迟钉住时占优（2.6–3.4×）；图驻留 cache 时为 0.6–1.0×。
+
+## 口径
+
+- `FPGA us` = `CYCLES` / 100 MHz：只含引擎时间，不含构图、写对象头、清队列轮询、驱动 `usleep`。
+- `C us`：同图同 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**未缓存**口径。
+- `C（缓存）`：`cmark` 中数据常驻 cache 的上限参照，必须与未缓存口径一起报。
+- `py_bfs.py`：Python 字节码 BFS（逐条读 `/dev/mem`），只作量级参照（212–282×）。
 
 ## 端到端成本
 
-`FPGA us` 只含引擎时间；构图、写 DDR、AXI-Lite 配置、清队列、轮询都不算。
-`gc_test.py 4096 8 2` 在板上实测（2026-10-23，位流 `05AA145D…` / BOOT `4786ce62…`，`tools/logs/board_gc_test.log`）：
+`gc_test.py 4096 8 2`（`tools/logs/board_gc_test.log`）：
 
 | 阶段 | 时间 |
 | --- | --- |
-| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| **197.7 ms / 图平均** |
-| 同图 Python BFS（oracle）| **86.6 ms / 图平均**（8 轮合计 693.07 ms）|
-| 硬件标记（引擎）| **0.320 ms / 图平均**（8 轮合计 256,198 拍；对象数 932–3841）|
+| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| 197.7 ms / 图平均 |
+| 同图 Python BFS（oracle）| 86.6 ms / 图平均 |
+| 硬件标记（引擎）| 0.320 ms / 图平均 |
 
-单次卸载的端到端成本由构图主导：**618×** 标记时间（197.7 / 0.320，当前日志）。
-构图走 Python；C 侧的 `fpga_gc_build_graph()` 未单独计时，同样不计入 `FPGA us`。
-旧 P1 的 103.7 ms / 0.231 ms / 449× 与旧 `81640C7C` 的 164.0 ms / 0.273 ms / 601× 只作历史对照。
+单次卸载的端到端成本由构图主导（约 618× 标记时间）。构图走 Python；
+`fpga_gc_build_graph()` 未单独计时，同样不计入 `FPGA us`。
+
+## 证据边界
+
+`tools/logs/` 中每条日志头部写明命令、位流、BOOT 哈希、提交与日期；引用数字前先核对哈希。
+不同位流下的 C 基线不可直接比较。

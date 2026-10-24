@@ -10,9 +10,9 @@ $ErrorActionPreference = 'Stop'
 
 $s = New-BoardSerialSession -Port $Port
 
-# Boot-window rule (learned the hard way): ANY byte sent during U-Boot's bootdelay
-# aborts autoboot and drops the board into `Zynq>`.  So probe by READING first and
-# only write once a shell (or a login prompt) is known to be there.
+# Boot-window rule: any byte sent during U-Boot's bootdelay aborts autoboot and
+# drops the board into `Zynq>`.  Probe by reading; write only once a shell or a
+# login prompt is present.
 [void](Read-BoardSerial -Session $s -Ms 1200)
 if ($s.Sb.ToString() -match 'Zynq>') {
     # already at the U-Boot prompt: recover instead of feeding it commands

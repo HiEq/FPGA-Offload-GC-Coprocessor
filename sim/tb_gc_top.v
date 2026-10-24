@@ -300,8 +300,7 @@ module tb_gc_top;
     endtask
 
     // Phase 3A: the sanctioned way to clear the dirty FIFO - exactly what the driver does
-    // (CTRL = CLEAR_Q|DIRTY_FLUSH, then a full-mark START).  Works under both the old
-    // "immediate clear" and the 2026-10-23 "arm-and-consume" semantics.
+    // (CTRL = CLEAR_Q|DIRTY_FLUSH, then a full-mark START).
     task dirty_flush_now;
         begin
             axil_wr(R_CTRL, 32'h20);             // arm
@@ -1054,7 +1053,7 @@ module tb_gc_top;
         end
         $display("[TB] T-DIRTY-FLUSHSPILL done");
 
-        // ---- T-DIRTY-FLUSHIDLE: the idle-window hazard (the P2 gap, 2026-10-23).
+        // ---- T-DIRTY-FLUSHIDLE: a bare idle flush only arms the next full mark.
         //      A late copy of a full-mark's DIRTY_FLUSH can arrive while the engine is
         //      IDLE - after the full mark finished and the mutator has already pushed
         //      records for the next epoch.  Under "arm-and-consume" the CTRL write only
@@ -1114,7 +1113,7 @@ module tb_gc_top;
         //      Construction: 4096-object star (occupancy reaches 4095) + four dirty
         //      records pointing at an ALREADY MARKED id - the dirty path enqueues a
         //      forced re-scan unconditionally, which pushes occupancy to the depth.
-        //      OUTCOME 2026-10-23: it does NOT hang (marked=4096, TB PASS).  Occupancy
+        //      Observed: no hang (marked=4096).  Occupancy
         //      never reaches the queue depth at the current limits (a push needs an
         //      unmarked target, <= 4096 ids, and a pop precedes every enqueue burst),
         //      so the q_full wait is never entered.  Kept as a GUARD: if the queue
@@ -1303,9 +1302,9 @@ module tb_gc_top;
                         errors = errors + 1;
                     end
                 end
-                // remark epoch: BM_KEEP; rc2=1 adds a bare "late" flush.  Under the
-                // 2026-10-23 arm-and-consume contract that write only ARMS the flush and
-                // this incremental start must DISCARD it - the deferred record survives.
+                // remark epoch: BM_KEEP; rc2=1 adds a bare "late" flush.  That write
+                // only ARMS the flush; this incremental start must DISCARD it and the
+                // deferred record survives.
                 if (rc2 == 1) begin
                     axil_wr(R_CTRL, 32'h20);     // arm only
                     repeat (20) @(negedge clk);

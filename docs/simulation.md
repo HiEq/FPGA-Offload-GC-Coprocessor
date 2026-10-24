@@ -1,6 +1,6 @@
 # 仿真回归
 
-> 主 [`README.md`](../README.md) 的「4. 正确性、性能与测量」只给结论；本文件是完整用例矩阵与反向验证。
+> 主 [`README.md`](../README.md) 的「4. 证据」只给结论；本文件是完整用例矩阵与反向验证。
 
 `sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）**只跑 `tb_gc_top`**，
 覆盖下面的主用例、T1–T8、T-FREE、T-DIRTY、T-DIRTY-RACE、T-ABORT/T-ABORT2、T-MAXFAN/T-ROOTCLAMP/T-STAR 和 AXI 协议检查。
@@ -10,9 +10,10 @@
 - `sim\run_race_tb.bat` / `sim/run_race_tb.sh` —— `tb_runstart_race`（同拍旧 R beat）
 - `sim\run_cmdfifo_tb.bat` / `sim/run_cmdfifo_tb.sh` —— `tb_cmdfifo_flush`（同拍命令 FIFO）
 - `sim\run_regs_aww_tb.bat` —— `tb_regs_aww`（`gc_regs` 的 AW/W 配对契约；`P4` 只打印 AGENTS #20 的引脚级上限）
+- `sim\run_port_tb.bat` / `.sh` —— `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy`（start/abort 交接窗口）
 
-`tools\reproduce_all.ps1` 串起 manifest、PS 单测和**五组 xsim**：
-`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww`。
+`tools\reproduce_all.ps1` 串起 manifest、PS 单测和**六组 xsim**：
+`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB。
 
 | 检查 | 内容 |
 | --- | --- |
