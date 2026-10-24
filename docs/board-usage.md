@@ -109,10 +109,9 @@ cd /run/media/USERDATA-mmcblk0p2
 
 ### 4. 同图性能对比（FPGA / C 未缓存 / C 缓存 / Python）
 
-`sh
-cd /run/media/USERDATA-mmcblk0p2
-python3 tests/three_way.py
-`
+```sh
+cd /run/media/USERDATA-mmcblk0p2 && python3 tests/three_way.py
+```
 
 同一张图依次跑四种实现，四个标记计数必须相等；末行 THREE_WAY_RESULT OK。
 FPGA us 只含引擎时间，C 的时间在 C 内计时，Python 列是量级参照。
