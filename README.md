@@ -6,7 +6,8 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-把 GC 的**标记阶段**卸载到 Zynq-7000 PL：BFS 指针追逐在硬件完成，对象图放在 DDR。
+面向托管堆的 FPGA GC 协处理器：对象内容留在 DDR，引用关系压缩成连续的 side table；
+PL 负责标记与空闲扫描，ARM 负责分配、引用更新与回收策略。
 
 > 当前证据：位流 `3D3A9F1D…` / `BOOT.BIN` `63e52587…`，2026-10-24 冷启动复验。
 > 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
