@@ -1,6 +1,6 @@
 # command: tools/debug/run_phase3_board.ps1 -> /run/media/USERDATA-mmcblk0p2/bin/test_main
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: 0850b29   VERSION=0x00040200
+# commit: f39c844   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && chm
 mod +x bin/test_main cmark && ./bin/test_main; printf 'T''M=%s\n' $?
@@ -16,25 +16,25 @@ mod +x bin/test_main cmark && ./bin/test_main; printf 'T''M=%s\n' $?
 =============================================================
   Test 1: correctness + speed (FPGA vs C)
 =============================================================
-Objects  marked   FPGA us     C us        vs C    
--------- -------- ----------- ----------- --------
+Objects    marked     FPGA us        C us           vs C      
+---------- ---------- -------------- -------------- ----------
 [FOGCCC] Graph: 10 objects, 4236 bytes, avg_refs=3
-10       9        44.0        14.4        0.3x    
+10         9          44.3           13.9           0.3x      
 [FOGCCC] Graph: 50 objects, 4860 bytes, avg_refs=3
-50       47       48.7        29.0        0.6x    
+50         47         48.6           29.5           0.6x      
 [FOGCCC] Graph: 100 objects, 5756 bytes, avg_refs=3
-100      96       57.1        58.6        1.0x    
+100        96         56.9           57.2           1.0x      
 [FOGCCC] Graph: 500 objects, 16328 bytes, avg_refs=3
-500      474      113.5       264.5       2.3x    
+500        474        113.2          259.6          2.3x      
 [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
-1000     945      184.7       527.4       2.9x    
+1000       945        184.3          516.9          2.8x      
 [FOGCCC] Graph: 2000 objects, 64624 bytes, avg_refs=3
-2000     1882     340.6       1066.0      3.1x    
+2000       1882       340.4          1073.7         3.2x      
 [FOGCCC] Graph: 4000 objects, 129824 bytes, avg_refs=3
-4000     3766     644.7       2155.1      3.3x    
+4000       3766       645.0          2296.0         3.6x      
   Result: ALL PASS
 
-  >>> 3766 objects marked in 644.7 us (171.2 ns/obj)
+  >>> 3766 objects marked in 645.0 us (171.3 ns/obj)
 
 =============================================
   Test 2: Cycle Graph
@@ -49,7 +49,7 @@ Objects  marked   FPGA us     C us        vs C
 =============================================
 [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
   Expected: 945  Marked: 945 (consistent across 100 runs)
-  Cycles: min=18394 max=18544 jitter=150
+  Cycles: min=18414 max=18596 jitter=182
   Result: PASS
 
 =============================================
@@ -63,10 +63,10 @@ Objects  marked   FPGA us     C us        vs C
 --- Hardware Statistics ---
   Marked objects : 183
   STATUS         : 0x0
-  HW cycles      : 6886
-  HW time        : 68.86 us (@100MHz)
+  HW cycles      : 6912
+  HW time        : 69.12 us (@100MHz)
   Queue head/tail: 183 / 183 (depth=0)
-  Throughput     : 2.66 M objects/sec
+  Throughput     : 2.65 M objects/sec
 
 =============================================
   SUMMARY

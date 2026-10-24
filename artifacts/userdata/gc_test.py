@@ -226,7 +226,7 @@ def main():
         rows.append(dict(t=t, n=n, live=L, garb=n - L, cyc=hw_cyc, hw_us=hw_us, build=t_build,
                          sw_ms=sw_s * 1000, speed=speed, hw=hw_mkd, sw=sw_mkd,
                          g=sw_garb, exp=L, ok=ok, verdict=verdict))
-        print("  [%2d/%2d] N=%4d exp=%4d | HW %9.2f us (%d cyc) | free %4d | SW %8.2f ms | %6.1fx | build %6.1f ms | %s"
+        print("  [%2d/%2d] N=%6d exp=%6d | HW %11.2f us (%7d cyc) | free %5d | SW %10.2f ms | %7.1fx | build %7.1f ms | %s"
               % (t, trials, n, L, hw_us, hw_cyc, free_count, sw_s * 1000, speed, t_build * 1000, verdict))
 
     task(96, "summarising")
@@ -238,13 +238,13 @@ def main():
     print("=" * 84)
     if not rows:
         print("  no trials completed"); return 1
-    hdr = " %5s %6s %6s %6s %12s %10s %9s %8s %6s %6s  %s" % (
+    hdr = " %5s %7s %7s %7s %12s %11s %10s %8s %6s %6s  %s" % (
           "trial", "N", "exp", "garb", "HW cycles", "HW us", "SW ms",
           "speedup", "HWmk", "SWmk", "verdict")
     print(hdr)
     print(" " + "-" * (len(hdr) - 1))
     for r in rows:
-        print(" %5d %6d %6d %6d %12d %10.2f %9.2f %7.1fx %6d %6d  %s"
+        print(" %5d %7d %7d %7d %12d %11.2f %10.2f %7.1fx %6d %6d  %s"
               % (r['t'], r['n'], r['exp'], r['garb'], r['cyc'], r['hw_us'],
                  r['sw_ms'], r['speed'], r['hw'], r['sw'], r['verdict']))
     print(" " + "-" * (len(hdr) - 1))

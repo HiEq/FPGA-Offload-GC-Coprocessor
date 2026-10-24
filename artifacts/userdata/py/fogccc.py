@@ -268,28 +268,18 @@ class FOGCCC:
     def dirty_flush(self):
         """Arm a dirty-FIFO flush.
 
-        Since the 2026-10-23 arm-and-consume contract the CTRL write only ARMS the
-        flush: it takes effect at the next full-mark start (``mark()``, i.e. with
-        BM_KEEP=0) and is DISCARDED by an incremental start.  Call ``dirty_flush()``
-        before a full mark, exactly like the C driver does - a bare flush on its own
-        no longer clears anything immediately.
+        The write only ARMS: it takes effect at the next full-mark start
+        (``mark()``, BM_KEEP=0) and is discarded by an incremental start.
         """
         _lib.fpga_gc_dirty_flush(ctypes.byref(self._dev))
 
     def dirty_push_acked(self, obj_id: int, retries: int = 4) -> bool:
-        """Push a barrier record and confirm the FIFO accepted THIS id (AGENTS #20).
+        """Push a barrier record and confirm the FIFO accepted this id.
 
-        Reads DIRTY_STAT[31:20] (last accepted id) together with [19:16] (last
-        accepted tag) back after each attempt: only when both match the push just
-        issued did the id land.  A mismatch retries with a fresh tag; a sticky
-        overflow bit returns False.  Unlike ``dirty_push_verified()`` this is an
-        id-level check -- a foreign W beat shows up as a different id -- so the
-        caller can retry, and when the budget runs out it must fall back to a full
-        mark.  Costs one register read per attempt.
-
-        The signature is 16 bits (4-bit tag + 12-bit id): it detects a mismatch, but a
-        foreign store that happens to carry exactly that 16-bit value is
-        indistinguishable from ours, so this is a strong check, not a proof.
+        Reads DIRTY_STAT[31:20] (last accepted id) and [19:16] (tag); retries with
+        a fresh tag on a mismatch.  A sticky overflow returns False.  When this
+        returns False the caller must fall back to a full mark.  The 16-bit
+        signature detects a mismatch but is not a proof.
         """
         return bool(_lib.fpga_gc_dirty_push_acked(
             ctypes.byref(self._dev), ctypes.c_uint32(obj_id), ctypes.c_int(retries)))
@@ -302,38 +292,21 @@ class FOGCCC:
                 'id': (st >> 20) & 0xFFF}
 
     def barrier_verify(self, ids) -> bool:
-        """Check that a barrier's effect is visible: no id it was meant to re-scan is unmarked.
+        """True when every listed id is marked after the epoch.
 
-        AGENTS #20 makes an incremental epoch best-effort (the platform can mis-pair a
-        W beat, so a DIRTY_PUSH record can be lost).  The mutator knows the new edges
-        it wrote, so after the epoch it can check one target per dirtied container:
-        all marked -> **no missed mark was observed** (treat the epoch as exact);
-        anything unmarked -> fall back to ``mark()`` from the true roots.
-
-        This is a NECESSARY, not a sufficient check: a target that was already marked
-        before the epoch hides whether its container was re-scanned at all, so only
-        pass targets this epoch newly reaches, or confirm with a full oracle/count.
-        One bitmap probe per id (0x24/0x28).
+        Pass one target per dirtied container.  All marked means no missed mark was
+        observed; anything unmarked must trigger a full mark.  Necessary, not
+        sufficient: a target already marked before the epoch hides whether its
+        container was re-scanned.  One bitmap probe per id (0x24/0x28).
         """
         return all(self.read_mark(int(i)) for i in ids)
 
     def dirty_push_verified(self, obj_id: int, retries: int = 4, poll: int = 8) -> bool:
-        """Push a barrier record and confirm the command reached the FIFO (AGENTS #20).
+        """Push a barrier record and confirm the command reached the FIFO.
 
-        The plain ``dirty_push()`` is fire-and-forget: on this board the write path
-        redelivers stores and can pair a W beat with another store's address, which
-        both forges and loses records.  This variant reads DIRTY_STAT[19:16] back
-        and returns True when the tag it just wrote is the one the FIFO reports
-        (retrying with a fresh tag otherwise; a repeated id is only a forced
-        re-scan).  A set sticky overflow bit returns False: fall back to a full
-        mark.  Costs one register read per push.
-
-        LIMIT measured on the board (AGENTS #20, 3 boots): a push whose W beat is
-        paired with another store's address can be *forged* with a foreign id while
-        a foreign record reuses the same 4-bit tag, so ``retries=0`` and the record
-        is still lost (``loss=[8]`` in 3 of 3 boots).  This confirms the command
-        reached the FIFO -- it is not an id-level proof, and an incremental epoch
-        stays best-effort: use a full mark when exactness matters.
+        Reads DIRTY_STAT[19:16] back and retries with a fresh tag on a mismatch;
+        a sticky overflow returns False.  Confirms the command, not the id:
+        use ``dirty_push_acked()`` for an id-level check.
         """
         for _ in range(retries + 1):
             _lib.fpga_gc_dirty_push(ctypes.byref(self._dev), ctypes.c_uint32(obj_id))

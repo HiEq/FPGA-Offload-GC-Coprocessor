@@ -2,11 +2,7 @@
 # ============================================================
 # freelist_n4096_test.py - all-free at the 4096 boundary
 #
-# The Phase-2 free-list scanner walks word-per-object with a 12-bit id.  A retired
-# standalone simulation variant used to report this boundary as wrong:
-# "n=4096 mode=1" failed from id 3936 on (got=0 exp=1, 273 errors).  Every board
-# free-list check so far used n <= 1024, so this decides whether that was a stale
-# testbench or a real RTL corner.
+# Boundary: n=4096 with a 12-bit id.  Earlier free-list checks covered n <= 1024.
 #
 # Graph: 4096 objects, every ref_count 0, root_count 0 -> the engine marks
 # nothing, so the scanner must report exactly 4096 free ids: no duplicates, none

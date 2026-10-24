@@ -1,49 +1,49 @@
 # command: tools/debug/run_board_suite.ps1 -> repeat
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: 0850b29   VERSION=0x00040200
+# commit: f39c844   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && sh  run_repeat.sh 10; printf 'D''IAG_DONE\n'
 ################################################################
 #  REPEAT TEST   N=10   dir=/run/media/USERDATA-mmcblk0p2
 ################################################################
 === GROUP1: gc_test, different seeds (vs Python BFS ??????) ===
-  [ 1/ 1] N=2920 exp=2190 | HW    376.32 us (37632 cyc) | free  730 | SW    99.94 ms |  265.6x | build  227.1 ms | OK
-  [ 1/ 1] N= 653 exp= 489 | HW    113.25 us (11325 cyc) | free  164 | SW    22.73 ms |  200.7x | build   50.8 ms | OK
-  [ 1/ 1] N= 870 exp= 652 | HW    136.71 us (13671 cyc) | free  218 | SW    29.69 ms |  217.2x | build   66.9 ms | OK
-  [ 1/ 1] N=1711 exp=1283 | HW    238.43 us (23843 cyc) | free  428 | SW    58.93 ms |  247.1x | build  134.3 ms | OK
-  [ 1/ 1] N=4044 exp=3033 | HW    512.00 us (51200 cyc) | free 1011 | SW   138.94 ms |  271.4x | build  311.9 ms | OK
-  [ 1/ 1] N=1027 exp= 770 | HW    153.87 us (15387 cyc) | free  257 | SW    34.85 ms |  226.5x | build   79.2 ms | OK
-  [ 1/ 1] N=2775 exp=2081 | HW    360.54 us (36054 cyc) | free  694 | SW    96.10 ms |  266.6x | build  216.7 ms | OK
-  [ 1/ 1] N=1689 exp=1266 | HW    234.45 us (23445 cyc) | free  423 | SW    57.86 ms |  246.8x | build  131.1 ms | OK
-  [ 1/ 1] N=1154 exp= 865 | HW    169.36 us (16936 cyc) | free  289 | SW    39.35 ms |  232.3x | build   89.4 ms | OK
-  [ 1/ 1] N=1841 exp=1380 | HW    256.04 us (25604 cyc) | free  461 | SW    63.05 ms |  246.3x | build  142.7 ms | OK
+  [ 1/ 1] N=  2920 exp=  2190 | HW      375.45 us (  37545 cyc) | free   730 | SW     102.75 ms |   273.7x | build   232.5 ms | OK
+  [ 1/ 1] N=   653 exp=   489 | HW      113.14 us (  11314 cyc) | free   164 | SW      22.40 ms |   198.0x | build    50.4 ms | OK
+  [ 1/ 1] N=   870 exp=   652 | HW      136.85 us (  13685 cyc) | free   218 | SW      30.68 ms |   224.2x | build    68.6 ms | OK
+  [ 1/ 1] N=  1711 exp=  1283 | HW      237.78 us (  23778 cyc) | free   428 | SW      60.36 ms |   253.8x | build   136.1 ms | OK
+  [ 1/ 1] N=  4044 exp=  3033 | HW      511.59 us (  51159 cyc) | free  1011 | SW     142.30 ms |   278.1x | build   321.4 ms | OK
+  [ 1/ 1] N=  1027 exp=   770 | HW      153.80 us (  15380 cyc) | free   257 | SW      35.47 ms |   230.6x | build    80.7 ms | OK
+  [ 1/ 1] N=  2775 exp=  2081 | HW      363.80 us (  36380 cyc) | free   694 | SW      97.85 ms |   269.0x | build   221.2 ms | OK
+  [ 1/ 1] N=  1689 exp=  1266 | HW      235.38 us (  23538 cyc) | free   423 | SW      59.80 ms |   254.1x | build   134.4 ms | OK
+  [ 1/ 1] N=  1154 exp=   865 | HW      169.34 us (  16934 cyc) | free   289 | SW      40.35 ms |   238.3x | build    91.4 ms | OK
+  [ 1/ 1] N=  1841 exp=  1380 | HW      256.56 us (  25656 cyc) | free   461 | SW      64.49 ms |   251.4x | build   146.0 ms | OK
 === GROUP2: cmark, independent graphs (vs C) ===
- totals: HW 152.08 us | C-uncached 434.052 us | C-cached 92.610 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 572 ns | C-cached 122 ns
- totals: HW 151.93 us | C-uncached 436.668 us | C-cached 109.332 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 575 ns | C-cached 144 ns
- totals: HW 151.89 us | C-uncached 434.922 us | C-cached 94.776 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 573 ns | C-cached 125 ns
- totals: HW 151.73 us | C-uncached 434.382 us | C-cached 92.202 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 572 ns | C-cached 121 ns
- totals: HW 153.53 us | C-uncached 435.180 us | C-cached 91.272 us   (live objects 759)
- per object: HW 20.2 cyc | C-uncached 573 ns | C-cached 120 ns
- totals: HW 152.10 us | C-uncached 434.322 us | C-cached 96.378 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 572 ns | C-cached 127 ns
- totals: HW 151.70 us | C-uncached 437.088 us | C-cached 96.648 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 576 ns | C-cached 127 ns
- totals: HW 152.04 us | C-uncached 488.598 us | C-cached 103.158 us   (live objects 759)
- per object: HW 20.0 cyc | C-uncached 644 ns | C-cached 136 ns
- totals: HW 152.19 us | C-uncached 433.734 us | C-cached 96.390 us   (live objects 759)
- per object: HW 20.1 cyc | C-uncached 571 ns | C-cached 127 ns
- totals: HW 152.20 us | C-uncached 437.202 us | C-cached 99.942 us   (live objects 759)
- per object: HW 20.1 cyc | C-uncached 576 ns | C-cached 132 ns
+ totals: HW 152.02 us | C-uncached 435.312 us | C-cached 97.944 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 574 ns | C-cached 129 ns
+ totals: HW 152.14 us | C-uncached 436.746 us | C-cached 96.372 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 575 ns | C-cached 127 ns
+ totals: HW 151.92 us | C-uncached 436.386 us | C-cached 96.420 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 575 ns | C-cached 127 ns
+ totals: HW 152.02 us | C-uncached 436.212 us | C-cached 100.266 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 575 ns | C-cached 132 ns
+ totals: HW 151.95 us | C-uncached 434.550 us | C-cached 100.986 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 573 ns | C-cached 133 ns
+ totals: HW 151.95 us | C-uncached 436.392 us | C-cached 97.308 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 575 ns | C-cached 128 ns
+ totals: HW 151.73 us | C-uncached 435.582 us | C-cached 100.296 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 574 ns | C-cached 132 ns
+ totals: HW 152.00 us | C-uncached 436.002 us | C-cached 99.408 us   (live objects 759)
+ per object: HW 20.0 cyc | C-uncached 574 ns | C-cached 131 ns
+ totals: HW 152.46 us | C-uncached 433.920 us | C-cached 97.068 us   (live objects 759)
+ per object: HW 20.1 cyc | C-uncached 572 ns | C-cached 128 ns
+ totals: HW 152.18 us | C-uncached 432.786 us | C-cached 95.838 us   (live objects 759)
+ per object: HW 20.1 cyc | C-uncached 570 ns | C-cached 126 ns
 === GROUP3: same seed x5 (DDR jitter only) ===
-  [ 1/ 1] N=2578 exp=1933 | HW    338.05 us (33805 cyc) | free  645 | SW    90.24 ms |  266.9x | build  204.1 ms | OK
-  [ 1/ 1] N=2578 exp=1933 | HW    336.75 us (33675 cyc) | free  645 | SW    89.29 ms |  265.2x | build  201.5 ms | OK
-  [ 1/ 1] N=2578 exp=1933 | HW    337.39 us (33739 cyc) | free  645 | SW    89.08 ms |  264.0x | build  200.9 ms | OK
-  [ 1/ 1] N=2578 exp=1933 | HW    337.78 us (33778 cyc) | free  645 | SW    88.73 ms |  262.7x | build  202.0 ms | OK
-  [ 1/ 1] N=2578 exp=1933 | HW    337.42 us (33742 cyc) | free  645 | SW    89.06 ms |  263.9x | build  201.4 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.47 us (  33747 cyc) | free   645 | SW      90.04 ms |   266.8x | build   204.6 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.69 us (  33769 cyc) | free   645 | SW      90.88 ms |   269.1x | build   205.8 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.93 us (  33793 cyc) | free   645 | SW      90.48 ms |   267.8x | build   205.7 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      336.44 us (  33644 cyc) | free   645 | SW      90.00 ms |   267.5x | build   205.0 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.52 us (  33752 cyc) | free   645 | SW      91.10 ms |   269.9x | build   205.1 ms | OK
 === REPEAT_DONE ===
 DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

@@ -240,7 +240,7 @@ int main(int argc, char **argv) {
 
     srand(42);                              /* 固定种子, 可复现 */
 
-    printf(" %6s %7s %7s %7s %12s %12s %13s %9s %13s %9s  %s\n",
+    printf(" %6s %7s %7s %7s %12s %12s %13s %10s %13s %10s  %s\n",
            "trial", "N", "L", "garb", "HW cyc", "HW us", "C-unc us",
            "HW/Cun", "C-cac us", "HW/Cca", "mkd(HW/Cu/Cc)");
     printf(" %s\n", "-----------------------------------------------------------------------------------------------");

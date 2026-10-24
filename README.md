@@ -23,8 +23,8 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 |---|---|---|---|
 | **FPGA 标记**（`test_main`）| 4000 对象图 | **~171 ns** | — |
 | **FPGA 标记**（`cmark`）| 4096 对象梯度 | 17.5–20.6 拍 ≈ 175–206 ns | — |
-| C，逐条读 DDR（未缓存）| 同图同 BFS | 487–680 ns | **2.6–3.4×** |
-| C，数据驻留 cache | heap 副本 | 123–168 ns | **0.6–0.9×** |
+| C，逐条读 DDR（未缓存）| 同图同 BFS | 491–678 ns | **2.7–3.4×** |
+| C，数据驻留 cache | heap 副本 | 137–183 ns | **0.7–1.0×** |
 | Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **212–282×** |
 
 > `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
@@ -156,7 +156,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 根目录 | 94,173 B | `17c47aed386aa3907946af3825a1a64a5be1475729545a0dedac2f1189658c16` |
+| `card-userdata.zip` | 解压到 USERDATA 根目录 | 93,134 B | `3e5012e8c987f9a3ef71da6b659ff9074d95cb884f8ae0da743a67974bd53889` |
 
 校验：四个资产置于同一目录，`sha256sum -c artifacts/SHA256SUMS.release`。
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)。
