@@ -96,7 +96,7 @@ sh run_gc.sh 2048 5 3
 ### 3. FPGA vs C（同图、同 BFS）
 
 ```sh
-cd $D
+cd /run/media/USERDATA-mmcblk0p2
 ./bin/test_main
 ```
 
@@ -113,7 +113,7 @@ cd $D
 sh run_repeat.sh 10          # 默认 10 次
 ```
 
-三组：不同种子 vs Python 参照、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
+两组：不同种子 vs Python 参照、同种子 5 次；末行 `REPEAT_DONE`。
 
 ### 5. 单独调用
 
