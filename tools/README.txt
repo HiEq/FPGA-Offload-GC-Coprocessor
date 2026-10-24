@@ -22,7 +22,7 @@ FOGCCC 串口控制台 —— 使用说明
         BOOT.BIN / image.ub / boot.scr / mount_data.sh
 
   USERDATA 分区
-        run_gc.sh / run_cmark.sh / run_repeat.sh / gc_test.py / cmark
+        run_gc.sh / run_repeat.sh / gc_test.py
         bin/test_main
         tests/  py/  ko/
         logs/gc_run_*.log
@@ -71,7 +71,6 @@ FOGCCC 串口控制台 —— 使用说明
     test-serial-session.ps1  串口公共件的单元测试（不需要板子，含"旧 buffer 里的提示符"负控）
     gc_test.py          板级测试，与卡上 run_gc.sh 同一份
     irq_drv_test.sh     中断端到端验证，验收级
-    run_cmark_sweep.ps1 72 次参数扫描，C 基线数据来源
   debug\
     hw_program.tcl      JTAG 烧比特流
     hw_probe.tcl        JTAG 器件探测

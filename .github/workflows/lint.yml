@@ -94,7 +94,7 @@ jobs:
       - name: C warnings (gcc -Wall -Wextra -Werror)
         run: |
           gcc -O2 -Wall -Wextra -Werror -fsyntax-only \
-              csrc/fpga_gc.c csrc/test_main.c csrc/cmark.c
+              csrc/fpga_gc.c csrc/test_main.c
 
       - name: binary manifest (SHA256SUMS)
         shell: pwsh

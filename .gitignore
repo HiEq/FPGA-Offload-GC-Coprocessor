@@ -53,7 +53,6 @@ tools/*.log
 tools/logs/*
 !tools/logs/.gitkeep
 !tools/logs/README.md
-!tools/logs/cmark_sweep*.log
 !tools/logs/host_*.log
 !tools/logs/board_freelist_n4096.log
 !tools/logs/board_repeat.log

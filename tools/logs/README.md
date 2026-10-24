@@ -51,7 +51,6 @@
 | `board_phase3_dirty_api.log` | `tests/dirty_api_test.py` | 阶段 3A 的 C 驱动 + ctypes 接口（含 `--neg`）| docs 阶段 3 接口 |
 | `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（冷启动后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `63e52587…`；`fpga_manager=operating`；`test_main` 4/4 | README 冷启动 / AGENTS #21 |
 | `board_coldboot_20261024.raw.log` | 冷启动整段串口（只读探活）| U-Boot → Linux → `login:`；启动窗口内未写入任何字节 | README 冷启动 / AGENTS #21 |
-| `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1`（4 组共 72 次）| 72/72 OK，HW vs C 未缓存 2.7–3.4×（位流 `3D3A9F1D…`）| README C 基线 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 四组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
@@ -59,6 +58,7 @@
 | `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|
 | `xsim_dirtyflushidle_armconsume_20261023.log` | `sim\run_sim.bat` | arm-and-consume RTL → FLUSHIDLE/FLUSHSPILL/QFULL/QFULLNEG/RACE **全过** | AGENTS #19（arm-and-consume）|
 | `xsim_qfull_dirty_20261023.log` | `sim\run_sim.bat` | T-DIRTY-QFULL **观测**（峰值占用 4094/4096、`q_full`&&dirty 0 拍、`S_DIRTY_PUSH` 等待 0 拍）+ 强制负控 T-DIRTY-QFULLNEG（`force q_full` + 待处理记录 ⇒ 引擎按分析挂住）⇒「不可达」有了两段证据 | AGENTS #19（q_full+dirty）|
+| `board_three_way.log` | `tests/three_way.py`（同一张图）| FPGA / C 未缓存 / C 缓存 / Python，四个计数一致 ⇒ `THREE_WAY_RESULT OK` | README §1 / docs/measurement |
 | `board_regs_aww_cost.log` | 同脚本 `--cost`（200 次推送 ×2）| plain **16.0 µs/push** vs acked **30.5 µs/push**（**1.91×**，暖机期 `retries=0`）| AGENTS #20（回执开销）|
 | `xsim_handover_neg_20261024.log` | `tools/debug/neg_handover.ps1`（把 `gc_top.v`/`gc_axi_read.v` 换回修复前）| **负控**：三个 TB 全部 `[FAIL]` —— `stale data survived abort: d0=0x22222222` / `stale beat visible: 0xccccdddd`(×2) / `timeout after duplicate START; state=14 q=26` | AGENTS #21 |
 | `board_regs_aww_acked.log` | `regs_aww_board_test.py --acked`，重启后第一个跑 | 冷轮 `loss=[]`、`retries=2`（丢的记录被 id 回执发现并重试）⇒ 暖轮 `loss 0/14` ⇒ `REGS_AWW_RESULT OK` | AGENTS #20 |

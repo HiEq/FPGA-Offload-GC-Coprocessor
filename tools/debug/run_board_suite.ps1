@@ -1,6 +1,6 @@
 # ============================================================
 # run_board_suite.ps1 - the warm-image board regression (everything that is
-#   NOT covered by run_phase3_board.ps1 and the cmark sweep).
+#   NOT covered by run_phase3_board.ps1 and the three_way comparison).
 #
 #   Each step goes through tools\debug\board_cmd.ps1, which probes with reads
 #   only until a shell prompt is seen and never writes during the boot window.

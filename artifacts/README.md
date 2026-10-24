@@ -19,16 +19,14 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 
 FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcblk0p2`
 （stock `/etc/fstab` 里**没有** p2 条目）；`/mnt/userdata` 需要自己挂：
-`sh /mnt/boot/mount_data.sh`（主机脚本 `serial_run_gc.ps1` / `run_cmark_sweep.ps1` /
+`sh /mnt/boot/mount_data.sh`（主机脚本 `serial_run_gc.ps1` /
 `serial_push_resume.ps1` 也会自己 `mkdir` + `mount`）。两条路径是同一个分区，固定用一个即可。
 
 | 路径 | 说明 |
 |---|---|
 | `run_gc.sh` | GC 测试入口，需同级 `gc_test.py` |
-| `run_cmark.sh` | C 基线入口，需同级 `cmark` |
 | `run_repeat.sh` | 重复测量 |
 | `gc_test.py` | GC 测试主体，`--seed` 可复现 |
-| `cmark` | C 基线二进制，动态链接 |
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出；不入库，随 `card-userdata.zip` 发布（vermagic 与已发布的 `image.ub` 严格配对）|
@@ -50,7 +48,6 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 
 | 文件 | 说明 |
 |---|---|
-| `csrc/cmark.c` | 板上无 gcc，无法编译 |
 | `tools/debug/gic_dump.py`、`tools/debug/gic_irq_test.py` | GIC 诊断，可用 JTAG 读取同样寄存器 |
 | `tools/debug/irq_loss_test.sh` | 诊断用途，非验收 |
 
@@ -59,7 +56,7 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - `image.ub` 非位级可复现（gzip 时间戳），以功能验证为准。
 
-> 三个随卡二进制（`bin/test_main`、`py/libfogccc.so`、`cmark`）的 SHA256 记录在 `artifacts/SHA256SUMS`。
+> 两个随卡二进制（`bin/test_main`、`py/libfogccc.so`）的 SHA256 记录在 `artifacts/SHA256SUMS`。
 
 > 用 `tools/make_manifest.ps1` 重新生成；CI 跑 `-Check`，二进制改了但 manifest 没更新会直接红。
 

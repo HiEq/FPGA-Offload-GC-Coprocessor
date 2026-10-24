@@ -21,17 +21,14 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 
 | 对比对象 | 口径 | 每对象 | 加速 |
 |---|---|---|---|
-| **FPGA 标记**（`test_main`）| 4000 对象图 | **~171 ns** | — |
-| **FPGA 标记**（`cmark`）| 4096 对象梯度 | 17.5–20.6 拍 ≈ 175–206 ns | — |
-| C，逐条读 DDR（未缓存）| 同图同 BFS | 491–678 ns | **2.7–3.4×** |
-| C，数据驻留 cache | heap 副本 | 137–183 ns | **0.7–1.0×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **212–282×** |
+| **FPGA 标记**（`three_way.py`）| 同图 4000 对象 | **171 ns** | — |
+| C，逐条读 DDR（未缓存）| 同图同 BFS | 572 ns | **3.3×** |
+| C，数据驻留 cache | heap 副本 | 175 ns | **1.0×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 45.6 µs | **266×** |
 
 > `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
-> `test_main` 只比 FPGA 与 C（同图、同 BFS、同阶段）；Python 行来自 `run_gc.sh` 的
-> `py_bfs.py` 参照，不在 `test_main` 表里。逐组数据与口径见
-> [`docs/measurement.md`](docs/measurement.md)；出处 `tools/logs/board_test_main.log`、
-> `tools/logs/cmark_sweep.log`。
+> 四行来自同一张图（`tests/three_way.py`），出处 `tools/logs/board_three_way.log`；
+> 逐项口径见 [`docs/measurement.md`](docs/measurement.md)。`test_main` 只查计数正确性。
 
 **实现范围**：stop-the-world，写 `START`、轮询 `DONE`。对象图由 `csrc/fpga_gc.c` /
 `python/fogccc.py` 按「对象头 + 引用数组」布局构造；**未接入**任何语言运行时的 `gc` 模块。
@@ -45,7 +42,7 @@ vivado -mode batch -source vivado/build.tcl
 
 ```bash
 # 板上二进制（PC，PetaLinux SDK）
-SDK_ENV=<sdk> ./csrc/build_c_bins.sh      # test_main / libfogccc.so / cmark
+SDK_ENV=<sdk> ./csrc/build_c_bins.sh      # test_main / libfogccc.so
 ```
 
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)；平台规格、工具链版本、
@@ -144,7 +141,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | 阶段 2 / 阶段 3 | `PHASE2_PASS`、`CONTRACT_RESULT OK`、dirty 全套 OK、收尾 `occ=0` |
 | `run_gc.sh 4096 8 2` | 8/8 |
 | `abort_test` / `abort_sweep` / `done_race` | T1–T5 / 11/11 / P3 0/20 |
-| `cmark` 72 次 | 72/72 |
+| `three_way.py`（同图四方）| `THREE_WAY_RESULT OK` |
 | `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy` | PASS（负控对修复前 RTL 全部 FAIL）|
 
 日志索引与逐条出处：[`tools/logs/README.md`](tools/logs/README.md)。
@@ -159,7 +156,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 根目录 | 96,690 B | `76f2c4c7dc133bb5bc3da9fe33fe36074b6c9f41c7ac963e4ba4aeaf688cd9ec` |
+| `card-userdata.zip` | 解压到 USERDATA 根目录 | 85,040 B | `bb88d13adafdd1011a74a06b8f818ef4c8ea0109e05a765ee94c422215275c7a` |
 
 校验：四个资产置于同一目录，`sha256sum -c artifacts/SHA256SUMS.release`。
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)。
@@ -171,7 +168,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 ```
 rtl/       顶层 + 寄存器 + BFS 引擎 + 位图/队列/free-list/脏 FIFO + AXI 读
 sim/       自检 testbench、定向 TB、AXI 协议检查器
-csrc/      驱动、test_main、cmark、Python BFS 参照
+csrc/      驱动、test_main、Python BFS 参照
 python/    ctypes 绑定
 vivado/    BD + 综合/实现脚本
 tools/     串口与上板脚本、测试、日志

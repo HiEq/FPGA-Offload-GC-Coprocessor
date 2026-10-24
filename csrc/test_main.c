@@ -2,9 +2,9 @@
 // test_main.c — FOGCCC 测试主程序
 //
 // 测试内容:
-//   Test 1: 正确性 + 性能 (多种规模)
+//   Test 1: 正确性 (FPGA vs C 计数)
 //   Test 2: 循环图 (含环)
-//   Test 3: 重复执行一致性 (100次)
+//   Test 3: 重复根只算一次
 //
 // 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
 //       $CC -O2 -o test_main fpga_gc.c test_main.c
@@ -18,37 +18,26 @@
 #include <string.h>
 
 // 纳秒差转微秒
-static double elapsed_us(struct timespec *t0, struct timespec *t1) {
-    return (t1->tv_sec - t0->tv_sec) * 1e6 +
-           (t1->tv_nsec - t0->tv_nsec) / 1e3;
-}
 
 // ============================================================
-// Test 1: 正确性 + 性能 (FPGA vs C)
+// Test 1: 正确性 (FPGA vs C)
 //
-//   FPGA: CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
-//   C   : fpga_gc_sw_mark() 的 C BFS (也是 marked 的独立 oracle)
-//
-// 只跟同阶段、同访问模式的 C 实现对比 (README「测量口径」)。
+// 每个规模只比较 marked 计数；耗时统一由 tests/three_way.py 输出。
 // ============================================================
 #define GRAPH_AVG_REFS    3
 
 static int test_correctness(fpga_gc_t *dev) {
     printf("\n");
     printf("=============================================================\n");
-    printf("  Test 1: correctness + speed (FPGA vs C)\n");
+    printf("  Test 1: correctness (FPGA vs C)\n");
     printf("=============================================================\n");
-    printf("%-12s %-12s %-16s %-16s %-12s\n",
-           "Objects", "marked", "FPGA us", "C us", "vs C");
-    printf("------------ ------------ ---------------- ---------------- ------------\n");
+    printf("%-10s %-10s %-10s %-8s\n", "Objects", "FPGA", "C", "verdict");
+    printf("---------- ---------- ---------- --------\n");
 
     int sizes[] = {10, 50, 100, 500, 1000, 2000, 4000};
     int n_sizes = (int)(sizeof(sizes) / sizeof(sizes[0]));
     int all_pass = 1;
     int rows = 0;
-
-    double best_hw_us = 0;
-    int    best_n = 0, best_marked = 0;
 
     for (int s = 0; s < n_sizes; s++) {
         int n = sizes[s];
@@ -64,27 +53,19 @@ static int test_correctness(fpga_gc_t *dev) {
         uint32_t roots[] = {0};
         fpga_gc_set_roots(dev, roots, 1);
 
-        // ---- C 基准 (同一张图, 同一套 BFS) ----
-        struct timespec t0, t1;
-        clock_gettime(CLOCK_MONOTONIC, &t0);
+        // ---- C oracle (同一张图, 同一套 BFS) ----
         uint32_t sw_count = fpga_gc_sw_mark(dev, roots, 1);
-        clock_gettime(CLOCK_MONOTONIC, &t1);
-        double sw_us = elapsed_us(&t0, &t1);
 
-        // ---- FPGA (只认 CYCLES 寄存器, 不掺驱动开销) ----
+        // ---- FPGA ----
         uint32_t cycles = 0;
         uint32_t fpga_count = fpga_gc_mark(dev, &cycles);
-        double hw_us = cycles * 0.01;          // 100 MHz -> 10 ns/cycle
 
         // ---- 结果 ----
         int match = (fpga_count == sw_count);
-        char cbuf[16];
-        if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);
-        else           snprintf(cbuf, sizeof cbuf, "n/a");
-
-        printf("%-12d %-12u %-16.1f %-16.1f %-12s%s\n",
-               n, fpga_count, hw_us, sw_us, cbuf,
-               match ? "" : "  <<<< MISMATCH");
+        printf("%-10d %-10u %-10u %-8s%s\n",
+               n, fpga_count, sw_count,
+               match ? "OK" : "MISMATCH",
+               match ? "" : "  <<<<");
         rows++;
 
         // ---- STATUS must be clean: no overflow, no AXI error, no desync ----
@@ -131,10 +112,6 @@ static int test_correctness(fpga_gc_t *dev) {
             }
         }
         if (!match) all_pass = 0;
-        if (n == sizes[n_sizes - 1]) {
-            best_n = n; best_marked = (int)fpga_count;
-            best_hw_us = hw_us;
-        }
     }
 
     if (rows != n_sizes) {
@@ -142,12 +119,6 @@ static int test_correctness(fpga_gc_t *dev) {
         all_pass = 0;
     }
     printf("  Result: %s\n", all_pass ? "ALL PASS" : "SOME FAILED");
-
-    if (best_n > 0) {
-        printf("\n  >>> %d objects marked in %.1f us (%.1f ns/obj)\n",
-               best_marked, best_hw_us, best_hw_us * 1000.0 / best_marked);
-    }
-
     return all_pass;
 }
 
@@ -229,90 +200,7 @@ static int test_cycle(fpga_gc_t *dev) {
 }
 
 // ============================================================
-// Test 3: 重复执行一致性
-// ============================================================
-static int test_repeat(fpga_gc_t *dev) {
-    printf("\n");
-    printf("=============================================\n");
-    printf("  Test 3: Repeat Consistency (100 runs)\n");
-    printf("=============================================\n");
-
-    int n = 1000;
-    if (fpga_gc_build_graph(dev, n, 3) < 0) return 0;
-
-    uint32_t roots[] = {0};
-    fpga_gc_set_roots(dev, roots, 1);
-    uint32_t expected = fpga_gc_sw_mark(dev, roots, 1);   /* independent oracle */
-
-    uint32_t ref_count = 0;
-    uint32_t min_cycles = 0xFFFFFFFF, max_cycles = 0;
-    int pass = 1;
-
-    for (int i = 0; i < 100; i++) {
-        uint32_t cycles = 0;
-        uint32_t count = fpga_gc_mark(dev, &cycles);
-
-        // 0xFFFFFFFF is the documented timeout sentinel (fpga_gc.h). Without
-        // this check, 100 timeouts are "100 identical runs" and the test passes.
-        if (count == 0xFFFFFFFF) {
-            printf("  Run %d: FPGA TIMEOUT (mark returned 0xFFFFFFFF)\n", i);
-            pass = 0;
-            continue;
-        }
-
-        if (count != expected) {
-            printf("  Run %d: marked %u != expected %u\n", i, count, expected);
-            pass = 0;
-        }
-        if (fpga_gc_status(dev) != 0) {
-            printf("  Run %d: STATUS=0x%X\n", i, fpga_gc_status(dev));
-            pass = 0;
-        }
-        if (fpga_gc_q_tail(dev) != (count & 0xFFFU)) {
-            printf("  Run %d: q_tail %u != marked %u\n", i, fpga_gc_q_tail(dev), count);
-            pass = 0;
-        }
-
-        // The first run also compares the full bitmap against the SW BFS.
-        if (i == 0) {
-            uint8_t *bits = (uint8_t *)calloc((size_t)n, 1);
-            if (!bits) {
-                printf("  ERROR: calloc failed for the bitmap compare\n");
-                pass = 0;
-            } else {
-                fpga_gc_sw_mark_bits(dev, roots, 1, bits);
-                for (int o = 0; o < n; o++) {
-                    if (fpga_gc_read_mark(dev, (uint32_t)o) != (uint32_t)bits[o]) {
-                        printf("  Run 0: bitmap mismatch at obj %d\n", o);
-                        pass = 0;
-                        break;
-                    }
-                }
-                free(bits);
-            }
-        }
-
-        if (i == 0) {
-            ref_count = count;
-        } else if (count != ref_count) {
-            printf("  Run %d: count mismatch %u != %u\n",
-                   i, count, ref_count);
-            pass = 0;
-        }
-
-        if (cycles < min_cycles) min_cycles = cycles;
-        if (cycles > max_cycles) max_cycles = cycles;
-    }
-
-    printf("  Expected: %u  Marked: %u (consistent across 100 runs)\n", expected, ref_count);
-    printf("  Cycles: min=%u max=%u jitter=%u\n",
-           min_cycles, max_cycles, max_cycles - min_cycles);
-    printf("  Result: %s\n", pass ? "PASS" : "FAIL");
-    return pass;
-}
-
-// ============================================================
-// Test 4: duplicate roots must be counted once
+// Test 3: duplicate roots must be counted once
 //   roots {0,0,0} and {0} must both mark the same set. The engine
 //   checks the bitmap before pushing a root, so the second and third
 //   copy are skipped (no double push, no double count).
@@ -320,7 +208,7 @@ static int test_repeat(fpga_gc_t *dev) {
 static int test_dup_roots(fpga_gc_t *dev) {
     printf("\n");
     printf("=============================================\n");
-    printf("  Test 4: duplicate roots\n");
+    printf("  Test 3: duplicate roots\n");
     printf("=============================================\n");
 
     if (fpga_gc_build_graph(dev, 200, 3) < 0) return 0;
@@ -366,22 +254,20 @@ int main(int argc, char **argv) {
     // 运行测试
     int pass1 = test_correctness(&dev);
     int pass2 = test_cycle(&dev);
-    int pass3 = test_repeat(&dev);
-    int pass4 = test_dup_roots(&dev);
+    int pass3 = test_dup_roots(&dev);
 
     // 打印硬件统计
     fpga_gc_print_stats(&dev);
 
     // 汇总
-    int all_pass = pass1 && pass2 && pass3 && pass4;
+    int all_pass = pass1 && pass2 && pass3;
     printf("\n");
     printf("=============================================\n");
     printf("  SUMMARY\n");
     printf("=============================================\n");
     printf("  Test 1 (Correctness) : %s\n", pass1 ? "PASS" : "FAIL");
     printf("  Test 2 (Cycle)       : %s\n", pass2 ? "PASS" : "FAIL");
-    printf("  Test 3 (Repeat)      : %s\n", pass3 ? "PASS" : "FAIL");
-    printf("  Test 4 (Dup roots)   : %s\n", pass4 ? "PASS" : "FAIL");
+    printf("  Test 3 (Dup roots)   : %s\n", pass3 ? "PASS" : "FAIL");
     printf("  -------------------------------------------\n");
     printf("  Overall: %s\n", all_pass ? "*** ALL PASS ***" : "*** FAILED ***");
     printf("=============================================\n");

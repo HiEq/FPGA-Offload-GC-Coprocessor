@@ -5,7 +5,7 @@
 #
 # The dirty FIFO survives process restarts and the engine force-rescans a pushed
 # id even in a bm_keep=0 (full mark) epoch.  A full mark therefore has to flush
-# it: fpga_gc.c writes CTRL = CLEAR_Q | DIRTY_FLUSH, cmark.c the same.
+# it: the C API writes CTRL = CLEAR_Q | DIRTY_FLUSH.
 #
 # Sequence: leave two ids in the FIFO, then run the C test_main binary and
 # require its whole suite to pass.

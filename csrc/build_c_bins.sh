@@ -2,7 +2,6 @@
 # Cross-build the three card-side C binaries with the PetaLinux SDK:
 #   artifacts/userdata/bin/test_main
 #   artifacts/userdata/py/libfogccc.so
-#   artifacts/userdata/cmark
 #
 #   ./csrc/build_c_bins.sh
 #   SDK_ENV=/path/to/environment-setup-... ./csrc/build_c_bins.sh
@@ -31,9 +30,8 @@ SDK_ENV="${SDK_ENV:-$HOME/petalinux_sdk/environment-setup-cortexa9t2hf-neon-amd-
 
 OUT_TM="$ROOT/artifacts/userdata/bin/test_main"
 OUT_SO="$ROOT/artifacts/userdata/py/libfogccc.so"
-OUT_CM="$ROOT/artifacts/userdata/cmark"
 mkdir -p "$(dirname "$OUT_TM")" "$(dirname "$OUT_SO")"
-rm -f "$OUT_TM" "$OUT_SO" "$OUT_CM"
+rm -f "$OUT_TM" "$OUT_SO"
 
 echo "CC = $CC"
 echo "=== test_main ==="
@@ -42,8 +40,6 @@ $CC -O2 -o "$OUT_TM" "$HERE/fpga_gc.c" "$HERE/test_main.c" || { echo "!!! test_m
 echo "=== libfogccc.so ==="
 $CC -O2 -shared -fPIC -o "$OUT_SO" "$HERE/fpga_gc.c" || { echo "!!! libfogccc.so build failed"; exit 1; }
 
-echo "=== cmark ==="
-$CC -O2 -Wall -o "$OUT_CM" "$HERE/cmark.c" || { echo "!!! cmark build failed"; exit 1; }
 
 for f in "$OUT_TM" "$OUT_SO" "$OUT_CM"; do
     file "$f" 2>/dev/null || true

@@ -3,10 +3,8 @@ FOGCCC USERDATA 分区说明
 
 根目录：入口脚本及其直接依赖（脚本用 dirname 定位同级文件）
   run_gc.sh         主测试入口，需同级 gc_test.py
-  run_cmark.sh      C 基线入口，需同级 cmark
   run_repeat.sh     重复测量，调用以上两个
   gc_test.py        GC 测试主体，--seed 可复现
-  cmark             C 基线二进制，交叉编译动态链接
 
 bin/
   test_main         板级 C 测试套件：正确性 / 周期图 / 100 次重复 / 重复根
@@ -36,7 +34,6 @@ logs/
 
 ----------------------------------------------------------------
 不在此分区的内容
-  cmark.c           源码位于仓库 csrc/cmark.c
   gic_dump.py / gic_irq_test.py / irq_loss_test.sh
                     位于仓库 tools/debug/，需要时再拷入
 
@@ -44,7 +41,6 @@ logs/
   cd /run/media/USERDATA-mmcblk0p2
   也可以挂到 /mnt/userdata:  mkdir -p /mnt/userdata && mount -t vfat /dev/mmcblk0p2 /mnt/userdata
   sh run_gc.sh 4096 8 2
-  sh run_cmark.sh 4096 8 2
   sh run_repeat.sh 10
   ./bin/test_main                   需 root
   insmod ko/fogccc-irq.ko

@@ -7,7 +7,7 @@
 | 分区 | 卷标 | 内容 |
 |---|---|---|
 | p1 | `BOOT` | `BOOT.BIN`、`image.ub`，解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）|
-| p2 | `USERDATA` | 解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `cmark` / `bin/` / `py/` / `tests/` / `ko/`）|
+| p2 | `USERDATA` | 解压 `card-userdata.zip`（`run_*.sh` / `gc_test.py` / `bin/` / `py/` / `tests/` / `ko/`）|
 
 `USERDATA` 必须是 FAT32（内核未编 exFAT）。Windows 图形界面无法创建 >32 GB 的 FAT32，
 可用 `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`。
@@ -28,7 +28,6 @@
 | 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
 | 刷新卡上副本 | `... tools\make_card.ps1` | 把 `tools/tests/`、`python/`、`csrc/` 里的脚本同步到 `artifacts/userdata/`（不动二进制）|
 | 同步卡上测试（整批）| `... tools\push_tests.ps1` | 把仓库 `tools/tests/` 整批推到卡上 **`tests/`**（发布 zip 的布局）；只推单个文件、或卡上残留第二份副本，都会让 `import` 落到旧模块/旧版本而误报 |
-| C 基准参数扫描 | `powershell -ExecutionPolicy Bypass -File tools\tests\run_cmark_sweep.ps1` | 72 次参数扫描，性能表里 C 基线数据的来源 |
 | 单条命令 | `powershell -ExecutionPolicy Bypass -File tools\serial_cmd.ps1 -Cmd "uname -a"` | 发一条命令并抓回显 |
 | 指定串口 | 上面任意一条加 `-Port COM7` | 只在自动识别失败（多根串口线）时才需要 |
 
@@ -106,18 +105,9 @@ cd $D
 `test_main` 只与 C 对比；Python 参照在 `run_gc.sh`（上面的第 2 节）。
 数据表与口径见 [`measurement.md`](measurement.md)。
 
-分工：`test_main` 是主对比（FPGA vs 同图 C BFS）；`run_gc.sh` 跑可靠性；`run_cmark.sh` 只比 FPGA vs C。
+分工：`test_main` 只查正确性（FPGA 计数 == C）；`run_gc.sh` 跑可靠性；`three_way.py` 出同图性能对比。
 
-### 4. C 基准（FPGA vs C）
-
-```sh
-sh run_cmark.sh              # 默认 4096 8 2
-sh run_cmark.sh 2048 5 3
-```
-
-打印 `totals:` 与 `per object:` 两组时间；出现 `MISMATCH` 即失败。
-
-### 5. 重复性测试
+### 4. 重复性测试
 
 ```sh
 sh run_repeat.sh 10          # 默认 10 次
@@ -125,7 +115,7 @@ sh run_repeat.sh 10          # 默认 10 次
 
 三组：不同种子 vs Python 参照、不同图 vs C、同种子 5 次；末行 `REPEAT_DONE`。
 
-### 6. 单独调用
+### 5. 单独调用
 
 ```sh
 python3 gc_test.py 4096 8 2 --seed 12345   # 指定种子可复现
@@ -141,7 +131,7 @@ python3 tests/dirty_leftover_test.py       # 残留屏障记录 ⇒ 必须 flush
 insmod ko/fogccc-irq.ko                    # 仅插驱动
 ```
 
-### 7. 结果判读
+### 6. 结果判读
 
 | 关键行 | 含义 |
 |---|---|
@@ -155,7 +145,7 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 
 日志：`/mnt/userdata/logs/gc_run_<日期>_<时间>.log`。
 
-### 8. 常见问题
+### 7. 常见问题
 
 - `sh: run_gc.sh: No such file or directory` → 当前目录不是数据分区；先
   `cd /run/media/USERDATA-mmcblk0p2`，或改用绝对路径
@@ -165,6 +155,5 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 - 打不开 `/dev/mem` → 必须是 root
 - 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）
 - `run_gc.sh` 找不到 `gc_test.py` → 脚本按自身目录找文件，整个目录要一起放在 `/mnt/userdata`
-- `run_cmark.sh` 报找不到 `cmark` → 板上无 gcc，不能现场编译，直接用卡上的可执行文件
 - 某个 `tests/*.py` 报 `ModuleNotFoundError`（旧模块名未更新）→ 卡上 `tests/` 是**整套**副本，
   只推了部分文件。用 `tools\push_tests.ps1` 整批同步（`serial_phase2.ps1` 与 `run_phase3_board.ps1` 已内置该步骤）

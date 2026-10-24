@@ -22,19 +22,6 @@ Objects  marked   FPGA us   C us      vs C
 出处 `tools/logs/board_test_main.log`。`vs C` > 1 表示 FPGA 更快；小图更慢是固定启动开销
 （≈4400 拍）。`marked < Objects` 是随机图中从根 0 不可达的对象。
 
-## C 基准（`cmark`，同图同跑）
-
-72 次、4 组参数；三个实现（HW / C 非缓存 / C 缓存）的标记数都等于真值 L。
-
-| 组 | maxN / trials / avg_refs | HW 拍/对象 | C-uncached | C-cached | HW / C-unc | HW / C-cac |
-| -- | ------------------------ | ---------- | ---------- | -------- | ---------- | ---------- |
-| 1  | 4096 / 24 / 2            | 17.5       | 558 ns     | 166 ns   | 3.2x       | 1.0x       |
-| 2  | 4096 / 16 / 4            | 20.2       | 678 ns     | 183 ns   | 3.4x       | 0.9x       |
-| 3  | 4096 / 16 / 1            | 17.7       | 491 ns     | 137 ns   | 2.8x       | 0.8x       |
-| 4  | 2048 / 16 / 2            | 20.6       | 548 ns     | 141 ns   | 2.7x       | 0.7x       |
-
-出处 `tools/logs/cmark_sweep.log`；命令 `tools/tests/run_cmark_sweep.ps1`。C 侧波动约 ±3%。
-
 ## 同图四方（`tests/three_way.py`）
 
 同一张图依次跑 FPGA、C 未缓存、C 缓存、Python；四个计数必须相等。
@@ -63,7 +50,7 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 
 - `FPGA us` = `CYCLES` / 100 MHz：只含引擎时间，不含构图、写对象头、清队列轮询、驱动 `usleep`。
 - `C us`：同图同 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**未缓存**口径。
-- `C（缓存）`：`cmark` 中数据常驻 cache 的上限参照，必须与未缓存口径一起报。
+- `C（缓存）`：同一 BFS 跑在堆副本上的上限参照（`three_way.py` 的 C-c 列）。
 - `py_bfs.py`：Python 字节码 BFS（逐条读 `/dev/mem`），只作量级参照（212–282×）。
 
 ## 端到端成本

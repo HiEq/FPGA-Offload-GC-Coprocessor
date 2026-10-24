@@ -16,7 +16,6 @@ REPO = Path(__file__).resolve().parents[1]
 BINARY_ALLOWED = {
     "artifacts/boot.scr",
     "artifacts/userdata/bin/test_main",
-    "artifacts/userdata/cmark",
     "artifacts/userdata/py/libfogccc.so",
 }
 MAX_TRACKED_BYTES = 1 << 20

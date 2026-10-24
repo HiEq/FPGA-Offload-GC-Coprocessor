@@ -38,7 +38,7 @@ cd vivado && vivado -mode batch -source build.tcl
 # 产物: fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit
 
 # 板上二进制（PC）
-SDK_ENV=<sdk> ./csrc/build_c_bins.sh    # test_main / libfogccc.so / cmark
+SDK_ENV=<sdk> ./csrc/build_c_bins.sh    # test_main / libfogccc.so
 powershell -File tools/make_manifest.ps1
 ```
 
@@ -60,7 +60,7 @@ rtl/          gc_top / gc_regs / gc_mark_engine / gc_bitmap / gc_queue /
               gc_freelist / gc_dirty_fifo / gc_axi_read
 sim/          tb_gc_top、定向 TB（axi_read / runstart / cmdfifo / regs_aww / hand-over）、
               axi_proto_check.v、run_*.bat|sh
-csrc/         fpga_gc.[ch]、test_main.c、cmark.c、py_bfs.py、build_c_bins.sh
+csrc/         fpga_gc.[ch]、test_main.c、py_bfs.py、build_c_bins.sh
 python/       fogccc.py（ctypes 绑定）
 vivado/       build.tcl（BD + 综合 + 实现 + XSA）、build_rtl_only.tcl
 tools/        serial_*.ps1、push_tests.ps1、make_manifest/card/release_*、

@@ -1,7 +1,6 @@
 # Hardcoded-literal baseline: <count> <category> <path>.
 # Regenerate with `python3 tests/hardcoded.py --write-baseline` after an
 # intentional addition; removing entries is always allowed.
-7 magic csrc/cmark.c
 31 magic csrc/fpga_gc.c
 1 magic csrc/fpga_gc.h
 2 magic csrc/py_bfs.py

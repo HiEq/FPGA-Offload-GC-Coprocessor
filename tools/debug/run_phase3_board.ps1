@@ -28,7 +28,7 @@ function Run([string]$name, [string]$cmd, [string]$until) {
     Write-Host ''
 }
 
-Run 'test_main' ("cd {0} && chmod +x bin/test_main cmark && ./bin/test_main; printf 'T''M=%s\n' `$?" -f $DataDir) 'TM='
+Run 'test_main' ("cd {0} && chmod +x bin/test_main && ./bin/test_main; printf 'T''M=%s\n' `$?" -f $DataDir) 'TM='
 
 Write-Host '=== regression: serial_phase2 ==='
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'tools\serial_phase2.ps1') 2>&1 |
