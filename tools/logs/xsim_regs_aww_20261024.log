@@ -1,6 +1,6 @@
 # command: sim\run_regs_aww_tb.bat
 # bitstream: n/a (simulation)
-# commit: PENDING   VERSION=0x00040200
+# commit: 84a9de3   VERSION=0x00040200
 # date: 2026-10-24
 
 === xvlog ===

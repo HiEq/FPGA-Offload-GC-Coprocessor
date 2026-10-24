@@ -1,6 +1,6 @@
 # command: powershell -File tools/reproduce_all.ps1   (VIVADO_BIN set in the environment)
 # bitstream: n/a (host-side: manifest + test-serial-session.ps1 + tb_gc_top/tb_axi_read/tb_runstart_race/tb_cmdfifo_flush/tb_regs_aww + tb_flush_data/tb_stale_ar_flush/tb_start_while_busy)
-# commit: PENDING   VERSION=0x00040300
+# commit: 84a9de3   VERSION=0x00040300
 # date: 2026-10-25
 # note: Vivado 2026.1; absolute build paths shortened to repo-relative
 === binary manifest ===
