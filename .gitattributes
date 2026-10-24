@@ -1,30 +1,13 @@
-# Line endings: sources LF even on a Windows checkout.
-# The card is FAT32 and BusyBox sh chokes on a trailing CR in "#!/bin/sh".
-* text=auto
-
-*.sh      text eol=lf
-*.py      text eol=lf
-*.c       text eol=lf
-*.h       text eol=lf
-*.tcl     text eol=lf
-*.v       text eol=lf
-Makefile  text eol=lf
-
-*.bat     text eol=crlf
-*.ps1     text eol=crlf
-
-# Binaries: never try to diff or convert them
-*.BIN   binary
-*.bin   binary
-*.bit   binary
-*.dcp   binary
-*.elf   binary
-*.so    binary
-*.ko    binary
-*.img   binary
-*.xz    binary
-*.gz    binary
-*.ub    binary
-*.dtb   binary
-*.scr   binary
-*.pyc   binary
+# Index must be LF: BusyBox sh and python3 on the card choke on CRLF
+# (tests/test_repo_contract.py enforces it).  Binaries stay binary.
+* text=auto eol=lf
+*.bit binary
+*.bin binary
+*.zip binary
+*.so binary
+*.elf binary
+*.dtb binary
+*.img binary
+*.gz binary
+*.png binary
+*.jpg binary
