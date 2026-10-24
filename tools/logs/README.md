@@ -50,7 +50,7 @@
 | `board_coldboot_20261023.raw.log` | 控制台 `reboot` 后的整段启动串口 | U-Boot → Linux → `login:`（当前镜像；FSBL 在每次启动时重配 PL）| docs 冷启动 / AGENTS #18 |
 | `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1` | 72/72 OK（HW vs C 未缓存 2.6–3.4×）| README C 基线 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
-| `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 四组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush`）全 `PASS` | docs 仿真回归 |
+| `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 四组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
 | `xsim_dirtyflush_ungated_20261023.log` | `sim\run_sim.bat` | T-DIRTY-FLUSHSPILL：**无任何防护**的 RTL → `drained=0`/`marked=0`（2 errors）| AGENTS #19 负控 1 |
 | `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|
