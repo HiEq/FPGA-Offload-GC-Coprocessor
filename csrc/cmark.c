@@ -240,10 +240,10 @@ int main(int argc, char **argv) {
 
     srand(42);                              /* 固定种子, 可复现 */
 
-    printf(" %5s %6s %6s %8s %12s %10s %10s %9s %8s %9s  %s\n",
+    printf(" %6s %7s %7s %7s %12s %12s %13s %9s %13s %9s  %s\n",
            "trial", "N", "L", "garb", "HW cyc", "HW us", "C-unc us",
            "HW/Cun", "C-cac us", "HW/Cca", "mkd(HW/Cu/Cc)");
-    printf(" %s\n", "--------------------------------------------------------------------------------------------");
+    printf(" %s\n", "-----------------------------------------------------------------------------------------------");
 
     int bad = 0;                     /* any timeout/mismatch -> exit 1 */
     for (t = 1; t <= trials; t++) {
@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
             double hw_us = hw_cyc * 0.01;   /* 100MHz */
             const char *verdict = "OK";
             if (hw_mkd != L || mku != L || mkc != L) { verdict = "**MISMATCH**"; bad = 1; }
-            printf(" %5d %6u %6u %6u %12u %10.2f %10.3f %8.2fx %9.3f %8.2fx  %u/%u/%u %s\n",
+            printf(" %6d %7u %7u %7u %12u %12.2f %13.3f %9.2fx %13.3f %9.2fx  %u/%u/%u %s\n",
                    t, n, L, n - L, hw_cyc, hw_us, cu * 1000.0,
                    cu * 1000.0 / hw_us, cc * 1000.0, cc * 1000.0 / hw_us,
                    hw_mkd, mku, mkc, verdict);
