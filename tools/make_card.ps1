@@ -1,5 +1,5 @@
 # Regenerate the card-side copies under artifacts/userdata from their sources.
-# Binaries (bin/test_main, cmark, py/libfogccc.so, ko/fogccc-irq.ko) are build
+# Binaries (bin/test_main, py/libfogccc.so, ko/fogccc-irq.ko) are build
 # outputs and are not touched here.
 $ErrorActionPreference = 'Stop'
 

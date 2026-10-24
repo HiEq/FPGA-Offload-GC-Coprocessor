@@ -26,9 +26,9 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 | 对比对象 | 口径 | 每对象 | 加速 |
 |---|---|---|---|
 | **FPGA 标记**（`three_way.py`）| 同图 4000 对象 | **171 ns** | — |
-| C，逐条读 DDR（未缓存）| 同图同 BFS | 572 ns | **3.3×** |
-| C，数据驻留 cache | heap 副本 | 175 ns | **1.0×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 45.6 µs | **266×** |
+| C，逐条读 DDR（未缓存）| 同图同 BFS | 569 ns | **3.3×** |
+| C，数据驻留 cache | heap 副本 | 194 ns | **1.1×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 44.1 µs | **258×** |
 
 > `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
 > 四行来自同一张图（`tests/three_way.py`），出处 `tools/logs/board_three_way.log`；
@@ -141,7 +141,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 | 套件 | 结果 |
 |---|---|
-| 冷启动 `D1..D6` / `test_main` | `0` / 3/3 |
+| 冷启动 `D1..D6` / `test_main` | `0` / 4/4（冷启动日志；当前卡 3/3 见 `board_test_main.log`）|
 | 阶段 2 / 阶段 3 | `PHASE2_PASS`、`CONTRACT_RESULT OK`、dirty 全套 OK、收尾 `occ=0` |
 | `run_gc.sh 4096 8 2` | 8/8 |
 | `abort_test` / `abort_sweep` / `done_race` | T1–T5 / 11/11 / P3 0/20 |
@@ -152,6 +152,8 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 仿真用例矩阵：[`docs/simulation.md`](docs/simulation.md)。
 
 ## 5. 发布
+
+当前发布：`v4.2`（tag `cc2f02b`）。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 

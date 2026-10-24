@@ -3,7 +3,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools\reproduce_all.ps1
 #
 # Steps that need the board are printed, not executed:
-#   test_main / run_gc.sh / cmark / irq test (see README "板上测试命令速查").
+#   test_main / run_gc.sh / three_way.py / irq test (see README "板上测试命令速查").
 param(
     [string]$VivadoBin = $env:VIVADO_BIN
 )
@@ -43,7 +43,7 @@ Write-Host 'Board steps (manual):'
 Write-Host '  D=$(for d in /run/media/USERDATA-mmcblk0p2 /mnt/userdata; do [ -d "$d/tests" ] && echo $d && break; done)'
 Write-Host '  sh $D/run_gc.sh 4096 8 2'
 Write-Host '  $D/bin/test_main'
-Write-Host '  sh $D/run_cmark.sh 4096 8 2'
+Write-Host '  cd $D && python3 tests/three_way.py'
 Write-Host '  D=$D sh $D/tests/irq_drv_test.sh   (PL must be freshly configured)'
 Write-Host ''
 if ($fail) { Write-Host 'RESULT: FAIL'; exit 1 }

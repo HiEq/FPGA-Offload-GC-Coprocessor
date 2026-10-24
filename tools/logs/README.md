@@ -20,9 +20,9 @@
 
 二进制本身的哈希见 `artifacts/SHA256SUMS`（随卡二进制）与 `artifacts/SHA256SUMS.release`（Release 资产）。
 
-**当前证据集**（位流 md5 `05AA145DE4DEBAAC4D0B9B918C4FB0C5` / BOOT sha256 `4786ce62…` / `VERSION=0x0004_0200`；
+**当前证据集**（位流 md5 `3D3A9F1D94E425F7A83B4C4E44B0B69B` / BOOT sha256 `63e52587…` / `VERSION=0x0004_0200`；
 > 四条历史负控（`board_phase3_dirty_set_base_neg_*` / `_boot_neg_*` / `board_regs_aww_verified` / `board_regs_aww_probe_forge_*`）与 `xsim_*_20261022/23` 属各自测过的那一版，文件头保留原样；
-> 2026-10-23：卡上已写入该镜像（回读 sha256 一致）并完成一次上电复测；下面这些日志已按新位流重写。
+> 2026-10-24：卡上已写入该镜像（回读 sha256 一致）并完成一次冷启动复验；下面这些日志已按新位流重写。
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
@@ -49,10 +49,10 @@
 | `board_phase3_leftover.log` | `tests/dirty_leftover_test.py` | 旧二进制 `q_tail=10 != marked=9` FAIL → 修好后 `ALL PASS` | docs flush 契约 |
 | `board_dirty_state_end.log` | `dirty_state.py` + `dirty_leftover_test.py`（链末）| `DIRTY_STATE occ=0`；留两条记录后 `test_main` 仍 `ALL PASS` ⇒ `DIRTY_LEFTOVER_RESULT OK` | AGENTS #18(a) |
 | `board_phase3_dirty_api.log` | `tests/dirty_api_test.py` | 阶段 3A 的 C 驱动 + ctypes 接口（含 `--neg`）| docs 阶段 3 接口 |
-| `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（冷启动后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `63e52587…`；`fpga_manager=operating`；`test_main` 3/3 | README 冷启动 / AGENTS #21 |
+| `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（冷启动后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `63e52587…`；`fpga_manager=operating`；`test_main` 4/4（裁剪前二进制；当前卡 3/3 见 `board_test_main.log`）| README 冷启动 / AGENTS #21 |
 | `board_coldboot_20261024.raw.log` | 冷启动整段串口（只读探活）| U-Boot → Linux → `login:`；启动窗口内未写入任何字节 | README 冷启动 / AGENTS #21 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
-| `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 四组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
+| `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 六组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
 | `xsim_dirtyflush_ungated_20261023.log` | `sim\run_sim.bat` | T-DIRTY-FLUSHSPILL：**无任何防护**的 RTL → `drained=0`/`marked=0`（2 errors）| AGENTS #19 负控 1 |
 | `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|
