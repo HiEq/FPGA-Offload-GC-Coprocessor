@@ -11,8 +11,8 @@
 param(
     [string]$DataDir = '/run/media/USERDATA-mmcblk0p2',
     [string]$Only = '',
-    [string]$Bitstream = '3D3A9F1D94E425F7A83B4C4E44B0B69B',
-    [string]$BootSha = '63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71'
+    [string]$Bitstream = '3332D8D631A8DB5D8091972DFEE5565E',
+    [string]$BootSha = 'ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4'
 )
 $ErrorActionPreference = 'Continue'
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent

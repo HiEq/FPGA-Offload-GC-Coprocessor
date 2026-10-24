@@ -10,7 +10,9 @@ param(
     [Parameter(Mandatory=$true)][string]$Cmd,
     [string]$Until = 'DIAG_DONE',
     [int]$MaxMs = 600000,
-    [string]$BootLog = ''
+    [string]$BootLog = '',
+    [string]$Bitstream = '3332D8D631A8DB5D8091972DFEE5565E',
+    [string]$BootSha = 'ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -37,9 +39,9 @@ $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $runner `
 $sha = (& git -C $root rev-parse --short HEAD).Trim()
 $hdr = @(
     "# command: tools/debug/cold_cycle.ps1 -> $Name (first run after a reboot)",
-    '# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71',
+    "# bitstream: $Bitstream   boot.bin: sha256 $BootSha",
     "# commit: $sha   VERSION=0x00040200",
-    '# date: 2026-10-24',
+    ('# date: {0}' -f (Get-Date -Format 'yyyy-MM-dd')),
     ''
 )
 if (Test-Path $log) {

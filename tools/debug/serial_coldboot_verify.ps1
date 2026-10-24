@@ -23,14 +23,14 @@ Read-BoardSerial -Session $s -Ms 1000
 $s.Sp.Write("`r")
 Read-BoardSerial -Session $s -Ms 800
 
-if ($s.Sb.ToString() -notmatch 'root@linux') {
+if ($s.Sb.ToString() -notmatch 'root@[^\r\n]*[#$]') {
     'state: not logged in'
     if ($s.Sb.ToString() -notmatch 'login:') {
         [void](Read-BoardSerialUntil -Session $s -Pattern 'login:' -MaxMs 6000 -From $s.Sb.Length)
     }
     $from = $s.Sb.Length
     Write-BoardSerialLine -Session $s -Text 'root' -SettleMs 0
-    [void](Read-BoardSerialUntil -Session $s -Pattern 'root@linux' -MaxMs 15000 -From $from)
+    [void](Read-BoardSerialUntil -Session $s -Pattern 'root@[^\r\n]*[#$]' -MaxMs 15000 -From $from)
     Read-BoardSerial -Session $s -Ms 600
 } else {
     'state: already logged in'

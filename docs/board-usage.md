@@ -14,6 +14,23 @@
 
 上电：`linux login:` → `root`（空密码）→ 数据分区由 udev 挂在 `/run/media/USERDATA-mmcblk0p2`。
 
+### 没有读卡器时：镜像从板端更新
+
+主机不拔卡也能换 `BOOT.BIN` / `image.ub`（板子必须先启动并停在 root shell）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\serial_push_image.ps1 -Src artifacts\BOOT.BIN
+```
+
+流程：主机 gzip（18.6 MB → 2.3 MB）→ 分块以原生字节流入板端 `head -c`（每块 md5、失败重试）
+→ `gzip -dc` 落到 `/boot/BOOT.BIN.new` → sha256 与主机一致 → 旧镜像复制为 `/boot/BOOT.BIN.bak`
+→ 同分区原子改名。115200 下整份约 3.5 分钟。
+`-NoSwap` 只暂存不改名；`-Remote /boot/image.ub` 换目标文件。
+
+安全顺序：先 `tools/debug/verify_bootbin.py` 校验结构，再用 JTAG 烧同一份位流跑一遍回归，
+确认无误后才换名；换名后 `reboot`（FSBL 每次启动都会重新配置 PL）。
+`.bak` 只在有读卡器时才能用来回滚 —— 镜像坏到起不来时，板端没有第二条通路。
+
 ## Windows 侧快捷指令
 
 串口脚本自动识别 CH340；多根串口线时用 `-Port COMx` 指定。
@@ -23,7 +40,8 @@
 | 板子控制台 | 双击 `tools\fogccc.bat` | 开机日志 → 登录 shell，键盘直通板子；进入 shell 后自动用宿主时间发一次 `date -s` |
 | 看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
 | 运行 GC 基准 | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动登录 root（先试空密码，不行再试 `root`）、挂载 `/mnt/userdata`、跑 `run_gc.sh`；必须同时看到 `PASSED (all invariants): n/n` 和 `RUN_GC_RC=0` 才算 PASS（最长约 7 分钟）|
-| 大文件推送 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；115200 下 18 MB 约 35 分钟 |
+| 大文件推送（镜像）| `... tools\serial_push_image.ps1 -Src artifacts\BOOT.BIN` | 主机 gzip + 原生流式写 + 每块 md5 + 整份 sha256；旧镜像留 `.bak`，同分区原子改名；18.6 MB 约 3.5 分钟 |
+| 大文件推送（脚本）| `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关回显 + 按提示符同步 + 分块 + 每块 md5；逐行走 shell，约 2 KB/s，只适合小文件 |
 | 大文件续传 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每块落到卡上 `parts/`，记录进度；掉线/断电后重跑同一条命令从断点继续（43 MB 的 `image.ub` 用这条，约 90 分钟）|
 | 二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 用 `-Check` 防止二进制改了清单没更新 |
 | 刷新卡上副本 | `... tools\make_card.ps1` | 把 `tools/tests/`、`python/`、`csrc/` 里的脚本同步到 `artifacts/userdata/`（不动二进制）|
