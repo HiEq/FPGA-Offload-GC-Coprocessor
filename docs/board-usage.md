@@ -41,18 +41,28 @@
 
 ## 板上测试命令速查
 
-数据分区 p2 由 udev 挂到 `/run/media/USERDATA-mmcblk0p2`（stock `/etc/fstab` 没有 p2 条目）；
-`/mnt/userdata` 需自己挂（`sh /run/media/BOOT-mmcblk0p1/mount_data.sh`，一次挂上 p1+p2；
-主机脚本也会 `mkdir` + `mount`）。
-两条路径是同一个分区，下面命令里的 `<datadir>` 用实际挂载的那条：
+数据分区 p2 由 udev 挂到 `/run/media/USERDATA-mmcblk0p2`（stock `/etc/fstab` 没有 p2 条目）。
+下面的命令都先进入这个目录：
+
+```sh
+cd /run/media/USERDATA-mmcblk0p2
+```
+
+或用绝对路径直接调用，不需要 `cd`：
+
+```sh
+sh /run/media/USERDATA-mmcblk0p2/run_gc.sh 4096 8 2
+/run/media/USERDATA-mmcblk0p2/bin/test_main
+```
+
+`/mnt/userdata` 不是自动挂载点；要用它先执行
+`sh /run/media/BOOT-mmcblk0p1/mount_data.sh`（一次挂上 p1+p2）。
+需要让脚本自己判断挂载点时：
 
 ```sh
 # D = USERDATA 的挂载点；echo $D 为空就是没挂上
 D=$(for d in /run/media/USERDATA-mmcblk0p2 /mnt/userdata; do [ -d "$d/tests" ] && echo $d && break; done)
 ```
-
-> 报 `./bin/test_main: No such file or directory` 时，先 `echo $D`：为空就是 **挂载点选错**
-> （`/mnt/userdata` 存在但没挂 p2，是个空目录），不是二进制损坏。
 
 以下命令均需 root。
 
@@ -145,8 +155,10 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 
 ### 8. 常见问题
 
-- `./bin/test_main: No such file or directory` → `$D` 为空：p2 没挂到该路径，换
-  `/run/media/USERDATA-mmcblk0p2` 或先跑 `mount_data.sh`
+- `sh: run_gc.sh: No such file or directory` → 当前目录不是数据分区；先
+  `cd /run/media/USERDATA-mmcblk0p2`，或改用绝对路径
+- `./bin/test_main: No such file or directory` → 分区没挂到该路径（`/mnt/userdata` 是空目录）；
+  换 `/run/media/USERDATA-mmcblk0p2` 或先跑 `mount_data.sh`
 - `insmod: already loaded` → 先 `rmmod fogccc_irq`
 - 打不开 `/dev/mem` → 必须是 root
 - 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）
