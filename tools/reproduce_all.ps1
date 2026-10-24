@@ -40,10 +40,11 @@ Step 'sim: hand-over TBs' { & cmd /c (Join-Path $root 'sim\run_port_tb.bat') }
 
 Write-Host ''
 Write-Host 'Board steps (manual):'
-Write-Host '  sh /mnt/userdata/run_gc.sh 4096 8 2'
-Write-Host '  /mnt/userdata/bin/test_main'
-Write-Host '  sh /mnt/userdata/run_cmark.sh 4096 8 2'
-Write-Host '  D=/mnt/userdata sh /mnt/userdata/tests/irq_drv_test.sh   (PL must be freshly configured)'
+Write-Host '  D=$(for d in /run/media/USERDATA-mmcblk0p2 /mnt/userdata; do [ -d "$d/tests" ] && echo $d && break; done)'
+Write-Host '  sh $D/run_gc.sh 4096 8 2'
+Write-Host '  $D/bin/test_main'
+Write-Host '  sh $D/run_cmark.sh 4096 8 2'
+Write-Host '  D=$D sh $D/tests/irq_drv_test.sh   (PL must be freshly configured)'
 Write-Host ''
 if ($fail) { Write-Host 'RESULT: FAIL'; exit 1 }
 Write-Host 'RESULT: PASS (host-side checks only)'
