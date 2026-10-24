@@ -1,6 +1,6 @@
 # command: tools/debug/run_phase3_board.ps1 -> python3 -u tests/dirty_set_test.py
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: c2278fc   VERSION=0x00040200
+# commit: 0850b29   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && pyt
 thon3 -u tests/dirty_set_test.py
@@ -9,7 +9,7 @@ A0 no-barrier: done=True marked=0 drained=0 (expect 0/0)
 A dirty-run: occ=4 pushed=4 | marked=6 drained=4 popped=4 free=58 (expect pushed==occ in [3,6), drained==popped==pushed, marked=6 free=58)
 B keep+rescan: epoch_marked=1 cumulative=[0, 1, 2, 3, 10, 40, 41] (expect 1 / [0, 1, 2, 3, 10, 40, 41])
 C overflow: occupancy=256 ovf=1 pending=1 (expect 256/1/1)
-D real graph: e1=384 e2=4 drained=3 pushed=3 | marked=388 oracle=388 dirty=[5, 69, 133] targets=[384, 385, 386]
+D real graph: e1=384 e2=4 drained=4 pushed=4 | marked=388 oracle=388 dirty=[5, 69, 133] targets=[384, 385, 386]
 D-neg no-barrier: drained=0 pushed=0 targets_unmarked=[384, 385, 386] (must be non-empty)
 DIRTY_SET_RESULT OK
 DIAG_DONE

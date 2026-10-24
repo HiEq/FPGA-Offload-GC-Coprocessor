@@ -1,6 +1,6 @@
 # command: tools/debug/run_phase3_board.ps1 -> python3 -u tests/dirty_overflow_test.py
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: c2278fc   VERSION=0x00040200
+# commit: 0850b29   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && pyt
 thon3 -u tests/dirty_overflow_test.py

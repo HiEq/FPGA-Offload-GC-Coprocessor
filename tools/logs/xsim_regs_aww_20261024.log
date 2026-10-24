@@ -1,6 +1,6 @@
 # command: sim\run_regs_aww_tb.bat
 # bitstream: n/a (simulation)
-# commit: c2278fc   VERSION=0x00040200
+# commit: 0850b29   VERSION=0x00040200
 # date: 2026-10-24
 
 === xvlog ===
@@ -29,7 +29,7 @@ Built simulation snapshot regs_aww_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 15:50:02 2026
+  **** Start of session at: Sat Oct 24 16:50:49 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -53,6 +53,6 @@ run -all
 [AW-W] ==================== PASS ====================
 $finish called at time : 500 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_regs_aww.v" Line 300
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 15:50:04 2026...
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:50:51 2026...
 === REGS AWW TB DONE ===
 cache dir: Cache\regs_aww_tb

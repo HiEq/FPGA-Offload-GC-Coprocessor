@@ -1,27 +1,27 @@
 # command: tools/debug/run_board_suite.ps1 -> abort_test
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: c2278fc   VERSION=0x00040200
+# commit: 0850b29   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/abort_test.py; printf 'D''IAG_DONE\n'
 ====================================================================================
  FOGCCC  CTRL[3] abort  --  board-level test
-   N=4096  avg_refs=2  seed=181180813
+   N=4096  avg_refs=2  seed=183447391
    regs @ 0x43C00000  graph @ 0x1E000000
    MAGIC = 0x47434343   VERSION = 0x00040200
 ====================================================================================
 @@TASK 15 T1 baseline full run
    graph: N=4096 L=3072  SW BFS=3072
-   T1: done=True marked=3072 cycles=52144 status=0x0 wall=0.52 ms
+   T1: done=True marked=3072 cycles=52345 status=0x0 wall=0.53 ms
    T1: bitmap readback mismatches = 0
 @@TASK 30 T2 control (no abort)
    T2: DONE=True marked=3072 status=0x0  (expect DONE=1, marked=3072)
 @@TASK 45 T3 abort mid-run
    T3: already DONE before the abort = False (N must be large enough)
    T3: STATUS before abort = 0x0, right after = 0x0
-   T3: DONE after abort = False (2494 reads in 30.3 ms)
-   T3: STATUS=0x0  MARKED=3072 CYCLES=52195 (stale by design: latched at DONE)
+   T3: DONE after abort = False (2618 reads in 30.3 ms)
+   T3: STATUS=0x0  MARKED=3072 CYCLES=52211 (stale by design: latched at DONE)
 @@TASK 60 T4 recovery run after abort
-   T4: done=True marked=3072 cycles=51836 status=0x0 (expect marked=3072, status=0)
+   T4: done=True marked=3072 cycles=51908 status=0x0 (expect marked=3072, status=0)
 @@TASK 70 T4 bitmap readback
    T4: bitmap readback mismatches = 0 (partial bitmap from T3 must be gone)
 @@TASK 80 T5 abort, then a different graph
@@ -31,7 +31,7 @@ cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/abort_test.py; printf 'D'
 @@TASK 96 summarising
 
 ====================================================================================
- SUMMARY   abort test (N=4096 then 2048, seed=181180813)
+ SUMMARY   abort test (N=4096 then 2048, seed=183447391)
 ====================================================================================
    RESULT: PASS  (T1 baseline, T2 control, T3 abort, T4 recovery, T5 new graph)
 DIAG_DONE

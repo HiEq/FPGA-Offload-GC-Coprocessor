@@ -1,6 +1,6 @@
 # command: powershell -File tools/reproduce_all.ps1   (VIVADO_BIN set in the environment)
 # bitstream: n/a (host-side: manifest + test-serial-session.ps1 + tb_gc_top/tb_axi_read/tb_runstart_race/tb_cmdfifo_flush/tb_regs_aww + tb_flush_data/tb_stale_ar_flush/tb_start_while_busy)
-# commit: b7a705c   VERSION=0x00040200
+# commit: 0850b29   VERSION=0x00040200
 # date: 2026-10-24
 === binary manifest ===
 SHA256SUMS matches the tree
@@ -63,7 +63,7 @@ Built simulation snapshot tb_sim
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 15:22:49 2026
+  **** Start of session at: Sat Oct 24 16:51:08 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -419,9 +419,9 @@ run -all
 [TB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align, VALID stable)
 
 [TB] ==================== PASS ====================
-$finish called at time : 4191330 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_gc_top.v" Line 1854
+$finish called at time : 4191330 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_gc_top.v" Line 1853
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 15:22:52 2026...
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:51:12 2026...
 === SIM DONE ===
 cache dir: Cache\sim
 === sim: tb_axi_read ===
@@ -454,7 +454,7 @@ Built simulation snapshot axi_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 15:22:56 2026
+  **** Start of session at: Sat Oct 24 16:51:17 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -467,7 +467,7 @@ run -all
 [AXITB] ==================== PASS ====================
 $finish called at time : 2110 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_axi_read.v" Line 187
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 15:22:58 2026...
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:51:19 2026...
 === AXI TB DONE ===
 cache dir: Cache\axi_tb
 === sim: tb_runstart_race ===
@@ -500,7 +500,7 @@ Built simulation snapshot race_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 15:23:02 2026
+  **** Start of session at: Sat Oct 24 16:51:24 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -515,7 +515,7 @@ run -all
 [RACE] ==================== PASS ====================
 $finish called at time : 810 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_runstart_race.v" Line 269
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 15:23:04 2026...
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:51:26 2026...
 === RACE TB DONE ===
 cache dir: Cache\race_tb
 === sim: tb_cmdfifo_flush ===
@@ -545,7 +545,7 @@ Built simulation snapshot cmdfifo_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 15:23:07 2026
+  **** Start of session at: Sat Oct 24 16:51:30 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -560,7 +560,7 @@ run -all
 [CMDFIFO] ==================== PASS ====================
 $finish called at time : 850 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_cmdfifo_flush.v" Line 168
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 15:23:08 2026...
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:51:32 2026...
 === CMDFIFO TB DONE ===
 cache dir: Cache\cmdfifo_tb
 === sim: tb_regs_aww ===
@@ -590,7 +590,7 @@ Built simulation snapshot regs_aww_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 15:23:12 2026
+  **** Start of session at: Sat Oct 24 16:51:37 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -614,7 +614,7 @@ run -all
 [AW-W] ==================== PASS ====================
 $finish called at time : 500 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_regs_aww.v" Line 300
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 15:23:14 2026...
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:51:39 2026...
 === REGS AWW TB DONE ===
 cache dir: Cache\regs_aww_tb
 === sim: hand-over TBs ===

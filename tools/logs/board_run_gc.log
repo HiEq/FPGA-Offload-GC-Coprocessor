@@ -1,38 +1,38 @@
 # command: tools/debug/run_board_suite.ps1 -> run_gc
 # bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: c2278fc   VERSION=0x00040200
+# commit: 0850b29   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && sh  run_gc.sh 4096 8 2; printf 'D''IAG_DONE\n'
 ==========================================================
  FOGCCC on-board test
    script : /run/media/USERDATA-mmcblk0p2/gc_test.py
    params : maxN=4096  trials=8  avg_refs=2
-   log    : /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_124710.log
+   log    : /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_132458.log
 ==========================================================
 ====================================================================================
  FOGCCC  FPGA mark  --  strict reliability + performance sweep
    maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
-   seed=181208208   (replay exactly: --seed 181208208)
+   seed=183475769   (replay exactly: --seed 183475769)
    expected count is KNOWN A PRIORI = L (live region), garbage must be 0
    regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
    MAGIC = 0x47434343   VERSION = 0x00040200
 ====================================================================================
-@@TASK 5 trial 1/8  N=1220  (expect 915)
-  [ 1/ 8] N=1220 exp= 915 | HW    175.07 us (17507 cyc) | free  305 | SW    42.08 ms |  240.4x | build   95.0 ms | OK
-@@TASK 15 trial 2/8  N=592  (expect 444)
-  [ 2/ 8] N= 592 exp= 444 | HW    106.97 us (10697 cyc) | free  148 | SW    20.15 ms |  188.4x | build   47.5 ms | OK
-@@TASK 26 trial 3/8  N=2244  (expect 1683)
-  [ 3/ 8] N=2244 exp=1683 | HW    298.89 us (29889 cyc) | free  561 | SW    78.11 ms |  261.3x | build  176.6 ms | OK
-@@TASK 36 trial 4/8  N=1573  (expect 1179)
-  [ 4/ 8] N=1573 exp=1179 | HW    222.24 us (22224 cyc) | free  394 | SW    55.00 ms |  247.5x | build  139.2 ms | OK
-@@TASK 47 trial 5/8  N=1504  (expect 1128)
-  [ 5/ 8] N=1504 exp=1128 | HW    211.76 us (21176 cyc) | free  376 | SW    52.28 ms |  246.9x | build  120.4 ms | OK
-@@TASK 58 trial 6/8  N=1870  (expect 1402)
-  [ 6/ 8] N=1870 exp=1402 | HW    262.48 us (26248 cyc) | free  468 | SW    65.78 ms |  250.6x | build  149.9 ms | OK
-@@TASK 68 trial 7/8  N=2078  (expect 1558)
-  [ 7/ 8] N=2078 exp=1558 | HW    282.02 us (28202 cyc) | free  520 | SW    73.34 ms |  260.1x | build  168.7 ms | OK
-@@TASK 79 trial 8/8  N=3343  (expect 2507)
-  [ 8/ 8] N=3343 exp=2507 | HW    427.83 us (42783 cyc) | free  836 | SW   117.32 ms |  274.2x | build  267.3 ms | OK
+@@TASK 5 trial 1/8  N=3625  (expect 2718)
+  [ 1/ 8] N=3625 exp=2718 | HW    463.42 us (46342 cyc) | free  907 | SW   127.43 ms |  275.0x | build  286.7 ms | OK
+@@TASK 15 trial 2/8  N=3465  (expect 2598)
+  [ 2/ 8] N=3465 exp=2598 | HW    442.79 us (44279 cyc) | free  867 | SW   122.92 ms |  277.6x | build  293.1 ms | OK
+@@TASK 26 trial 3/8  N=926  (expect 694)
+  [ 3/ 8] N= 926 exp= 694 | HW    142.56 us (14256 cyc) | free  232 | SW    32.65 ms |  229.0x | build   78.7 ms | OK
+@@TASK 36 trial 4/8  N=2259  (expect 1694)
+  [ 4/ 8] N=2259 exp=1694 | HW    300.88 us (30088 cyc) | free  565 | SW    79.03 ms |  262.7x | build  178.3 ms | OK
+@@TASK 47 trial 5/8  N=2627  (expect 1970)
+  [ 5/ 8] N=2627 exp=1970 | HW    342.18 us (34218 cyc) | free  657 | SW    91.57 ms |  267.6x | build  207.5 ms | OK
+@@TASK 58 trial 6/8  N=1186  (expect 889)
+  [ 6/ 8] N=1186 exp= 889 | HW    172.65 us (17265 cyc) | free  297 | SW    41.78 ms |  242.0x | build  100.7 ms | OK
+@@TASK 68 trial 7/8  N=2827  (expect 2120)
+  [ 7/ 8] N=2827 exp=2120 | HW    368.45 us (36845 cyc) | free  707 | SW    99.75 ms |  270.7x | build  226.2 ms | OK
+@@TASK 79 trial 8/8  N=1146  (expect 859)
+  [ 8/ 8] N=1146 exp= 859 | HW    167.12 us (16712 cyc) | free  287 | SW    40.60 ms |  243.0x | build   94.5 ms | OK
 @@TASK 96 summarising
 
 ====================================================================================
@@ -40,24 +40,24 @@ cd /run/media/USERDATA-mmcblk0p2 && sh  run_gc.sh 4096 8 2; printf 'D''IAG_DONE
 ====================================================================================
  trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
  --------------------------------------------------------------------------------------------
-     1   1220    915    305        17507     175.07     42.08   240.4x    915    915  OK
-     2    592    444    148        10697     106.97     20.15   188.4x    444    444  OK
-     3   2244   1683    561        29889     298.89     78.11   261.3x   1683   1683  OK
-     4   1573   1179    394        22224     222.24     55.00   247.5x   1179   1179  OK
-     5   1504   1128    376        21176     211.76     52.28   246.9x   1128   1128  OK
-     6   1870   1402    468        26248     262.48     65.78   250.6x   1402   1402  OK
-     7   2078   1558    520        28202     282.02     73.34   260.1x   1558   1558  OK
-     8   3343   2507    836        42783     427.83    117.32   274.2x   2507   2507  OK
+     1   3625   2718    907        46342     463.42    127.43   275.0x   2718   2718  OK
+     2   3465   2598    867        44279     442.79    122.92   277.6x   2598   2598  OK
+     3    926    694    232        14256     142.56     32.65   229.0x    694    694  OK
+     4   2259   1694    565        30088     300.88     79.03   262.7x   1694   1694  OK
+     5   2627   1970    657        34218     342.18     91.57   267.6x   1970   1970  OK
+     6   1186    889    297        17265     172.65     41.78   242.0x    889    889  OK
+     7   2827   2120    707        36845     368.45     99.75   270.7x   2120   2120  OK
+     8   1146    859    287        16712     167.12     40.60   243.0x    859    859  OK
  --------------------------------------------------------------------------------------------
   trials                : 8
   skipped (graph too big): 0
-  seed                  : 181208208   (replay: --seed 181208208)
+  seed                  : 183475769   (replay: --seed 183475769)
   PASSED (all invariants): 8/8
-  total HW cycles        : 198726  (= 1987.26 us @100MHz)
-  end-to-end note        : graph build+write (Python) 145.6 ms avg vs HW 0.248 ms avg
-  total SW (Python)      : 504.06 ms
-  speedup min/avg/max    : 188.4x / 246.2x / 274.2x
-  N range                : 592 .. 3343
+  total HW cycles        : 240005  (= 2400.05 us @100MHz)
+  end-to-end note        : graph build+write (Python) 183.2 ms avg vs HW 0.300 ms avg
+  total SW (Python)      : 635.73 ms
+  speedup min/avg/max    : 229.0x / 258.4x / 277.6x
+  N range                : 926 .. 3625
 
   NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
         correctness oracle + rough CPU cost bound, NOT an optimised
@@ -67,7 +67,7 @@ cd /run/media/USERDATA-mmcblk0p2 && sh  run_gc.sh 4096 8 2; printf 'D''IAG_DONE
 @@TASK 100 done
 
 ==========================================================
- done.  log saved on the card: /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_124710.log
+ done.  log saved on the card: /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_132458.log
  exit code: 0
 ==========================================================
 DIAG_DONE

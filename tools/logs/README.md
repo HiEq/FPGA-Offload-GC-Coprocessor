@@ -21,7 +21,7 @@
 二进制本身的哈希见 `artifacts/SHA256SUMS`（随卡二进制）与 `artifacts/SHA256SUMS.release`（Release 资产）。
 
 **当前证据集**（位流 md5 `05AA145DE4DEBAAC4D0B9B918C4FB0C5` / BOOT sha256 `4786ce62…` / `VERSION=0x0004_0200`；
-> 四条历史负控（`board_phase3_dirty_set_base_neg_*` / `_boot_neg_*` / `board_regs_aww_verified` / `board_regs_aww_probe_forge_*`）与 `xsim_regs_aww_*` 仍属各自测过的那一版，文件头没改；
+> 四条历史负控（`board_phase3_dirty_set_base_neg_*` / `_boot_neg_*` / `board_regs_aww_verified` / `board_regs_aww_probe_forge_*`）与 `xsim_*_20261022/23` 属各自测过的那一版，文件头保留原样；
 > 2026-10-23：卡上已写入该镜像（回读 sha256 一致）并完成一次上电复测；下面这些日志已按新位流重写。
 
 | 文件 | 命令 | 结论 | 谁引用 |
