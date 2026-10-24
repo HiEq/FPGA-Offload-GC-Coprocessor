@@ -47,6 +47,7 @@
 两条路径是同一个分区，下面命令里的 `<datadir>` 用实际挂载的那条：
 
 ```sh
+# D = USERDATA 的挂载点；echo $D 为空就是没挂上
 D=$(for d in /run/media/USERDATA-mmcblk0p2 /mnt/userdata; do [ -d "$d/tests" ] && echo $d && break; done)
 ```
 
