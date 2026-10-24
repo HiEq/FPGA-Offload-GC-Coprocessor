@@ -34,6 +34,8 @@ Step 'sim: tb_runstart_race' { & cmd /c (Join-Path $root 'sim\run_race_tb.bat') 
 
 Step 'sim: tb_cmdfifo_flush' { & cmd /c (Join-Path $root 'sim\run_cmdfifo_tb.bat') }
 
+Step 'sim: tb_regs_aww' { & cmd /c (Join-Path $root 'sim\run_regs_aww_tb.bat') }
+
 Write-Host ''
 Write-Host 'Board steps (manual):'
 Write-Host '  sh /mnt/userdata/run_gc.sh 4096 8 2'

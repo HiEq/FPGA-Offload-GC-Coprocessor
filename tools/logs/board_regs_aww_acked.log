@@ -1,0 +1,31 @@
+# command: cd <datadir> && python3 -u tests/regs_aww_board_test.py --acked
+# test: tools/tests/regs_aww_board_test.py md5 cb82de36be7d8f6a2e1af5fd69b2fe16
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-24
+# note: F2 of AGENTS #20 -- cold round with the id-level ack (first push sequence after a
+# note: reboot): the record that would have been lost is detected by the tag+id read-back
+# note: and retried away, so the round loses nothing.  Warm rounds lose nothing either.
+
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py --acked
+mode: acked push (tag+id read-back + retry, AGENTS #20)
+round 0  k=3  gap=True  occ=5 pushed=5 tag=3 | marked=4 drained=5 popped=5 | loss=[] forged=[0] | retries=1 giveups=0
+round 1  k=3  gap=False occ=4 pushed=4 tag=6 | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=1 giveups=0
+round 2  k=3  gap=False occ=4 pushed=4 tag=9 | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=1 giveups=0
+round 3  k=3  gap=False occ=4 pushed=4 tag=C | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=1 giveups=0
+round 4  k=3  gap=False occ=4 pushed=4 tag=F | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=1 giveups=0
+round 5  k=3  gap=False occ=4 pushed=4 tag=3 | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=2 giveups=0
+round 6  k=3  gap=False occ=4 pushed=4 tag=6 | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=2 giveups=0
+round 7  k=3  gap=False occ=4 pushed=4 tag=9 | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=2 giveups=0
+round 8  k=3  gap=False occ=4 pushed=4 tag=C | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=2 giveups=0
+round 9  k=3  gap=False occ=4 pushed=4 tag=F | marked=4 drained=4 popped=4 | loss=[] forged=[0] | retries=2 giveups=0
+round 10 k=16 gap=False occ=17 pushed=17 tag=0 | marked=17 drained=17 popped=17 | loss=[] forged=[0] | retries=3 giveups=0
+round 11 k=16 gap=False occ=16 pushed=16 tag=0 | marked=16 drained=16 popped=16 | loss=[] forged=[] | retries=3 giveups=0
+round 12 k=16 gap=False occ=16 pushed=16 tag=0 | marked=16 drained=16 popped=16 | loss=[] forged=[] | retries=3 giveups=0
+round 13 k=16 gap=False occ=16 pushed=16 tag=0 | marked=16 drained=16 popped=16 | loss=[] forged=[] | retries=3 giveups=0
+round 14 k=16 gap=False occ=16 pushed=16 tag=0 | marked=16 drained=16 popped=16 | loss=[] forged=[] | retries=3 giveups=0
+cold round (first push sequence after the boot): loss=[] forged=[0]
+warm rounds: loss in 0/14, extra marks in 10/14 (the safe direction)
+REGS_AWW_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

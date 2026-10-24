@@ -1,0 +1,32 @@
+# command: cd /run/media/USERDATA-mmcblk0p2 && D=/run/media/USERDATA-mmcblk0p2 sh tests/irq_drv_test.sh   (right after a reboot: PL freshly configured, done=0)
+# bitstream: md5 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: sha256 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2; D=/run/media/USERDATA-mmcblk0p2 ssh tests/irq_drv_test.sh
+== insmod /run/media/USERDATA-mmcblk0p2/ko/fogccc-irq.ko ==
+fogccc_irq: loading out-of-tree module taints kernel.
+fogccc: domain ':axi:interrupt-controller@f8f01000' map=no alloc=yes
+fogccc: virq 44 chip=0xc0821598 hwirq=61
+fogccc: using virq 44 (hwirq 61)
+fogccc: ready, /dev/fogccc_irq (virq 44, hwirq 61)
+fogccc: virq 44 chip=0xc0821598 hwirq=61
+fogccc: using virq 44 (hwirq 61)
+fogccc: ready, /dev/fogccc_irq (virq 44, hwirq 61)
+== state before arm: 0 0 44 ==
+== state after arm (done is still 0, so no IRQ expected): 0 1 44 ==
+== run one GC test (done 0 -> 1) ==
+   seed=11   (replay exactly: --seed 11)
+fogccc: irq fired (#1), line disabled
+  [ 1/ 1] N= 591 exp= 443 | HW    106.45 us (10645 cyc) | free  148 | SW    19.89 ms |  186.9x | build   45.1 ms | OK
+  PASSED (all invariants): 1/1
+== state after run: 1 0 44 ==
+fogccc: using virq 44 (hwirq 61)
+fogccc: ready, /dev/fogccc_irq (virq 44, hwirq 61)
+fogccc: irq fired (#1), line disabled
+VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1 44' after='1 0 44')
+== rmmod ==
+fogccc: unloaded after 1 interrupts
+fogccc: irq fired (#1), line disabled
+fogccc: unloaded after 1 interrupts
+root@linux:/run/media/USERDATA-mmcblk0p2# 

@@ -13,6 +13,7 @@
 //   gc_bitmap      标记位图 (简单双口BRAM, 读/写地址独立)
 //   gc_queue       BFS队列 (双口BRAM)
 //   gc_axi_read    AXI HP读命令队列主控 (多笔未完成读)
+//   gc_freelist    未标记对象 free-list 扫描 (Phase 2)
 //   root_mem[]     根集存储 (分布式RAM)
 module gc_top (
     input  wire        S_AXI_ACLK,
@@ -183,6 +184,31 @@ module gc_top (
     wire        w_bm_we;
     wire        w_engine_idle;
 
+    // Phase 2 free-list
+    wire [11:0] w_free_bm_raddr;
+    wire [31:0] w_free_count;
+    wire [11:0] w_free_data;
+    wire        w_free_pop;
+    wire        w_free_busy;
+
+    // Phase 3A dirty set
+    wire        w_dirty_push, w_dirty_flush, w_bm_keep;
+    wire [11:0] w_dirty_push_id, w_dirty_id;
+    wire [8:0]  w_dirty_count;
+    wire        w_dirty_empty, w_dirty_full, w_dirty_ovf, w_dirty_pop;
+    wire [31:0] w_dirty_drained;
+    wire [15:0] w_dirty_pushed, w_dirty_popped;
+
+    // Spill protection (this board redelivers stores, and the copies are not always
+    // adjacent): a CLEAR_Q that arrives while the engine is mid-run must not clear
+    // the BFS queue (sim T-CTRL-SPILL / T-CTRL-RESTART fail on the ungated build),
+    // so the software clear only counts while the engine is idle; the engine clears
+    // the queue itself when it accepts a START, which also keeps q_tail == marked
+    // when a spilled START triggers a redundant re-run.
+    wire        w_clear_q_eff;
+    wire        w_dirty_flush_eff;
+    wire        w_engine_q_clear;
+
     wire [31:0] w_rd_cmd_addr;
     wire        w_rd_cmd_valid, w_rd_cmd_ready;
     wire [31:0] w_rd_data;
@@ -192,7 +218,8 @@ module gc_top (
     wire _unused = &{1'b0,
                      S_AXI_WSTRB,                          // AXI-Lite字节选通(不用)
                      S_AXI_HP_AWREADY, S_AXI_HP_WREADY,    // 写通道桩(从不写)
-                      S_AXI_HP_BRESP, S_AXI_HP_BVALID};     // write response (never used)
+                      S_AXI_HP_BRESP, S_AXI_HP_BVALID,      // write response (never used)
+                      w_dirty_full};                        // Phase 3A: 只读状态位
 
     gc_regs u_regs (
         .ACLK              (S_AXI_ACLK),
@@ -234,7 +261,21 @@ module gc_top (
         .root_wr_data      (root_wr_data),
         .root_we           (root_we),
         .reg_bm_addr       (w_regs_bm_addr),
-        .reg_bm_data       (w_bm_probe_r)
+        .reg_bm_data       (w_bm_probe_r),
+        .reg_free_count    (w_free_count),
+        .reg_free_data     (w_free_data),
+        .reg_free_busy     (w_free_busy),
+        .reg_free_pop      (w_free_pop),
+        .reg_dirty_push    (w_dirty_push),
+        .reg_dirty_push_id (w_dirty_push_id),
+        .reg_dirty_flush   (w_dirty_flush),
+        .reg_bm_keep       (w_bm_keep),
+        .dirty_count       (w_dirty_count),
+        .dirty_empty       (w_dirty_empty),
+        .dirty_ovf         (w_dirty_ovf),
+        .dirty_drained     (w_dirty_drained),
+        .dirty_pushed      (w_dirty_pushed),
+        .dirty_popped      (w_dirty_popped)
     );
 
     wire [31:0] w_hdr_cmd_addr;
@@ -286,7 +327,13 @@ module gc_top (
         .err_ovf        (w_err_ovf),
         .err_ref        (w_err_ref),
         .err_hdr        (w_err_hdr),
-        .engine_idle    (w_engine_idle)
+        .engine_idle    (w_engine_idle),
+        .q_clear        (w_engine_q_clear),
+        .dirty_empty    (w_dirty_empty),
+        .dirty_id       (w_dirty_id),
+        .bm_keep        (w_bm_keep),
+        .dirty_pop      (w_dirty_pop),
+        .dirty_drained  (w_dirty_drained)
     );
 
     gc_bitmap u_bitmap (
@@ -298,14 +345,69 @@ module gc_top (
         .dout  (w_bm_rdata)
     );
 
-    assign w_bm_raddr_eff = w_engine_idle ? w_regs_bm_addr : w_bm_raddr_eng;
+    assign w_bm_raddr_eff = w_free_busy ? w_free_bm_raddr :
+                            (w_engine_idle ? w_regs_bm_addr : w_bm_raddr_eng);
 
     always @(posedge S_AXI_ACLK) w_bm_probe_r <= w_bm_rdata;
+
+    assign w_clear_q_eff = w_clear_q & w_engine_idle;
+
+    // Phase 3A follow-up (2026-10-23): arm-and-consume DIRTY_FLUSH.
+    // This platform redelivers every AXI-Lite store and the copies are not always
+    // adjacent, so a full-mark's DIRTY_FLUSH can arrive again much later - even while
+    // the engine is idle, after the mutator has already pushed records for the next
+    // epoch.  The write therefore only ARMS the flush; it is applied at the next
+    // accepted START with BM_KEEP=0 (a full mark, which wants the FIFO cleared anyway)
+    // and DISCARDED by an incremental (BM_KEEP=1) start.  No interleaving of
+    // redeliveries can silently drop a pending barrier record that way.  A flush bit
+    // in the same write as START also counts, so a combined CTRL write behaves like
+    // the driver's two-write sequence.
+    // Evidence: sim T-DIRTY-FLUSHIDLE / T-DIRTY-FLUSHSPILL.
+    reg  flush_armed;
+    always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
+        if (!S_AXI_ARESETN)                flush_armed <= 1'b0;
+        else if (w_start && w_engine_idle) flush_armed <= w_dirty_flush;
+        else if (w_dirty_flush)            flush_armed <= 1'b1;
+    end
+
+    assign w_dirty_flush_eff = (flush_armed | w_dirty_flush) & w_start & ~w_bm_keep & w_engine_idle;
+
+    gc_freelist u_freelist (
+        .clk        (S_AXI_ACLK),
+        .rst_n      (S_AXI_ARESETN),
+        .start      (w_start),
+        .done       (w_done),
+        .obj_count  (w_obj_count),
+        .bm_raddr   (w_free_bm_raddr),
+        .bm_rdata   (w_bm_rdata),
+        .free_count (w_free_count),
+        .free_data  (w_free_data),
+        .pop        (w_free_pop),
+        .busy       (w_free_busy)
+    );
+
+    gc_dirty_fifo u_dirty (
+        .clk      (S_AXI_ACLK),
+        .rst_n    (S_AXI_ARESETN),
+        .push     (w_dirty_push),
+        .push_id  (w_dirty_push_id),
+        .flush    (w_dirty_flush_eff),
+        .pop      (w_dirty_pop),
+        .id       (w_dirty_id),
+        .count    (w_dirty_count),
+        .pushed   (w_dirty_pushed),
+        .popped   (w_dirty_popped),
+        .empty    (w_dirty_empty),
+        .full     (w_dirty_full),
+        .overflow (w_dirty_ovf)
+    );
 
     gc_queue u_queue (
         .clk    (S_AXI_ACLK),
         .rst_n  (S_AXI_ARESETN),
-        .clear  (w_clear_q | w_abort),   // abort must drop the aborted run's work queue
+        .clear  (w_clear_q_eff | w_abort | w_engine_q_clear),   // abort always clears; a
+                                                        // spilled CLEAR_Q does not
+                                                        // touch a running epoch
         .waddr  (w_q_push_addr),
         .wdata  (w_q_push_data),
         .we     (w_q_push),
@@ -337,10 +439,7 @@ module gc_top (
         .data1_valid (w_hdr_data_valid),
         .data1_ready (w_hdr_data_ready),
 
-        // gc_mark_engine only accepts START in S_IDLE. Gate the read-engine
-        // flush with the same condition, so a duplicate START while the engine
-        // is busy is ignored instead of dropping its in-flight reads.
-        .run_start   (w_start && w_engine_idle),
+        .run_start   (w_start),
         .abort       (w_abort),     // drop the abandoned run's in-flight reads too
         .err         (w_rd_err),
 

@@ -55,10 +55,6 @@ test: $(TEST_BIN)
 python: $(SO_LIB)
 	sudo python3 python/fogccc.py
 
-# 运行Python基准
-bench:
-	python3 python/benchmark.py
-
 # 清理
 clean:
 	rm -f $(TEST_BIN) $(SO_LIB) python/libfogccc.so
@@ -72,23 +68,15 @@ help:
 	@echo "  make test     编译并运行测试 (需要root)"
 	@echo "  make lib      只编译Python共享库"
 	@echo "  make python   编译共享库并运行Python测试"
-	@echo "  make bench    运行Python GC基准"
 	@echo "  make clean    清理构建文件"
 	@echo ""
 	@echo "交叉编译: make CROSS=arm-linux-gnueabihf-"
 
-# 刷新卡目录：软件改过之后必须同步，否则卡上还是旧二进制
+# 刷新卡目录：脚本副本走 make_card.ps1（AGENTS §10：一个文件一个家），二进制由本目标拷贝
 card: all
 	@mkdir -p artifacts/userdata/py artifacts/userdata/bin
-	@cp -f csrc/libfogccc.so artifacts/userdata/py/libfogccc.so
+	@powershell -NoProfile -ExecutionPolicy Bypass -File tools/make_card.ps1
 	@cp -f test_main artifacts/userdata/bin/test_main
-	@cp -f tools/tests/gc_test.py      artifacts/userdata/gc_test.py
-	@cp -f tools/tests/irq_drv_test.sh artifacts/userdata/tests/irq_drv_test.sh
-	@cp -f tools/tests/abort_test.py   artifacts/userdata/tests/abort_test.py
-	@cp -f tools/tests/done_race_test.py artifacts/userdata/tests/done_race_test.py
-	@cp -f tools/tests/abort_sweep.py  artifacts/userdata/tests/abort_sweep.py
-	@cp -f python/gc_probe.py          artifacts/userdata/tests/gc_probe.py
-	@cp -f csrc/py_bfs.py              artifacts/userdata/tests/py_bfs.py
-	@cp -f python/fogccc.py            artifacts/userdata/py/fogccc.py
-	@cp -f driver/fogccc_irq.c         driver/plnx/fogccc-irq/files/fogccc-irq.c
-	@echo "card dir refreshed: artifacts/userdata/py/libfogccc.so + bin/test_main"
+	@cp -f csrc/libfogccc.so artifacts/userdata/py/libfogccc.so
+	@cp -f driver/fogccc_irq.c driver/plnx/fogccc-irq/files/fogccc-irq.c
+	@echo "card dir refreshed: scripts via make_card.ps1 + bin/test_main + py/libfogccc.so"

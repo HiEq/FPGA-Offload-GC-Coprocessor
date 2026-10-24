@@ -8,7 +8,7 @@
 //
 // 编译: 用 PetaLinux SDK 交叉编译 (板上没有 gcc)
 //       $CC -O2 -o test_main fpga_gc.c test_main.c
-// 运行: sudo ./test_main  [gc_probe.py 路径]
+// 运行: sudo ./test_main
 // ============================================================
 #include "fpga_gc.h"
 #include <stdio.h>
@@ -24,49 +24,30 @@ static double elapsed_us(struct timespec *t0, struct timespec *t1) {
 }
 
 // ============================================================
-// Test 1: 正确性 + 性能 (FPGA vs C vs CPython)
+// Test 1: 正确性 + 性能 (FPGA vs C)
 //
-//   FPGA   : CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
-//   C      : fpga_gc_sw_mark() 的 C BFS (也是 marked 的独立 oracle)
-//   CPython: tests/gc_probe.py 起一个独立进程, 在同样的对象数下跑 gc.collect()
-//            (含 mark+sweep, 是整个解释器堆的完整回收 -> 只能当上界)
+//   FPGA: CYCLES 寄存器 / 100 MHz, 不含驱动与睡眠开销
+//   C   : fpga_gc_sw_mark() 的 C BFS (也是 marked 的独立 oracle)
+//
+// 只跟同阶段、同访问模式的 C 实现对比 (README「测量口径」)。
 // ============================================================
-#define GC_PROBE_DEFAULT  "/run/media/USERDATA-mmcblk0p2/tests/gc_probe.py"
-#define GC_PROBE_FALLBACK "/mnt/userdata/tests/gc_probe.py"
-#define GRAPH_AVG_REFS    3     /* same out-degree for the HW graph and the CPython probe */
+#define GRAPH_AVG_REFS    3
 
-// 让 CPython 在同一对象数、同样 out-degree 下做一次完整回收, 返回毫秒 (失败返回 -1)
-static double cpython_gc_ms(const char *probe, int n, int fanout, uint32_t *freed_out) {
-    char cmd[512];
-    if (freed_out) *freed_out = 0;
-    snprintf(cmd, sizeof cmd, "python3 '%s' %d %d 2>/dev/null", probe, n, fanout);
-    FILE *p = popen(cmd, "r");
-    if (!p) return -1.0;
-    double ms = -1.0;
-    unsigned freed = 0;
-    if (fscanf(p, "%lf %u", &ms, &freed) != 2) ms = -1.0;
-    pclose(p);
-    if (freed_out) *freed_out = freed;
-    return ms;
-}
-
-static int test_correctness(fpga_gc_t *dev, const char *py_path) {
+static int test_correctness(fpga_gc_t *dev) {
     printf("\n");
     printf("=============================================================\n");
-    printf("  Test 1: correctness + speed (FPGA vs C vs CPython)\n");
+    printf("  Test 1: correctness + speed (FPGA vs C)\n");
     printf("=============================================================\n");
-    printf("%-8s %-8s %-11s %-11s %-13s %-8s %-9s\n",
-           "Objects", "marked", "FPGA us", "C us", "CPython ms",
-           "vs C", "vs CPython");
-    printf("-------- -------- ----------- ----------- ------------- "
-           "-------- ---------\n");
+    printf("%-8s %-8s %-11s %-11s %-8s\n",
+           "Objects", "marked", "FPGA us", "C us", "vs C");
+    printf("-------- -------- ----------- ----------- --------\n");
 
     int sizes[] = {10, 50, 100, 500, 1000, 2000, 4000};
     int n_sizes = (int)(sizeof(sizes) / sizeof(sizes[0]));
     int all_pass = 1;
     int rows = 0;
 
-    double best_hw_us = 0, best_py_ms = 0, best_py_x = 0;
+    double best_hw_us = 0;
     int    best_n = 0, best_marked = 0;
 
     for (int s = 0; s < n_sizes; s++) {
@@ -95,32 +76,14 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         uint32_t fpga_count = fpga_gc_mark(dev, &cycles);
         double hw_us = cycles * 0.01;          // 100 MHz -> 10 ns/cycle
 
-        // ---- CPython 参照: 同对象数下一次完整的 gc.collect() ----
-        // 它的返回值是"回收了多少不可达对象", 和硬件的 marked 不是一回事,
-        // 只取时间; marked 的正确性由 C BFS (sw_count) 做独立 oracle.
-        uint32_t py_freed = 0;
-        double py_ms = cpython_gc_ms(py_path, n, (int)GRAPH_AVG_REFS, &py_freed);
-        (void)py_freed;
-        if (py_ms <= 0) {
-            printf("  ERROR: CPython probe failed for n=%d (%s)\n", n, py_path);
-            all_pass = 0;
-        }
-
         // ---- 结果 ----
         int match = (fpga_count == sw_count);
-        char cbuf[16], pbuf[16], nbuf[16];
+        char cbuf[16];
         if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);
         else           snprintf(cbuf, sizeof cbuf, "n/a");
-        if (py_ms > 0 && hw_us > 0) {
-            snprintf(pbuf, sizeof pbuf, "%.0fx", py_ms * 1000.0 / hw_us);
-            snprintf(nbuf, sizeof nbuf, "%.3f", py_ms);
-        } else {
-            snprintf(pbuf, sizeof pbuf, "n/a");
-            snprintf(nbuf, sizeof nbuf, "n/a");
-        }
 
-        printf("%-8d %-8u %-11.1f %-11.1f %-13s %-8s %-9s%s\n",
-               n, fpga_count, hw_us, sw_us, nbuf, cbuf, pbuf,
+        printf("%-8d %-8u %-11.1f %-11.1f %-8s%s\n",
+               n, fpga_count, hw_us, sw_us, cbuf,
                match ? "" : "  <<<< MISMATCH");
         rows++;
 
@@ -170,8 +133,7 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
         if (!match) all_pass = 0;
         if (n == sizes[n_sizes - 1]) {
             best_n = n; best_marked = (int)fpga_count;
-            best_hw_us = hw_us; best_py_ms = py_ms;
-            best_py_x = (py_ms > 0 && hw_us > 0) ? py_ms * 1000.0 / hw_us : 0;
+            best_hw_us = hw_us;
         }
     }
 
@@ -181,13 +143,9 @@ static int test_correctness(fpga_gc_t *dev, const char *py_path) {
     }
     printf("  Result: %s\n", all_pass ? "ALL PASS" : "SOME FAILED");
 
-    if (best_py_x > 0) {
+    if (best_n > 0) {
         printf("\n  >>> %d objects marked in %.1f us (%.1f ns/obj)\n",
                best_marked, best_hw_us, best_hw_us * 1000.0 / best_marked);
-        printf("  >>> CPython needs %.2f ms for the same graph\n", best_py_ms);
-        printf("  >>> FPGA is %.0fx FASTER than CPython\n", best_py_x);
-    } else if (best_n > 0) {
-        printf("\n  (CPython probe unavailable: %s not found?)\n", py_path);
     }
 
     return all_pass;
@@ -392,11 +350,7 @@ int main(int argc, char **argv) {
     printf("|  Platform: Xilinx Zynq-7000 XC7Z100        |\n");
     printf("+--------------------------------------------+\n");
     (void)argc;
-    // 可选参数: CPython 探针脚本路径
-    const char *py_path = (argc > 1) ? argv[1] : GC_PROBE_DEFAULT;
-    // udev 没自动挂载时, 同一分区通常手动挂在 /mnt/userdata
-    if (argc <= 1 && access(py_path, R_OK) != 0 && access(GC_PROBE_FALLBACK, R_OK) == 0)
-        py_path = GC_PROBE_FALLBACK;
+    (void)argv;
 
     // 初始化FPGA
     fpga_gc_t dev;
@@ -410,7 +364,7 @@ int main(int argc, char **argv) {
     }
 
     // 运行测试
-    int pass1 = test_correctness(&dev, py_path);
+    int pass1 = test_correctness(&dev);
     int pass2 = test_cycle(&dev);
     int pass3 = test_repeat(&dev);
     int pass4 = test_dup_roots(&dev);

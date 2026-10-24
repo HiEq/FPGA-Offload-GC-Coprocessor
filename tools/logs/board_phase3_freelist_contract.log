@@ -1,0 +1,19 @@
+# command: cd <datadir> && python3 -u tests/freelist_contract_test.py
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/freelist_contract_test.py
+contract graph n=4096 live=3072 garbage=1024 seed=12345
+--- A probe-during-scan ---
+A: busy_caught=True probe_reads=3 mismatches=2 | free_count=1024 expect=1024 exact=True
+--- B naive-early-read ---
+B: done=True busy_caught=True early_count=0 final_count=1024 naive_missing=1024 extra=0 traj=[0, 1024]
+B: partial state observed, missing_first=[3072, 3073, 3074, 3075, 3076, 3077, 3078, 3079]
+--- C documented-flow ---
+C: free_count=1024 expect=1024 exact=True
+--- D start-during-scan ---
+D: scan_seen=True status_mid=0x30 | free_count=1024 expect=1024 exact=True | status_end=0x10
+CONTRACT_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

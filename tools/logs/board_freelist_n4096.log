@@ -1,0 +1,13 @@
+# command: cd <datadir> && python3 -u tests/freelist_n4096_test.py
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/freelist_n4096_test.py; printf 'Z''3=%s\n' $?
+magic/version OK: 0x47434343 / 0x00040200
+N=4096 all-free: marked=0 free_count=4096 popped=4096 dup=0 out_of_range=0 missing=0
+missing ids: []
+FREELIST4096_RESULT OK
+DIAG_DONE
+Z3=0
+root@linux:/run/media/USERDATA-mmcblk0p2# 

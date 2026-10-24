@@ -1,0 +1,14 @@
+# command: cd <datadir> && python3 -u tests/ctrl_spill_test.py
+# test: tools/tests/ctrl_spill_test.py md5 
+5b3df3bffd037384a5988640b89a3a41
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/ctrl_spill_test.py
+magic/version OK: 0x47434343 / 0x00040200
+run 1 spilled CLEAR_Q: marked=200 q_tail=200 (expect 200 / 200)
+run 2 spilled START  : marked=200 q_tail=200 (expect 200 / 200)
+CTRL_SPILL_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

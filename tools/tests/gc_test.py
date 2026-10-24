@@ -23,6 +23,7 @@ GRAPH_SIZE = 0x100000          # 1 MiB
 R_CTRL, R_OBJ_BASE, R_OBJ_COUNT, R_ROOT_COUNT = 0x00, 0x04, 0x08, 0x0C
 R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18, 0x1C, 0x40, 0x20
 R_BM_ADDR, R_BM_DATA = 0x24, 0x28
+R_FREE_COUNT, R_FREE_DATA = 0x38, 0x3C
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 HDR_BASE  = 0x0000
@@ -72,9 +73,9 @@ def main():
     _magic = rr(0x30)
     _ver   = rr(0x34)
     print("   MAGIC = 0x%08X   VERSION = 0x%08X" % (_magic, _ver))
-    if _magic != 0x47434343 or _ver != 0x00040000:
+    if _magic != 0x47434343 or _ver != 0x00040200:
         print("   ERROR: bitstream/software mismatch: MAGIC=0x%08X VERSION=0x%08X"
-              " (expected 0x47434343/0x00040000)" % (_magic, _ver))
+              " (expected 0x47434343/0x00040200)" % (_magic, _ver))
         return 1
     print("=" * 84)
 
@@ -150,8 +151,18 @@ def main():
             if rr(R_CTRL) & CTRL_DONE:
                 ran = True; break
             time.sleep(0.0002)
+        # Phase 2: the free-list scanner borrows the bitmap read port after
+        # DONE; wait for STATUS[5] to clear before any bitmap probe.
+        free_deadline = t0 + 3.0
+        while time.time() < free_deadline:
+            if (rr(R_STATUS) & 0x20) == 0:
+                break
+            time.sleep(0.0002)
+        free_count = rr(R_FREE_COUNT)
+        free_ids = [rr(R_FREE_DATA) & 0xFFF for _ in range(free_count)]
+
         ctrl    = rr(R_CTRL)
-        st_raw  = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr [4]=idle
+        st_raw  = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr [4]=idle [5]=free busy
         st      = st_raw & 0xF
         idle    = (st_raw >> 4) & 1
         q_tail  = rr(R_Q_TAIL)
@@ -205,6 +216,9 @@ def main():
         if sw_mkd != L:          fails.append("SW!=(%d vs %d)" % (sw_mkd, L))
         if sw_garb != 0:         fails.append("GARBAGE=%d" % sw_garb)
         if bm_bad != 0:          fails.append("BITMAP=%d" % bm_bad)
+        if free_count != (n - hw_mkd): fails.append("FREE=%d!=%d" % (free_count, n - hw_mkd))
+        if len(set(free_ids)) != len(free_ids): fails.append("FREE-DUP")
+        if any((x < L) or (x >= n) for x in free_ids): fails.append("FREE-RANGE")
         ok = (len(fails) == 0)
         verdict = "OK" if ok else "FAIL:" + ",".join(fails)
 
@@ -212,8 +226,8 @@ def main():
         rows.append(dict(t=t, n=n, live=L, garb=n - L, cyc=hw_cyc, hw_us=hw_us, build=t_build,
                          sw_ms=sw_s * 1000, speed=speed, hw=hw_mkd, sw=sw_mkd,
                          g=sw_garb, exp=L, ok=ok, verdict=verdict))
-        print("  [%2d/%2d] N=%4d exp=%4d | HW %9.2f us (%d cyc) | SW %8.2f ms | %6.1fx | build %6.1f ms | %s"
-              % (t, trials, n, L, hw_us, hw_cyc, sw_s * 1000, speed, t_build * 1000, verdict))
+        print("  [%2d/%2d] N=%4d exp=%4d | HW %9.2f us (%d cyc) | free %4d | SW %8.2f ms | %6.1fx | build %6.1f ms | %s"
+              % (t, trials, n, L, hw_us, hw_cyc, free_count, sw_s * 1000, speed, t_build * 1000, verdict))
 
     task(96, "summarising")
 

@@ -125,6 +125,10 @@ def main():
             pass
 
     def readback_ok():
+        # Phase 2: wait for the free-list scanner to release the bitmap port.
+        t0 = time.time()
+        while (rr(R_STATUS) & 0x20) and (time.time() - t0) < 1.0:
+            time.sleep(0.0002)
         bad = 0
         for obj in range(n):
             wr(R_BM_ADDR, obj); rr(R_BM_ADDR)

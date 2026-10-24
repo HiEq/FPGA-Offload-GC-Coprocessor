@@ -1,0 +1,18 @@
+# command: cd <datadir> && python3 -u tests/dirty_overflow_test.py
+# test: tools/tests/dirty_overflow_test.py md5 
+387503b6c33ee44b231c2c1b9150935e
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_overflow_test.py
+magic/version OK: 0x47434343 / 0x00040200
+graph: n=1024 live=768 garbage=256 heavy=767 burst=400
+epoch 1 full mark: marked=768 (expect 768)
+epoch 2 burst: done=True live_samples=4 | occ=256 ovf=1 | pushed=348 popped=92 drained=92
+               logical pushes=430 (seed 30 + burst 400) -> accepted 348, dropped 82
+control (flag ignored, incremental): marked=828 oracle=912 missed=84
+fallback full mark: marked=912 oracle=912 | free=112 expect=112 | STATUS=0x10 ovf=0
+DIRTY_OVERFLOW_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

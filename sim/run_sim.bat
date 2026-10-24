@@ -34,6 +34,8 @@ call "%XV%\xvlog.bat" ^
     "%SRC%\rtl\gc_axi_read.v" ^
     "%SRC%\rtl\gc_bitmap.v" ^
     "%SRC%\rtl\gc_queue.v" ^
+    "%SRC%\rtl\gc_freelist.v" ^
+    "%SRC%\rtl\gc_dirty_fifo.v" ^
     "%SRC%\rtl\gc_regs.v" ^
     "%SRC%\sim\axi_proto_check.v" ^
     "%SRC%\sim\tb_gc_top.v"

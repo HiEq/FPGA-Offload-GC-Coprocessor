@@ -1,0 +1,31 @@
+# command: cd <datadir> && python3 -u tests/regs_aww_board_test.py --verify-effect
+# test: tools/tests/regs_aww_board_test.py md5 cb82de36be7d8f6a2e1af5fd69b2fe16
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+# note: F1 of AGENTS #20 on the id-ack image: containers 8..23 each gain one edge to a
+# note: leaf target; one probe per target decides whether the epoch was exact.
+# note: cold round: the lost record is detected and the fallback (full mark from the
+# note: containers) recovers it; the 14 warm rounds verify without a fallback.
+# note: VERIFY_EFFECT_RESULT OK.
+
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py --verify-effect
+mode: plain push
+round 0  k=3  verify=OK (fallback to a full mark, recovered)
+round 1  k=3  verify=OK
+round 2  k=3  verify=OK
+round 3  k=3  verify=OK
+round 4  k=3  verify=OK
+round 5  k=3  verify=OK
+round 6  k=3  verify=OK
+round 7  k=3  verify=OK
+round 8  k=3  verify=OK
+round 9  k=3  verify=OK
+round 10 k=16 verify=OK
+round 11 k=16 verify=OK
+round 12 k=16 verify=OK
+round 13 k=16 verify=OK
+round 14 k=16 verify=OK
+VERIFY_EFFECT_RESULT OK (warm: 0/14 failed, 0/14 needed the fallback)
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

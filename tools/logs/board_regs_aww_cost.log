@@ -1,0 +1,15 @@
+# command: cd <datadir> && python3 -u tests/regs_aww_board_test.py --cost
+# test: tools/tests/regs_aww_board_test.py md5 cb82de36be7d8f6a2e1af5fd69b2fe16
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+# note: cost of the id-level ack: 200 pushes each way on the same warm image.
+# note: plain 16.0 us/push vs acked 30.5 us/push = 1.91x; retries=0 in the warm window.
+# note: the plain path is unchanged, so the ack is an opt-in cost, not a global one.
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/regs_aww_board_test.py --cost
+mode: plain push
+COST plain=16.0 us/push  acked=30.5 us/push  ratio=1.91x  (retries=0 giveups=0)
+COST_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

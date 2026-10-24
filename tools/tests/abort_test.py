@@ -151,6 +151,10 @@ def main():
         return False
 
     def read_bit(obj):
+        # Phase 2: the free-list scanner borrows the bitmap port after DONE.
+        t0 = time.time()
+        while (rr(R_STATUS) & 0x20) and (time.time() - t0) < 1.0:
+            time.sleep(0.0002)
         wr(R_BM_ADDR, obj)
         rr(R_BM_ADDR)                       # flush the posted write
         return (rr(R_BM_DATA) >> (obj & 31)) & 1

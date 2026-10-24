@@ -1,0 +1,16 @@
+# command: cd <datadir> && python3 -u tests/dirty_leftover_test.py
+# test: tools/tests/dirty_leftover_test.py md5 
+585cd82a99a146e2838137bc80f7d7a4
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_leftover_test.py; printf 'Z''1=%s\n' $?
+leftover barrier records: occ=3 pushed=3 ids=[1, 2]
+test_main: rc=0 verdict=ALL PASS
+  | roots={0}      -> marked=183  STATUS=0x0
+  | roots={0,0,0}  -> marked=183  STATUS=0x0
+DIRTY_LEFTOVER_RESULT OK
+DIAG_DONE
+Z1=0
+root@linux:/run/media/USERDATA-mmcblk0p2# 

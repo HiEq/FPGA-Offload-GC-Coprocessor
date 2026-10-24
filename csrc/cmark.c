@@ -33,11 +33,12 @@
 
 #define CTRL_START 1u
 #define CTRL_CLEAR_Q 4u
+#define CTRL_DIRTY_FLUSH 32u            /* Phase 3A: 清脏集 FIFO + 溢出标志 */
 #define CTRL_ABORT 8u
 #define CTRL_DONE 0x80000000u
 
 #define FOGCCC_MAGIC 0x47434343u
-#define FOGCCC_VERSION 0x00040000u
+#define FOGCCC_VERSION 0x00040200u
 #define STATUS_MASK 0xFu
 #define STATUS_IDLE 0x10u
 
@@ -175,7 +176,7 @@ static int hw_run(uint32_t n, uint32_t *cycles, uint32_t *mkd) {
     regs[R_ROOT_COUNT / 4] = 1;
     regs[R_OBJ_BASE / 4]   = GRAPH_BASE;
     regs[R_OBJ_COUNT / 4]  = n;
-    regs[R_CTRL / 4]       = CTRL_CLEAR_Q;
+    regs[R_CTRL / 4]       = CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH;
     usleep(2000);
 
     regs[R_CTRL / 4] = CTRL_START;

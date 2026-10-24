@@ -6,7 +6,6 @@ FOGCCC USERDATA 分区说明
   run_cmark.sh      C 基线入口，需同级 cmark
   run_repeat.sh     重复测量，调用以上两个
   gc_test.py        GC 测试主体，--seed 可复现
-  benchmark.py      CPython gc.collect() 梯度（10–4000 对象）
   cmark             C 基线二进制，交叉编译动态链接
 
 bin/
@@ -24,7 +23,12 @@ tests/
   abort_test.py     CTRL[3] abort 五段验收
   abort_sweep.py    abort 相位扫描（--delays 可重复单点）
   done_race_test.py stale-DONE 实验 + 连续换图回归
-  gc_probe.py       test_main 的 CPython 探针（同 n、同 avg_refs）
+  freelist_contract_test.py / freelist_n4096_test.py
+                    free-list 契约负控 / 4096 边界全覆盖
+  dirty_set_test.py / dirty_concurrent_test.py / dirty_overflow_test.py / dirty_leftover_test.py / dirty_state.py
+                    阶段 3A/3B 脏集、并发增量、溢出、残留、收尾查脏 FIFO
+  ctrl_spill_test.py CTRL 写重投递的溢出防护验证
+  dirty_api_test.py  阶段 3A C 驱动 + ctypes 绑定验收（含 --neg）
   py_bfs.py         Python BFS oracle（run_gc.sh 用）
 
 logs/

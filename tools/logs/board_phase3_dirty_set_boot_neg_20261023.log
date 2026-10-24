@@ -1,0 +1,24 @@
+# command: cd <datadir> && python3 -u tests/dirty_set_test.py
+# test: tools/tests/dirty_set_test.py md5 b5038a186197c8ad369b749a0ca140f9
+# bitstream: 81F2C277D1CF9F7DB4CC296A28D2303E   boot.bin: 39fe1040feaac1bf9ab00d45d8e0e6e699662df2031b64cc7d7370dacf11e321
+# commit: e4c1cde   VERSION=0x00040200
+# date: 2026-10-23
+# note: REPRODUCER for the open finding in AGENTS #20: run as the FIRST test after a
+# note: reboot.  Segment A sees occ=3 pushed=3 but marked=2 (the id-0 record never
+# note: reaches the bitmap); the same script run again on the warm PL is occ=4 marked=6.
+# note: 3 boots / 3 failures (identical numbers), 6 warm runs / 6 passes.
+
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/dirty_set_testt.py
+magic/version OK: 0x47434343 / 0x00040200
+A0 no-barrier: done=True marked=0 drained=0 (expect 0/0)
+A dirty-run: occ=3 pushed=3 | marked=2 drained=3 popped=3 free=62 (expect pushed==occ in [3,6), drained==popped==pushed, marked=6 free=58)
+A FAIL: marked=2 free=62 (expected 6 / 58)
+A FAIL: the free list contains marked ids [0, 1, 2, 3]
+B keep+rescan: epoch_marked=5 cumulative=[0, 1, 2, 3, 10, 40, 41] (expect 1 / [0, 1, 2, 3, 10, 40, 41])
+B FAIL: forced re-scan of an already marked container
+C overflow: occupancy=256 ovf=1 pending=1 (expect 256/1/1)
+D real graph: e1=384 e2=4 drained=3 pushed=3 | marked=388 oracle=388 dirty=[5, 69, 133] targets=[384, 385, 386]
+D-neg no-barrier: drained=0 pushed=0 targets_unmarked=[384, 385, 386] (must be non-empty)
+DIRTY_SET_RESULT FAIL:A-count,A-free,B
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

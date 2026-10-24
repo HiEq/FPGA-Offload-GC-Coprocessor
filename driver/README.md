@@ -50,7 +50,7 @@ cat /dev/fogccc_irq        # "1 0 <virq>"
 dmesg | tail               # "fogccc: irq fired (#1), line disabled"
 ```
 
-`tools/tests/irq_drv_test.sh` 自动判定 `IRQ_DRIVEN_DONE_OK`。
+`tests/irq_drv_test.sh` 自动判定 `IRQ_DRIVEN_DONE_OK`。
 
 ## 覆盖范围
 

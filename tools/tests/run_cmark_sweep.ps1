@@ -83,9 +83,14 @@ $lines = $clean -split "`r?`n" | Where-Object {
     $_ -notmatch '^(root@|cd /mnt/userdata|mkdir -p /mnt/userdata|mount -t vfat)' -and
     $_ -notmatch '^\d+_\d+_\d+_DONE$'
 }
+# 4-line provenance convention (see tools/logs/README.md).  The PL's bitstream md5 is not
+# software-readable, so that line names its source; the promotion step fills in the value.
+$gitSha = (& git rev-parse --short HEAD 2>$null); if (-not $gitSha) { $gitSha = 'unknown' }
 $hdr = @(
-    "# run_cmark_sweep.ps1 (4 groups, 72 runs), $(Get-Date -Format yyyy-MM-dd)",
-    "# command: tools/tests/run_cmark_sweep.ps1 -> ./cmark <maxN> <trials> <avg_refs>",
+    "# command: tools/tests/run_cmark_sweep.ps1 -> ./cmark <maxN> <trials> <avg_refs>   (4 groups, 72 runs)",
+    "# bitstream: (the PL is loaded from the card image; md5 filled in when the log is promoted - see tools/logs/README.md)",
+    "# commit: $gitSha   (this script; the card binaries' hashes are in artifacts/SHA256SUMS)",
+    "# date: $(Get-Date -Format yyyy-MM-dd)",
     "# note: ANSI colour codes, prompts and the mount prologue were stripped; data lines unchanged",
     "#", ""
 )

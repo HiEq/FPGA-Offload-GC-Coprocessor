@@ -265,6 +265,13 @@ module tb_gc_top;
     localparam [11:0] R_STATUS = 12'h20;
     localparam [11:0] R_BMADDR = 12'h24;
     localparam [11:0] R_BMDATA = 12'h28;
+    localparam [11:0] R_FCOUNT = 12'h38;
+    localparam [11:0] R_FDATA  = 12'h3C;
+    localparam [11:0] R_DPUSH  = 12'h440;  // Phase 3A: write pushes a dirty id (root list ends at 0x43F)
+    localparam [11:0] R_DSTAT  = 12'h444;  // [8:0] occupancy, [9] overflow, [10] pending
+    localparam [11:0] R_DDRAIN = 12'h448;  // ids consumed this epoch
+    localparam [11:0] R_DPUSHED= 12'h44C;  // ids accepted since the last flush
+    localparam [11:0] R_DPOPPED= 12'h450;  // ids consumed since the last flush
     localparam [11:0] R_RLIST  = 12'h40;
 
     // ================= TB 数据结构 =================
@@ -280,6 +287,66 @@ module tb_gc_top;
     reg [31:0]  bq [0:N-1];
     reg [31:0]  rd_val;
     integer     guard;
+    reg         race_injected = 1'b0;   // T-DIRTY-RACE: 记录已注入
+
+    // Phase 3A: 带标签推送. 板上写路径把每次 store 投递两遍 (探针实测, 任意位宽),
+    // 标签变化才入队 -> 重复投递被忽略. 标签 4 位, 逐次递增.
+    integer     dtag = 0;
+    task push_dirty(input [11:0] id);
+        begin
+            axil_wr(R_DPUSH, {16'h0, dtag[3:0], id});
+            dtag = (dtag + 1) & 4'hF;
+        end
+    endtask
+
+    // Phase 3A: the sanctioned way to clear the dirty FIFO - exactly what the driver does
+    // (CTRL = CLEAR_Q|DIRTY_FLUSH, then a full-mark START).  Works under both the old
+    // "immediate clear" and the 2026-10-23 "arm-and-consume" semantics.
+    task dirty_flush_now;
+        begin
+            axil_wr(R_CTRL, 32'h20);             // arm
+            axil_wr(R_CTRL, 32'h1);              // full-mark START consumes it
+            guard = 0; rd_val = 32'hFFFFFFFF;
+            while (rd_val[31] && guard < 2000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+            guard = 0; rd_val = 32'h0;
+            while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        end
+    endtask
+
+    // ================= T-DIRTY-QFULL observation plumbing =================
+    // The deadlock hypothesis: the BFS queue is FULL while a barrier record is pending
+    // and the FSM reaches S_DIRTY_PUSH (5'd26).  Observe it instead of arguing:
+    //  - qf_danger: cycles with q_full && a pending record (the precondition)
+    //  - qf_wait  : cycles with the FSM in S_DIRTY_PUSH while q_full (the actual wait)
+    //  - qf_maxcnt: peak BFS-queue occupancy (gc_queue exposes count/full)
+    reg         qf_mon = 1'b0;
+    integer     qf_danger = 0;
+    integer     qf_wait   = 0;
+    integer     qf_maxcnt = 0;
+    always @(posedge clk) begin
+        if (qf_mon) begin
+            if (dut.u_queue.count > qf_maxcnt) qf_maxcnt = dut.u_queue.count;
+            if (dut.u_queue.full && !dut.u_dirty.empty) qf_danger = qf_danger + 1;
+            if ((dut.u_engine.state == 5'd26) && dut.u_queue.full) qf_wait = qf_wait + 1;
+        end
+    end
+
+    // ================= T-DIRTY 临时时序探针 (Phase 3A 调试) =================
+    reg dtrace_en = 1'b0;
+    integer dtrace = 0;
+    reg [8:0] dcnt_prev = 9'd0;
+    always @(posedge clk) begin
+        if (dtrace_en && dtrace < 40 &&
+            (dut.u_engine.state >= 5'd25 || dut.u_dirty.cnt != dcnt_prev)) begin
+            $display("[DRT] t=%0t st=%0d pop=%b cnt=%0d(obj=%0d) pushed=%0d popped=%0d drained=%0d empty=%b qcnt=%0d",
+                     $time, dut.u_engine.state, dut.u_engine.dirty_pop,
+                     dut.u_dirty.cnt, dut.u_engine.dirty_obj, dut.u_dirty.pushed,
+                     dut.u_dirty.popped, dut.u_engine.dirty_drained, dut.u_dirty.empty,
+                     dut.u_queue.count);
+            dtrace = dtrace + 1;
+        end
+        dcnt_prev = dut.u_dirty.cnt;
+    end
 
     initial begin
         errors = 0;
@@ -645,6 +712,14 @@ module tb_gc_top;
         //   back 0xDEADBEEF.
         // ============================================================
         $display("[TB] ===== T6: bitmap readback =====");
+        // Phase 2: the free-list scanner borrows the bitmap read port while
+        // STATUS[5] is set; wait for it to finish before probing.
+        i = 0;
+        axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (i < 20000)) begin
+            i = i + 1;
+            axil_rd(R_STATUS, rd_val);
+        end
         axil_wr(R_BMADDR, 32'd60);
         axil_rd(R_BMDATA, rd_val);
         $display("[TB] T6 probe[60]=%h (bit28=%0d) bram=%h", rd_val, rd_val[28], dut.u_bitmap.mem[60]);
@@ -665,13 +740,616 @@ module tb_gc_top;
         $display("[TB] T6 bitmap probe OK");
 
         // ============================================================
+        // T-FREE: free-list end-to-end (engine -> bitmap -> scanner -> pop)
+        //   Star graph, obj_count=64: root 0 -> refs 1..31 (rc=0 on 1..31).
+        //   The engine marks {0..31}; the scanner must push exactly {32..63},
+        //   and popping FREE_DATA must return that set, no duplicates.
+        //   This pins the bitmap layout: the scanner must test word mem[o],
+        //   bit o[4:0] -- the same layout the engine writes and the 0x24
+        //   probe reads.  A packed-word scanner (o>>5, o&31) reads mem[0..1]
+        //   = {1,2} and reports a wrong count/set here.
+        // ============================================================
+        $display("[TB] ===== T-FREE: free-list end-to-end =====");
+        begin : t_free_gen
+            integer i;
+            for (i = 0; i < 64; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i == 0) ? 31 : 0;
+                mem[(i*16)/4 + 2] = BASE + ref_base;
+            end
+            for (i = 0; i < 31; i = i + 1)
+                mem[ref_base/4 + i] = i + 1;
+            mem[ref_base/4 + 31] = 32'hFFFFFFFF;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        // Phase 2: the scanner borrows the bitmap read port; wait for it.
+        guard = 0;
+        axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (guard < 20000)) begin
+            guard = guard + 1;
+            axil_rd(R_STATUS, rd_val);
+        end
+        axil_rd(R_MARKED, rd_val);
+        if (rd_val !== 32'd32) begin
+            $display("[TB][FAIL] T-FREE marked=%0d != 32", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_FCOUNT, rd_val);
+        $display("[TB] T-FREE FREE_COUNT=%0d (expect 32)", rd_val);
+        if (rd_val !== 32'd32) begin
+            $display("[TB][FAIL] T-FREE FREE_COUNT=%0d != 32 (bitmap layout?)", rd_val);
+            errors = errors + 1;
+        end
+        begin : t_free_pop
+            integer i, v, seen_lo, seen_hi, dup, rng;
+            reg [63:0] got;
+            seen_lo = 0; seen_hi = 0; dup = 0; rng = 0; got = 64'd0;
+            for (i = 0; i < 32; i = i + 1) begin
+                axil_rd(R_FDATA, rd_val);
+                v = rd_val[5:0];
+                if ((rd_val & 32'hFFFFF000) != 0) rng = rng + 1;
+                if (v < 32) seen_lo = seen_lo + 1;
+                else        seen_hi = seen_hi + 1;
+                if ((v < 64) && got[v]) dup = dup + 1;
+                if (v < 64) got[v] = 1'b1;
+            end
+            $display("[TB] T-FREE popped: lo(<32)=%0d hi=%0d dup=%0d out_of_range=%0d",
+                     seen_lo, seen_hi, dup, rng);
+            if (seen_lo != 0 || seen_hi != 32 || dup != 0 || rng != 0) begin
+                $display("[TB][FAIL] T-FREE free set wrong (expect exactly 32..63)");
+                errors = errors + 1;
+            end
+        end
+
+        // ============================================================
+        // T-DIRTY: Phase 3A barrier dirty set as a work source
+        //   A0 negative control: no dirty pushes -> a root-less run marks 0.
+        //   A  dirty = {0,40,41}; obj0 -> {1,2,3} -> marks {0,1,2,3,40,41},
+        //      DIRTY_DRAINED=3, free list = the other 58 ids.
+        //   B  BM_KEEP + obj0 gained ref 10, dirty = {0} -> the already
+        //      marked container is re-scanned (a dedup would leave 10
+        //      unmarked); epoch count = 1, cumulative bitmap = 7 ids.
+        //   C  overflow: 300 pushes into a 256-deep FIFO latch the flag,
+        //      and CTRL[5] clears it.
+        // ============================================================
+        $display("[TB] ===== T-DIRTY: barrier dirty set =====");
+        begin : t_dirty_gen
+            integer i;
+            for (i = 0; i < 64; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i == 0) ? 3 : 0;
+                mem[(i*16)/4 + 2] = BASE + ref_base;
+            end
+            for (i = 0; i < 3; i = i + 1) mem[ref_base/4 + i] = i + 1;
+            mem[ref_base/4 + 3] = 32'hFFFFFFFF;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd0);                 // no roots at all
+        // A0: no barrier, no roots -> nothing may be marked
+        dirty_flush_now;
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (guard < 20000)) begin guard = guard + 1; axil_rd(R_STATUS, rd_val); end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-DIRTY A0 (no barrier): marked=%0d (expect 0)", rd_val);
+        if (rd_val !== 32'd0) begin
+            $display("[TB][FAIL] T-DIRTY A0 marked=%0d without any dirty push (negative control)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_DDRAIN, rd_val);
+        $display("[TB] T-DIRTY A0 drained=%0d (expect 0)", rd_val);
+        if (rd_val !== 32'd0) begin
+            $display("[TB][FAIL] T-DIRTY A0 drained=%0d != 0 (phantom drain)", rd_val);
+            errors = errors + 1;
+        end
+        // A: dirty-driven, no roots
+        dirty_flush_now;
+        repeat (200) @(negedge clk);
+        push_dirty(12'd0);
+        push_dirty(12'd40);
+        push_dirty(12'd41);
+        dtrace_en = 1'b1;
+        axil_rd(R_DSTAT, rd_val);
+        $display("[TB] T-DIRTY A pre-run: occupancy=%0d pending=%b ovf=%b (expect 3/1/0)",
+                 rd_val[8:0], rd_val[10], rd_val[9]);
+        if (rd_val[8:0] !== 9'd3 || rd_val[10] !== 1'b1) begin
+            $display("[TB][FAIL] T-DIRTY A FIFO not holding exactly the 3 pushed ids");
+            errors = errors + 1;
+        end
+        axil_wr(R_CTRL, 32'h1);
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (guard < 20000)) begin guard = guard + 1; axil_rd(R_STATUS, rd_val); end
+        axil_rd(R_MARKED, rd_val);
+        if (rd_val !== 32'd6) begin
+            $display("[TB][FAIL] T-DIRTY A marked=%0d != 6 (dirty work source)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_DDRAIN, rd_val);
+        $display("[TB] T-DIRTY A drained=%0d", rd_val);
+        if (rd_val !== 32'd3) begin
+            $display("[TB][FAIL] T-DIRTY A drained=%0d != 3", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_DPUSHED, rd_val);
+        $display("[TB] T-DIRTY A pushed=%0d (expect 3)", rd_val);
+        if (rd_val !== 32'd3) begin
+            $display("[TB][FAIL] T-DIRTY A pushed=%0d != 3 (stray push?)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_DPOPPED, rd_val);
+        $display("[TB] T-DIRTY A popped=%0d (expect 3)", rd_val);
+        if (rd_val !== 32'd3) begin
+            $display("[TB][FAIL] T-DIRTY A popped=%0d != 3", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_FCOUNT, rd_val);
+        if (rd_val !== 32'd58) begin
+            $display("[TB][FAIL] T-DIRTY A free_count=%0d != 58", rd_val);
+            errors = errors + 1;
+        end
+        begin : t_dirty_free
+            integer i, v;
+            reg [63:0] got;
+            got = 64'd0;
+            for (i = 0; i < 58; i = i + 1) begin
+                axil_rd(R_FDATA, rd_val);
+                v = rd_val[5:0];
+                if (v < 64) got[v] = 1'b1;
+            end
+            // free = everything except {0,1,2,3,40,41}
+            if (got[0] || got[1] || got[2] || got[3] || got[40] || got[41]) begin
+                $display("[TB][FAIL] T-DIRTY A free list contains a marked object");
+                errors = errors + 1;
+            end
+        end
+        $display("[TB] T-DIRTY A: marked=6 drained=3 free=58 OK");
+        // B: BM_KEEP + forced re-scan of an already marked container
+        begin : t_dirty_edit
+            integer i;
+            for (i = 0; i < 4; i = i + 1) mem[ref_base/4 + i] = 0;
+            mem[(0*16)/4 + 1] = 32'd4;           // obj0 -> {1,2,3,10}
+            mem[ref_base/4 + 0] = 32'd1;
+            mem[ref_base/4 + 1] = 32'd2;
+            mem[ref_base/4 + 2] = 32'd3;
+            mem[ref_base/4 + 3] = 32'd10;
+            mem[ref_base/4 + 4] = 32'hFFFFFFFF;
+        end
+        axil_wr(R_CTRL, 32'h4);                  // clear_q only: the bitmap must SURVIVE into the
+        repeat (200) @(negedge clk);             // BM_KEEP epoch (under arm-and-consume a flush needs a full mark)
+        push_dirty(12'd0);                       // already marked -> must be re-scanned
+        axil_wr(R_CTRL, 32'h11);                 // START | BM_KEEP
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (guard < 20000)) begin guard = guard + 1; axil_rd(R_STATUS, rd_val); end
+        axil_rd(R_MARKED, rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T-DIRTY B epoch marked=%0d != 1 (only obj10 is new)", rd_val);
+            errors = errors + 1;
+        end
+        begin : t_dirty_bm
+            integer i, hb, cnt, bad;
+            cnt = 0; bad = 0;
+            for (i = 0; i < 64; i = i + 1) begin
+                axil_wr(R_BMADDR, i);
+                axil_rd(R_BMDATA, rd_val);
+                hb = (rd_val >> (i & 31)) & 1;
+                if (hb) cnt = cnt + 1;
+                // expected cumulative set = {0,1,2,3,10,40,41}
+                if (hb !== ((i == 0) || (i == 1) || (i == 2) || (i == 3) ||
+                            (i == 10) || (i == 40) || (i == 41))) bad = bad + 1;
+            end
+            $display("[TB] T-DIRTY B bitmap: marked=%0d bad=%0d (expect 7 / 0)", cnt, bad);
+            if (cnt !== 7 || bad !== 0) begin
+                $display("[TB][FAIL] T-DIRTY B forced re-scan failed (bitmap)");
+                errors = errors + 1;
+            end
+        end
+        // C: FIFO overflow flag (no silent loss of the record)
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+        begin : t_dirty_ovf
+            integer i;
+            for (i = 0; i < 300; i = i + 1) push_dirty(i % 64);
+        end
+        axil_rd(R_DSTAT, rd_val);
+        $display("[TB] T-DIRTY C status=%h (expect bit9=1, occupancy=256)", rd_val);
+        if (rd_val[9] !== 1'b1) begin
+            $display("[TB][FAIL] T-DIRTY C overflow flag not set");
+            errors = errors + 1;
+        end
+        if (rd_val[8:0] !== 9'd256) begin
+            $display("[TB][FAIL] T-DIRTY C occupancy=%0d != 256", rd_val[8:0]);
+            errors = errors + 1;
+        end
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+        axil_rd(R_DSTAT, rd_val);
+        if (rd_val[9] !== 1'b0 || rd_val[8:0] !== 9'd0) begin
+            $display("[TB][FAIL] T-DIRTY C flush did not clear (status=%h)", rd_val);
+            errors = errors + 1;
+        end
+        $display("[TB] T-DIRTY C overflow flag OK");
+
+        // ---- T-DIRTY-FLUSHSPILL: this board redelivers every AXI-Lite store and the
+        //      copies are not always adjacent, so a full-mark's DIRTY_FLUSH can arrive
+        //      again while a later epoch is running.  gc_top now honours DIRTY_FLUSH
+        //      only while the engine is idle (same treatment as CLEAR_Q).  The engine
+        //      spends the first ~4096 cycles of a run clearing the bitmap, so a flush
+        //      injected right after START lands well before the dirty record is read.
+        //      Ungated RTL: the record is dropped -> drained=0, marked=0.
+        //      Gated RTL:   the flush is ignored -> drained=1, marked=2 (obj0,obj1).
+        // ----
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+        begin : t_dirty_spill_cfg
+            integer i;
+            for (i = 0; i < 64; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i == 0) ? 32'd512 : 32'd0;
+                mem[(i*16)/4 + 2] = BASE + ref_base;
+            end
+            for (i = 0; i < 512; i = i + 1) mem[ref_base/4 + i] = 32'd1;
+            mem[ref_base/4 + 512] = 32'hFFFFFFFF;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd0);
+        push_dirty(12'd0);                       // one pending barrier record
+        axil_wr(R_CTRL, 32'h1);                  // START (no flush, no bm_keep)
+        axil_wr(R_CTRL, 32'h20);                 // spilled full-mark flush, mid-run
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 400000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (guard < 400000)) begin guard = guard + 1; axil_rd(R_STATUS, rd_val); end
+        axil_rd(R_DDRAIN, rd_val);
+        $display("[TB] T-DIRTY-FLUSHSPILL drained=%0d (expect 1: the record survived)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHSPILL a mid-run flush dropped the pending barrier record");
+            errors = errors + 1;
+        end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-DIRTY-FLUSHSPILL marked=%0d (expect 2: obj0 + obj1)", rd_val);
+        if (rd_val !== 32'd2) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHSPILL marked=%0d != 2", rd_val);
+            errors = errors + 1;
+        end
+        // the sanctioned clear must still work: arm + a full-mark START (dirty_flush_now)
+        push_dirty(12'd5);
+        axil_rd(R_DSTAT, rd_val);
+        if (rd_val[8:0] !== 9'd1) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHSPILL setup occupancy=%0d != 1", rd_val[8:0]);
+            errors = errors + 1;
+        end
+        dirty_flush_now;
+        axil_rd(R_DSTAT, rd_val);
+        $display("[TB] T-DIRTY-FLUSHSPILL sanctioned clear occupancy=%0d (expect 0)", rd_val[8:0]);
+        if (rd_val[8:0] !== 9'd0 || rd_val[9] !== 1'b0) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHSPILL the sanctioned clear (arm + full-mark START) must empty the FIFO");
+            errors = errors + 1;
+        end
+        $display("[TB] T-DIRTY-FLUSHSPILL done");
+
+        // ---- T-DIRTY-FLUSHIDLE: the idle-window hazard (the P2 gap, 2026-10-23).
+        //      A late copy of a full-mark's DIRTY_FLUSH can arrive while the engine is
+        //      IDLE - after the full mark finished and the mutator has already pushed
+        //      records for the next epoch.  Under "arm-and-consume" the CTRL write only
+        //      arms the flush; it is applied at the next BM_KEEP=0 START and DISCARDED
+        //      by an incremental (BM_KEEP=1) start.
+        //      Idle-gated-only RTL: the bare write clears immediately -> parts 1 and 3 fail.
+        // ----
+        dirty_flush_now;                         // clean slate (valid on both semantics)
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd0);
+        push_dirty(12'd7);
+        axil_rd(R_DSTAT, rd_val);
+        $display("[TB] T-DIRTY-FLUSHIDLE setup: occupancy=%0d (expect 1)", rd_val[8:0]);
+        if (rd_val[8:0] !== 9'd1) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHIDLE setup occupancy=%0d != 1", rd_val[8:0]);
+            errors = errors + 1;
+        end
+        axil_wr(R_CTRL, 32'h20);                 // the late/bare flush, while idle
+        repeat (50) @(negedge clk);
+        axil_rd(R_DSTAT, rd_val);
+        $display("[TB] T-DIRTY-FLUSHIDLE after a bare idle flush: occupancy=%0d (expect 1: armed, not applied)", rd_val[8:0]);
+        if (rd_val[8:0] !== 9'd1) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHIDLE a bare idle flush dropped a pushed record");
+            errors = errors + 1;
+        end
+        axil_wr(R_CTRL, 32'h1);                  // the next full-mark START applies it
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 2000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_DSTAT, rd_val);
+        $display("[TB] T-DIRTY-FLUSHIDLE after a full-mark start: occupancy=%0d (expect 0)", rd_val[8:0]);
+        if (rd_val[8:0] !== 9'd0) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHIDLE the armed flush was not applied at the full-mark start");
+            errors = errors + 1;
+        end
+        push_dirty(12'd8);
+        axil_wr(R_CTRL, 32'h20);                 // arm again
+        repeat (20) @(negedge clk);
+        axil_wr(R_CTRL, 32'h11);                 // INCREMENTAL start: must NOT flush
+        guard = 0; rd_val = 32'hFFFFFFFF;
+        while (rd_val[31] && guard < 2000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_DDRAIN, rd_val);
+        $display("[TB] T-DIRTY-FLUSHIDLE after an incremental start: drained=%0d (expect 1: the record was processed, not flushed)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T-DIRTY-FLUSHIDLE an incremental start must not apply an armed flush");
+            errors = errors + 1;
+        end
+
+        // ---- T-DIRTY-QFULL: can a GENUINELY full BFS queue plus a pending barrier
+        //      record deadlock the engine?  S_DIRTY_PUSH waits while q_full; the
+        //      scanner only pops while pf_room; and only S_POP drains the prefetch
+        //      ring - so once the ring fills, q_full can never clear.  T7 only
+        //      *forces* q_full, so this combination was never exercised.
+        //      Construction: 4096-object star (occupancy reaches 4095) + four dirty
+        //      records pointing at an ALREADY MARKED id - the dirty path enqueues a
+        //      forced re-scan unconditionally, which pushes occupancy to the depth.
+        //      OUTCOME 2026-10-23: it does NOT hang (marked=4096, TB PASS).  Occupancy
+        //      never reaches the queue depth at the current limits (a push needs an
+        //      unmarked target, <= 4096 ids, and a pop precedes every enqueue burst),
+        //      so the q_full wait is never entered.  Kept as a GUARD: if the queue
+        //      depth or the object limit ever change so occupancy can hit the depth,
+        //      this test hangs and the deadlock becomes real.
+        //      See AGENTS #19 and tools/logs/xsim_qfull_dirty_20261023.log.
+        // ----
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+        begin : t_qfull_cfg
+            integer i;
+            reg [31:0] rbase;
+            rbase = BASE + 32'h40000;
+            for (i = 0; i < 4096; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i == 0) ? 4095 : 0;
+                mem[(i*16)/4 + 2] = (i == 0) ? rbase : 0;
+            end
+            for (i = 0; i < 4095; i = i + 1)
+                mem[(rbase - BASE)/4 + i] = i + 1;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd4096);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        push_dirty(12'd1);
+        push_dirty(12'd1);
+        push_dirty(12'd1);
+        push_dirty(12'd1);
+        qf_mon = 1'b1; qf_danger = 0; qf_wait = 0; qf_maxcnt = 0;
+        axil_wr(R_CTRL, 32'h1);                  // START
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 600000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T-DIRTY-QFULL DONE never asserted (q_full + dirty looks like a deadlock)");
+            errors = errors + 1;
+            axil_wr(R_CTRL, 32'h8);              // abort so the rest of the TB can run
+            repeat (200) @(negedge clk);
+        end else begin
+            axil_rd(R_MARKED, rd_val);
+            $display("[TB] T-DIRTY-QFULL done: marked=%0d (expect 4096)", rd_val);
+            if (rd_val !== 32'd4096) begin
+                $display("[TB][FAIL] T-DIRTY-QFULL marked=%0d != 4096", rd_val);
+                errors = errors + 1;
+            end
+        end
+        qf_mon = 1'b0;
+        $display("[TB] T-DIRTY-QFULL observed: peak occupancy=%0d/4096  q_full&&dirty cycles=%0d  S_DIRTY_PUSH waits=%0d",
+                 qf_maxcnt, qf_danger, qf_wait);
+        if (qf_danger !== 0 || qf_wait !== 0) begin
+            $display("[TB][FAIL] T-DIRTY-QFULL the deadlock precondition DID occur (q_full with a pending record)");
+            errors = errors + 1;
+        end
+        if (qf_maxcnt >= 4096) begin
+            $display("[TB][FAIL] T-DIRTY-QFULL occupancy reached the queue depth (%0d)", qf_maxcnt);
+            errors = errors + 1;
+        end
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+
+        // ---- T-DIRTY-QFULLNEG: prove the S_DIRTY_PUSH wait is a REAL deadlock given
+        //      the precondition, so that "unreachable" rests on the observation above
+        //      rather than on the path being harmless.  Force the queue full with one
+        //      pending record and no roots: the FSM must take the dirty branch, spin,
+        //      and never assert DONE.  Then release + abort to let the TB continue. ----
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd0);
+        push_dirty(12'd3);
+        force dut.u_engine.q_full = 1'b1;
+        axil_wr(R_CTRL, 32'h1);                  // START
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        $display("[TB] T-DIRTY-QFULLNEG q_full forced + 1 pending record: DONE=%b after %0d polls (expect 0 = it must hang)",
+                 rd_val[31], guard);
+        if (rd_val[31] === 1'b1) begin
+            $display("[TB][FAIL] T-DIRTY-QFULLNEG the engine completed with the queue forced full - the wait is not a deadlock");
+            errors = errors + 1;
+        end else begin
+            $display("[TB] T-DIRTY-QFULLNEG hung as predicted (the wait is a real deadlock)");
+        end
+        release dut.u_engine.q_full;
+        axil_wr(R_CTRL, 32'h8);                  // abort out of the wait
+        repeat (300) @(negedge clk);
+        axil_rd(R_STATUS, rd_val);
+        $display("[TB] T-DIRTY-QFULLNEG recovered: STATUS=%h (expect 0x10: idle, no errors)", rd_val);
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+
+        // ---- T-DIRTY-TAG: this board's write path may deliver a store twice;
+        //      the tag rule must make the duplicate a no-op (one record per
+        //      logical push) while a changed tag is accepted. ----
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+        axil_rd(R_DSTAT, rd_val);                // current hardware tag
+        axil_wr(R_DPUSH, {16'h0, (rd_val[19:16] + 4'd1), 12'd7});
+        axil_wr(R_DPUSH, {16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // duplicate delivery
+        axil_rd(R_DPUSHED, rd_val);
+        $display("[TB] T-DIRTY-TAG duplicate delivery: pushed=%0d (expect 1)", rd_val);
+        if (rd_val !== 32'd1) begin
+            $display("[TB][FAIL] T-DIRTY-TAG duplicate write enqueued twice");
+            errors = errors + 1;
+        end
+        axil_rd(R_DSTAT, rd_val);
+        if (rd_val[8:0] !== 9'd1) begin
+            $display("[TB][FAIL] T-DIRTY-TAG occupancy=%0d != 1", rd_val[8:0]);
+            errors = errors + 1;
+        end
+        axil_wr(R_DPUSH, {16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // changed tag -> accepted
+        axil_rd(R_DPUSHED, rd_val);
+        $display("[TB] T-DIRTY-TAG changed tag: pushed=%0d (expect 2)", rd_val);
+        if (rd_val !== 32'd2) begin
+            $display("[TB][FAIL] T-DIRTY-TAG a changed tag was not accepted");
+            errors = errors + 1;
+        end
+        axil_rd(R_DSTAT, rd_val);
+        dtag = rd_val[19:16] + 4'd3;             // keep the helper in sync with hw
+        dirty_flush_now;
+        repeat (50) @(negedge clk);
+        $display("[TB] T-DIRTY-TAG tag rule OK");
+
+        // ============================================================
+        // T-DIRTY-RACE (Phase 3B): a barrier record that lands in the very
+        //   cycle the engine decides to finish must SURVIVE in the FIFO and be
+        //   consumed by the remark epoch (BM_KEEP, no flush).
+        //   RACE2 is the negative control: flushing before the remark loses
+        //   the record -- the target stays unmarked.
+        // ============================================================
+        $display("[TB] ===== T-DIRTY-RACE: record at the DONE cycle =====");
+        begin : t_race_gen
+            integer i;
+            for (i = 0; i < 64; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = 0;
+                mem[(i*16)/4 + 2] = BASE + ref_base;
+            end
+            mem[(50*16)/4 + 1] = 32'd1;      // obj50 -> {51}
+            mem[ref_base/4 + 0] = 32'd51;
+            mem[ref_base/4 + 1] = 32'hFFFFFFFF;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd64);
+        axil_wr(R_ROOTS, 32'd0);
+        begin : t_race_run
+            integer rc2;
+            for (rc2 = 0; rc2 < 2; rc2 = rc2 + 1) begin
+                // epoch 1: dirty = {50} only; inject 60 exactly at the
+                // terminal S_POP cycle (the record arrives "too late")
+                dirty_flush_now;
+                repeat (200) @(negedge clk);
+                push_dirty(12'd50);
+                axil_wr(R_CTRL, 32'h1);      // START (bm_keep = 0)
+                guard = 0;
+                race_injected = 1'b0;
+                while (!race_injected && guard < 20000) begin
+                    @(negedge clk);
+                    if (dut.u_engine.state == 5'd7 && dut.u_engine.pf_cnt == 3'd0 &&
+                        dut.u_engine.q_empty == 1'b1 && dut.u_engine.pf_iss == 3'd0 &&
+                        dut.u_engine.dq_cnt == 4'd0 && dut.u_engine.sc_state == 3'd0 &&
+                        dut.u_dirty.empty == 1'b1) begin
+                        force dut.u_dirty.push    = 1'b1;
+                        force dut.u_dirty.push_id = 12'd60;
+                        @(negedge clk);
+                        release dut.u_dirty.push;
+                        release dut.u_dirty.push_id;
+                        race_injected = 1'b1;
+                    end
+                    guard = guard + 1;
+                end
+                guard = 0; rd_val = 32'hFFFFFFFF;
+                while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+                guard = 0; rd_val = 32'h0;
+                while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+                guard = 0; axil_rd(R_STATUS, rd_val);
+                while (((rd_val & 32'h20) != 0) && (guard < 20000)) begin guard = guard + 1; axil_rd(R_STATUS, rd_val); end
+                axil_rd(R_DSTAT, rd_val);
+                if (rc2 == 0) begin
+                    $display("[TB] T-DIRTY-RACE epoch1: injected=%b occupancy=%0d (expect 1/1)",
+                             race_injected, rd_val[8:0]);
+                    if (!race_injected || rd_val[8:0] !== 9'd1) begin
+                        $display("[TB][FAIL] T-DIRTY-RACE: late record not kept in the FIFO");
+                        errors = errors + 1;
+                    end
+                    axil_rd(R_MARKED, rd_val);
+                    if (rd_val !== 32'd2) begin   // 50 + 51
+                        $display("[TB][FAIL] T-DIRTY-RACE epoch1 marked=%0d != 2", rd_val);
+                        errors = errors + 1;
+                    end
+                end
+                // remark epoch: BM_KEEP; rc2=1 adds a bare "late" flush.  Under the
+                // 2026-10-23 arm-and-consume contract that write only ARMS the flush and
+                // this incremental start must DISCARD it - the deferred record survives.
+                if (rc2 == 1) begin
+                    axil_wr(R_CTRL, 32'h20);     // arm only
+                    repeat (20) @(negedge clk);
+                end
+                axil_wr(R_CTRL, 32'h11);         // START | BM_KEEP
+                guard = 0; rd_val = 32'hFFFFFFFF;
+                while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+                guard = 0; rd_val = 32'h0;
+                while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+                guard = 0; axil_rd(R_STATUS, rd_val);
+                while (((rd_val & 32'h20) != 0) && (guard < 20000)) begin guard = guard + 1; axil_rd(R_STATUS, rd_val); end
+                axil_rd(R_DDRAIN, rd_val);
+                $display("[TB] T-DIRTY-RACE remark (rc2=%0d) drained=%0d (expect 1, the deferred record)", rc2, rd_val);
+                if (rd_val !== 32'd1) begin
+                    $display("[TB][FAIL] T-DIRTY-RACE remark did not consume the deferred record");
+                    errors = errors + 1;
+                end
+                // cumulative bitmap
+                begin : t_race_bm
+                    integer i2, hb;
+                    hb = 0;
+                    axil_wr(R_BMADDR, 32'd60);
+                    axil_rd(R_BMDATA, rd_val);
+                    hb = (rd_val >> (60 & 31)) & 1;
+                    $display("[TB] T-DIRTY-RACE remark (rc2=%0d) obj60 marked=%0d (expect 1: arm-and-consume keeps it)", rc2, hb);
+                    if (hb !== 1'b1) begin
+                        $display("[TB][FAIL] T-DIRTY-RACE deferred record lost (obj60 unmarked)");
+                        errors = errors + 1;
+                    end
+                end
+                // leave a clean bitmap for the next block
+                dirty_flush_now;
+                repeat (20) @(negedge clk);
+            end
+        end
+
+        // ============================================================
         // ---- T-ID / T-ABORT: MAGIC+VERSION, and abort must leave a reusable engine ----
         axil_rd(12'h030, rd_val);
         $display("[TB] T-ID magic=%h (expect 47434343)", rd_val);
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
-        $display("[TB] T-ID version=%h (expect 00040000)", rd_val);
-        if (rd_val !== 32'h0004_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        $display("[TB] T-ID version=%h (expect 00040200)", rd_val);
+        if (rd_val !== 32'h0004_0200) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
@@ -801,9 +1479,10 @@ module tb_gc_top;
             errors = errors + 1;
         end
 // ---- T-REG: an unmapped register read must answer SLVERR ----
+        // 0x02C is still unmapped after Phase 2 (0x038/0x03C are FREE_COUNT/FREE_DATA).
         rresp_seen = 1'b0;
-        axil_rd(12'h03C, rd_val);
-        $display("[TB] T-REG unmapped read(0x03C): rresp_seen=%b (expect 1)", rresp_seen);
+        axil_rd(12'h02C, rd_val);
+        $display("[TB] T-REG unmapped read(0x02C): rresp_seen=%b (expect 1)", rresp_seen);
         if (!rresp_seen) begin
             $display("[TB][FAIL] T-REG unmapped read returned OKAY (should be SLVERR)");
             errors = errors + 1;
@@ -883,6 +1562,12 @@ module tb_gc_top;
 
         // ---- T7b: overflow must not leave a stray bitmap bit ----
         // T7 forced q_full, so nothing was enqueued; the bitmap must agree.
+        i = 0;
+        axil_rd(R_STATUS, rd_val);
+        while (((rd_val & 32'h20) != 0) && (i < 20000)) begin
+            i = i + 1;
+            axil_rd(R_STATUS, rd_val);
+        end
         axil_wr(R_BMADDR, 32'h0);
         repeat (4) @(negedge clk);
         axil_rd(R_BMDATA, rd_val);
@@ -1051,8 +1736,96 @@ module tb_gc_top;
         end
         axil_rd(R_STATUS, rd_val);
         $display("[TB] T-STAR STATUS=%h (expect bit4=1, errors=0)", rd_val);
-        if (rd_val !== 32'h10) begin
+        if ((rd_val & 32'h1F) !== 32'h10) begin
             $display("[TB][FAIL] T-STAR STATUS=%h (expect 0x10: idle, no errors)", rd_val);
+            errors = errors + 1;
+        end
+
+        // ---- T-CTRL-SPILL: a spilled CLEAR_Q must not truncate a running epoch ----
+        // This platform redelivers stores and the copies are not always adjacent, so
+        // the driver's `CTRL = CLEAR_Q` can arrive again while the engine is mid-run.
+        // Clearing the BFS queue then loses work: the run would finish with fewer
+        // marks than the oracle.  Only a clear the engine can still act on (one seen
+        // while it is idle) may be honoured.
+        begin : t_spill
+            integer i;
+            // a 200-long chain: object i is discovered only by reading i-1 from the
+            // BFS queue, so clearing that queue mid-run strands the rest of the chain
+            for (i = 0; i < 200; i = i + 1) begin
+                mem[(i*16)/4 + 0] = i;
+                mem[(i*16)/4 + 1] = (i < 199) ? 1 : 0;
+                mem[(i*16)/4 + 2] = BASE + 32'h9000 + (i * 4);
+            end
+            for (i = 0; i < 199; i = i + 1)
+                mem[32'h9000/4 + i] = i + 1;
+        end
+        axil_wr(R_BASE,  BASE);
+        axil_wr(R_COUNT, 32'd200);
+        axil_wr(R_ROOTS, 32'd1);
+        axil_wr(R_RLIST, 32'd0);
+        axil_wr(R_CTRL, 32'h6);
+        repeat (200) @(negedge clk);
+        axil_wr(R_CTRL, 32'h1);
+        // wait until the fan-out has actually queued work, then spill a CLEAR_Q
+        guard = 0;
+        begin : t_spill_wait
+            reg [31:0] qh, qt;
+            qh = 32'd0; qt = 32'd0;
+            while ((qh == qt) && (guard < 20000)) begin
+                axil_rd(R_QHEAD, qh);
+                axil_rd(R_QTAIL, qt);
+                guard = guard + 1;
+            end
+        end
+        axil_wr(R_CTRL, 32'h4);
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        if (!rd_val[31]) begin
+            $display("[TB][FAIL] T-CTRL-SPILL DONE never asserted");
+            errors = errors + 1;
+        end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-CTRL-SPILL marked=%0d (expect 200: a mid-run CLEAR_Q must be ignored)", rd_val);
+        if (rd_val !== 32'd200) begin
+            $display("[TB][FAIL] T-CTRL-SPILL marked=%0d != 200 (the spilled clear truncated the run)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_STATUS, rd_val);
+        if ((rd_val & 32'h1F) !== 32'h10) begin
+            $display("[TB][FAIL] T-CTRL-SPILL STATUS=%h (expect 0x10)", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_QTAIL, rd_val);
+        $display("[TB] T-CTRL-SPILL q_tail=%0d (expect 200 == marked)", rd_val);
+        if (rd_val !== 32'd200) begin
+            $display("[TB][FAIL] T-CTRL-SPILL q_tail=%0d != 200 (the spilled clear reset the queue)", rd_val);
+            errors = errors + 1;
+        end
+
+        // ---- T-CTRL-RESTART: a spilled START keeps q_tail == marked ----
+        // The engine clears the object queue itself when it accepts a START, so a
+        // second START with no intervening CLEAR_Q re-runs the same graph and still
+        // leaves q_tail == marked; without that the tail accumulates (the C API's
+        // q_tail invariant would fail).
+        axil_rd(R_QTAIL, rd_val);
+        $display("[TB] T-CTRL-RESTART first run q_tail=%0d (expect 200)", rd_val);
+        if (rd_val !== 32'd200) begin
+            $display("[TB][FAIL] T-CTRL-RESTART first run q_tail=%0d != 200", rd_val);
+            errors = errors + 1;
+        end
+        axil_wr(R_CTRL, 32'h1);                        // spilled START, no CLEAR_Q
+        guard = 0; rd_val = 32'h0;
+        while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
+        axil_rd(R_MARKED, rd_val);
+        $display("[TB] T-CTRL-RESTART re-run marked=%0d (expect 200)", rd_val);
+        if (rd_val !== 32'd200) begin
+            $display("[TB][FAIL] T-CTRL-RESTART re-run marked=%0d != 200", rd_val);
+            errors = errors + 1;
+        end
+        axil_rd(R_QTAIL, rd_val);
+        $display("[TB] T-CTRL-RESTART re-run q_tail=%0d (expect 200 == marked, not 400)", rd_val);
+        if (rd_val !== 32'd200) begin
+            $display("[TB][FAIL] T-CTRL-RESTART re-run q_tail=%0d != 200", rd_val);
             errors = errors + 1;
         end
 

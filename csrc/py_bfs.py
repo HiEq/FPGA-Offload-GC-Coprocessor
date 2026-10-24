@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # ============================================================
-# py_bfs.py - Python BFS reference (NOT CPython's GC: it walks the graph
-#             with struct.unpack_from over /dev/mem, one reference at a time)
+# py_bfs.py - Python BFS reference (a script-level walk, not a runtime's GC:
+#             struct.unpack_from over /dev/mem, one reference at a time)
 #
 # Marks the SAME object graph that test_main built in DDR, using a
 # plain Python BFS.  It is a Python-LEVEL reference (interpreter loop +
-# one uncached /dev/mem read per reference), NOT CPython's gc: the real
-# gc.collect() baseline lives in python/benchmark.py.
+# one uncached /dev/mem read per reference) and is only a magnitude
+# context, not a same-stage baseline.
 #
 #   usage: python3 py_bfs.py <n> <graph_phys_hex> <root>
 #   output: "<elapsed_ms> <marked_count>"

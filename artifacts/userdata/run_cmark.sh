@@ -31,7 +31,7 @@ if [ ! -x "$DIR/cmark" ]; then
     # No on-board fallback on purpose: this rootfs has no gcc, so a silent
     # "compile here" branch could only ever fail or run a stale binary.
     echo "ERROR: $DIR/cmark is missing or not executable"
-    echo "       build it on the host with csrc/build_cmark.sh and copy it over"
+    echo "       build it on the host with csrc/build_c_bins.sh and copy it over"
     exit 1
 fi
 

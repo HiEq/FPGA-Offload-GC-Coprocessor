@@ -1,0 +1,22 @@
+# command: cd <datadir> && python3 -u tests/dirty_api_test.py
+# test: tools/tests/dirty_api_test.py md5 
+1f3e2fc775e2838d5ebc192d7be088b9
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-23
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_api_test.py
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040200
+[FOGCCC] FPGA initialized successfully
+[FOGCCC] Graph: 512 objects, 16492 bytes, avg_refs=3
+full mark : marked=494 oracle=494 live=494 STATUS=0x0
+verified push: [True, True] (expect True/True)
+acked push   : [True, True] (expect True/True)
+incremental: epoch_marked=6 (expect 6) cumulative=500 oracle=500 | pushed=6 popped=6 drained=6 | occ=0
+overflow  : occ=256 overflow=1 pushed=256 (expect 256 / 1 / 256)
+DIRTY_API_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

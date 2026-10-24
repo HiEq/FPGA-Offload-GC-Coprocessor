@@ -1,0 +1,30 @@
+# command: cd <datadir> && python3 -u tests/regs_aww_board_test.py
+# test: tools/tests/regs_aww_board_test.py md5 cb82de36be7d8f6a2e1af5fd69b2fe16
+# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
+# commit: f948097   VERSION=0x00040200
+# date: 2026-10-24
+# note: the --plain control, same image and same cold window: the record is still lost
+# note: (loss=[8]), i.e. the ack -- not a change in the push path -- is what closes it.
+
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py 
+mode: plain push
+round 0  k=3  gap=True  occ=3 pushed=3 tag=2 | marked=3 drained=3 popped=3 | loss=[8] forged=[0]
+round 1  k=3  gap=False occ=4 pushed=4 tag=5 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 2  k=3  gap=False occ=4 pushed=4 tag=8 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 3  k=3  gap=False occ=4 pushed=4 tag=B | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 4  k=3  gap=False occ=4 pushed=4 tag=E | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 5  k=3  gap=False occ=4 pushed=4 tag=1 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 6  k=3  gap=False occ=4 pushed=4 tag=4 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 7  k=3  gap=False occ=4 pushed=4 tag=7 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 8  k=3  gap=False occ=4 pushed=4 tag=A | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 9  k=3  gap=False occ=4 pushed=4 tag=D | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 10 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 11 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 12 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 13 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 14 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+cold round (first push sequence after the boot): loss=[8] forged=[0]
+warm rounds: loss in 0/14, extra marks in 14/14 (the safe direction)
+REGS_AWW_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 
