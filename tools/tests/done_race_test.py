@@ -33,6 +33,7 @@ R_MARKED, R_CYCLES = 0x10, 0x14
 R_STATUS, R_MAGIC, R_VERSION, R_ROOT_LIST = 0x20, 0x30, 0x34, 0x40
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_ABORT, CTRL_DONE = 1, 4, 8, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 HDR_BASE = 0x0000
 
 def task(pct, label):
@@ -116,7 +117,7 @@ def main():
         wr(R_ROOT_COUNT, 1)
         wr(R_OBJ_BASE,   GRAPH_BASE)
         wr(R_OBJ_COUNT,  n)
-        wr(R_CTRL, CTRL_CLEAR_Q)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
         time.sleep(0.02)                    # let the uncached graph writes land
 
     def wait_done(ms):
@@ -134,13 +135,13 @@ def main():
     L0, sw0 = build(n0); setup(n0, L0)
     # warm-up run (so DONE starts at 1, which is the dangerous precondition)
     warm_ok = False
-    wr(R_CTRL, CTRL_START); warm_ok = wait_done(300)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START); warm_ok = wait_done(300)
     print("   warm-up: done=%s marked=%d" % (warm_ok, rr(R_MARKED)))
     if not warm_ok:
         print("   FAIL: warm-up run did not complete"); return 1
     p1_hits = 0; p1_checked = 0
     for _ in range(iters):
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         p1_checked += 1
         if rr(R_CTRL) & CTRL_DONE:
             p1_hits += 1
@@ -154,7 +155,7 @@ def main():
     p2_early = 0; p2_stale_val = 0; p2_checked = 0
     prev_L = L0
     for _ in range(iters):
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         p2_checked += 1
         if rr(R_CTRL) & CTRL_DONE:          # would be an early return in a naive driver
             p2_early += 1
@@ -173,7 +174,7 @@ def main():
     for it in range(flip_iters):
         n = sizes[it % 2]
         L, sw = build(n); setup(n, L)
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         _ = rr(R_CTRL)                       # the driver's flush read
         time.sleep(0.000001)                 # usleep(1)
         ok = wait_done(300)

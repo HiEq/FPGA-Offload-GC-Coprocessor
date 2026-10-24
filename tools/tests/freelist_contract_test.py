@@ -38,6 +38,7 @@ R_BMDATA = 0x28
 R_FCOUNT = 0x38
 R_FDATA = 0x3C
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 STATUS_FREEBUSY = 1 << 5
 
 N = 4096
@@ -70,9 +71,9 @@ def start_run():
     wr(0x0C, 1)
     wr(0x04, C.GRAPH_BASE)
     wr(0x08, N)
-    wr(R_CTRL, CTRL_CLEAR_Q)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
     time.sleep(0.002)
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     _ = rr(R_CTRL)
     time.sleep(0.0002)
 
@@ -200,7 +201,7 @@ while time.time() - t0 < 0.002:
         into_scan = True
         break
 st_mid = rr(R_STATUS)
-wr(R_CTRL, CTRL_START)                  # re-arm a new run mid-scan (no CLEAR_Q)
+wr(R_CTRL, CTRL_WR_MARK | CTRL_START)                  # re-arm a new run mid-scan (no CLEAR_Q)
 _ = rr(R_CTRL)
 wait_done_tight()
 wait_busy_clear()

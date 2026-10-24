@@ -1,10 +1,10 @@
 # command: tools/debug/cold_cycle.ps1 -> regs_aww_verify_effect (first run after a reboot)
 # bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
-# commit: ca6d2c6   VERSION=0x00040200
-# date: 2026-10-24
+# commit: 3cdc254   VERSION=0x00040300
+# date: 2026-10-25
 cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py --verify-effect; printf 'D''IAG_DONE\n'
 mode: plain push
-round 0  k=3  verify=OK (fallback to a full mark, recovered)
+round 0  k=3  verify=OK
 round 1  k=3  verify=OK
 round 2  k=3  verify=OK
 round 3  k=3  verify=OK

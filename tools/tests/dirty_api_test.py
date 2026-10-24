@@ -39,6 +39,7 @@ import fogccc  # noqa: E402
 
 REG_BASE = 0x43C00000
 R_CTRL, R_DPUSH, R_DSTAT = 0x00, 0x440, 0x444
+PUSH_WR_MARK = 0xA5400000   # command writes carry their destination in WDATA[31:20]
 CTRL_DIRTY_FLUSH = 1 << 5
 FIFO_DEPTH = 256
 
@@ -49,7 +50,7 @@ def raw_push(oid, tag):
     """bypass the binding: write DIRTY_PUSH with a fixed tag (negative control)"""
     fd = os.open('/dev/mem', os.O_RDWR | os.O_SYNC)
     regs = mmap.mmap(fd, 4096, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, offset=REG_BASE)
-    struct.pack_into('<I', regs, R_DPUSH, ((tag & 0xF) << 12) | (oid & 0xFFF))
+    struct.pack_into('<I', regs, R_DPUSH, PUSH_WR_MARK | ((tag & 0xF) << 12) | (oid & 0xFFF))
     regs.close()
     os.close(fd)
 

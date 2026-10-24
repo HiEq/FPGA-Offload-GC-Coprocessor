@@ -26,6 +26,7 @@ R_BM_ADDR, R_BM_DATA = 0x24, 0x28
 R_FREE_COUNT, R_FREE_DATA = 0x38, 0x3C
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 HDR_BASE  = 0x0000
 N_MAX_HW  = 4096               # 12-bit object ids + 4096x32 bitmap
 MIN_CYCLES = 4096              # engine must at least clear the 4096-word bitmap
@@ -73,9 +74,9 @@ def main():
     _magic = rr(0x30)
     _ver   = rr(0x34)
     print("   MAGIC = 0x%08X   VERSION = 0x%08X" % (_magic, _ver))
-    if _magic != 0x47434343 or _ver != 0x00040200:
+    if _magic != 0x47434343 or _ver != 0x00040300:
         print("   ERROR: bitstream/software mismatch: MAGIC=0x%08X VERSION=0x%08X"
-              " (expected 0x47434343/0x00040200)" % (_magic, _ver))
+              " (expected 0x47434343/0x00040300)" % (_magic, _ver))
         return 1
     print("=" * 84)
 
@@ -135,11 +136,11 @@ def main():
         wr(R_ROOT_COUNT, len(roots))
         wr(R_OBJ_BASE,   GRAPH_BASE)
         wr(R_OBJ_COUNT,  n)
-        wr(R_CTRL, CTRL_CLEAR_Q)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
         time.sleep(0.002)
 
         t0 = time.time()
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         # START is a posted write: read CTRL once to flush it, then poll DONE.
         # (Polling CYCLES alone mis-reported NO-RUN when two runs happened to
         # produce the same cycle count.)

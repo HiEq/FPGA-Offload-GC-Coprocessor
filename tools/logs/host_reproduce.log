@@ -1,7 +1,7 @@
 # command: powershell -File tools/reproduce_all.ps1   (VIVADO_BIN set in the environment)
 # bitstream: n/a (host-side: manifest + test-serial-session.ps1 + tb_gc_top/tb_axi_read/tb_runstart_race/tb_cmdfifo_flush/tb_regs_aww + tb_flush_data/tb_stale_ar_flush/tb_start_while_busy)
-# commit: 548e8ff   VERSION=0x00040200
-# date: 2026-10-24
+# commit: PENDING   VERSION=0x00040300
+# date: 2026-10-25
 # note: Vivado 2026.1; absolute build paths shortened to repo-relative
 === binary manifest ===
 SHA256SUMS matches the tree
@@ -15,31 +15,31 @@ PASS empty buffer does not match
 SERIAL_SESSION_TEST PASS
 === sim: tb_gc_top ===
 === xvlog ===
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_top.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_top.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_top
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_mark_engine.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_mark_engine.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_mark_engine
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_axi_read.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_axi_read.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_axi_read
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_bitmap.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_bitmap.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_bitmap
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_queue.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_queue.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_queue
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_freelist.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_freelist.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_freelist
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_dirty_fifo.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_dirty_fifo.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_dirty_fifo
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_regs.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_regs.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_regs
-INFO: [VRFC 10-2263] Analyzing Verilog file "sim/axi_proto_check.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./sim/axi_proto_check.v" into library work
 INFO: [VRFC 10-311] analyzing module axi_proto_check
-INFO: [VRFC 10-2263] Analyzing Verilog file "sim/tb_gc_top.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./sim/tb_gc_top.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_gc_top
 === xelab ===
 Vivado Simulator v2026.1
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
-Running: xelab.exe tb_gc_top -s tb_sim --debug typical --mt 20 
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_gc_top -s tb_sim --debug typical --mt 20 
 INFO: [XSIM 43-3493] Using 20 slave threads.
 Starting static elaboration
 Pass Through NonSizing Optimizer
@@ -64,7 +64,7 @@ Built simulation snapshot tb_sim
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 20:38:55 2026
+  **** Start of session at: Sun Oct 25 02:12:37 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -387,7 +387,7 @@ run -all
 [TB] T-DIRTY-RACE remark (rc2=1) drained=1 (expect 1, the deferred record)
 [TB] T-DIRTY-RACE remark (rc2=1) obj60 marked=1 (expect 1: arm-and-consume keeps it)
 [TB] T-ID magic=47434343 (expect 47434343)
-[TB] T-ID version=00040200 (expect 00040200)
+[TB] T-ID version=00040300 (expect 00040300)
 [TB] T-ABORT queue fill = 8 when the stall is applied
 [TB] T-ABORT state while hung = 7
 [TB] T-ABORT state after abort = 0 (expect 0 = S_IDLE)
@@ -420,24 +420,24 @@ run -all
 [TB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align, VALID stable)
 
 [TB] ==================== PASS ====================
-$finish called at time : 4191330 ns : File "sim/tb_gc_top.v" Line 1853
+$finish called at time : 4191330 ns : File "./sim/tb_gc_top.v" Line 1863
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 20:38:58 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:12:40 2026...
 === SIM DONE ===
 cache dir: Cache\sim
 === sim: tb_axi_read ===
 === xvlog ===
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_axi_read.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_axi_read.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_axi_read
-INFO: [VRFC 10-2263] Analyzing Verilog file "sim/axi_proto_check.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./sim/axi_proto_check.v" into library work
 INFO: [VRFC 10-311] analyzing module axi_proto_check
-INFO: [VRFC 10-2263] Analyzing Verilog file "sim/tb_axi_read.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./sim/tb_axi_read.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_axi_read
 === xelab ===
 Vivado Simulator v2026.1
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
-Running: xelab.exe tb_axi_read -s axi_tb --mt 20 
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_axi_read -s axi_tb --mt 20 
 INFO: [XSIM 43-3493] Using 20 slave threads.
 Starting static elaboration
 Pass Through NonSizing Optimizer
@@ -455,7 +455,7 @@ Built simulation snapshot axi_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 20:39:03 2026
+  **** Start of session at: Sun Oct 25 02:12:45 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -466,24 +466,24 @@ run -all
 [AXITB] NCMD=32 LAT=40 | AR=32 R=32 | peak outstanding=8 (limit 8) | protocol errors=0
 [AXITB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align)
 [AXITB] ==================== PASS ====================
-$finish called at time : 2110 ns : File "sim/tb_axi_read.v" Line 187
+$finish called at time : 2110 ns : File "./sim/tb_axi_read.v" Line 187
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 20:39:05 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:12:47 2026...
 === AXI TB DONE ===
 cache dir: Cache\axi_tb
 === sim: tb_runstart_race ===
 === xvlog ===
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_axi_read.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_axi_read.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_axi_read
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/axi_proto_check.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/axi_proto_check.v" into library work
 INFO: [VRFC 10-311] analyzing module axi_proto_check
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/tb_runstart_race.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/tb_runstart_race.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_runstart_race
 === xelab ===
 Vivado Simulator v2026.1
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
-Running: xelab.exe tb_runstart_race -s race_tb --mt 8 
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_runstart_race -s race_tb --mt 8 
 INFO: [XSIM 43-3493] Using 8 slave threads.
 Starting static elaboration
 Pass Through NonSizing Optimizer
@@ -501,7 +501,7 @@ Built simulation snapshot race_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 20:39:09 2026
+  **** Start of session at: Sun Oct 25 02:12:53 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -514,22 +514,22 @@ run -all
 [RACE][INFO]     abort: data FIFO empty after flush (OK)
 [RACE][INFO]     abort: first word=0x600d0004 (fresh) OK
 [RACE] ==================== PASS ====================
-$finish called at time : 810 ns : File "sim/tb_runstart_race.v" Line 269
+$finish called at time : 810 ns : File "./sim/tb_runstart_race.v" Line 269
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 20:39:11 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:12:55 2026...
 === RACE TB DONE ===
 cache dir: Cache\race_tb
 === sim: tb_cmdfifo_flush ===
 === xvlog ===
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_axi_read.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_axi_read.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_axi_read
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/tb_cmdfifo_flush.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/tb_cmdfifo_flush.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_cmdfifo_flush
 === xelab ===
 Vivado Simulator v2026.1
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
-Running: xelab.exe tb_cmdfifo_flush -s cmdfifo_tb --mt 8 
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_cmdfifo_flush -s cmdfifo_tb --mt 8 
 INFO: [XSIM 43-3493] Using 8 slave threads.
 Starting static elaboration
 Pass Through NonSizing Optimizer
@@ -546,7 +546,7 @@ Built simulation snapshot cmdfifo_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 20:39:16 2026
+  **** Start of session at: Sun Oct 25 02:13:01 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -559,22 +559,22 @@ run -all
 [CMDFIFO] before pulse (    abort): c0r=1 c0w=4
 [CMDFIFO] after pulse (    abort): c0r=4 c0w=4 c1r=0 c1w=0
 [CMDFIFO] ==================== PASS ====================
-$finish called at time : 850 ns : File "sim/tb_cmdfifo_flush.v" Line 199
+$finish called at time : 850 ns : File "./sim/tb_cmdfifo_flush.v" Line 199
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 20:39:18 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:13:03 2026...
 === CMDFIFO TB DONE ===
 cache dir: Cache\cmdfifo_tb
 === sim: tb_regs_aww ===
 === xvlog ===
-INFO: [VRFC 10-2263] Analyzing Verilog file "rtl/gc_regs.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./rtl/gc_regs.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_regs
-INFO: [VRFC 10-2263] Analyzing Verilog file "sim/tb_regs_aww.v" into library work
+INFO: [VRFC 10-2263] Analyzing Verilog file "./sim/tb_regs_aww.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_regs_aww
 === xelab ===
 Vivado Simulator v2026.1
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
-Running: xelab.exe tb_regs_aww -s regs_aww_tb --mt 8 
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_regs_aww -s regs_aww_tb --mt 8 
 INFO: [XSIM 43-3493] Using 8 slave threads.
 Starting static elaboration
 Pass Through NonSizing Optimizer
@@ -591,7 +591,7 @@ Built simulation snapshot regs_aww_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sat Oct 24 20:39:22 2026
+  **** Start of session at: Sun Oct 25 02:13:08 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -605,44 +605,41 @@ run -all
 [AW-W][INFO] push #2: id=41
 [AW-W] P2 duplicated store: pushes=1 last_id=41 (expect 1/41)
 [AW-W] P3 W held with no pending AW: WREADY stayed low, obj_count=64 (expect 64)
-[AW-W][INFO] push #3: id=64
-[AW-W][INFO] foreign WDATA on 0x440 -> push #3 id=64 (a forged record)
-[AW-W][INFO] held W attributed to the next AW -> obj_count=0x0000beef (a mismatched write)
-[AW-W][INFO] push #4: id=42
+[AW-W] P4 markerless W on 0x440: pushes=2 (unchanged)
+[AW-W][INFO] push #3: id=42
 [AW-W] P5 ack: tag=3 id=42 (expect 3/42)
-[AW-W][INFO] push #5: id=64
-[AW-W] P6 forged push visible in the ack: tag=0 id=64 (expect 0/64)
+[AW-W] P6 CTRL marker: start pulses=1 (expect 1 from the marked write)
 [AW-W] ==================== PASS ====================
-$finish called at time : 500 ns : File "sim/tb_regs_aww.v" Line 300
+$finish called at time : 510 ns : File "./sim/tb_regs_aww.v" Line 301
 exit
-INFO: [Common 17-206] Exiting xsim at Sat Oct 24 20:39:24 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:13:10 2026...
 === REGS AWW TB DONE ===
 cache dir: Cache\regs_aww_tb
 === sim: hand-over TBs ===
 === xvlog (all RTL once) ===
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_top.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_top.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_top
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_mark_engine.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_mark_engine.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_mark_engine
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_axi_read.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_axi_read.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_axi_read
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_bitmap.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_bitmap.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_bitmap
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_queue.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_queue.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_queue
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_freelist.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_freelist.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_freelist
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_dirty_fifo.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_dirty_fifo.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_dirty_fifo
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "rtl/gc_regs.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./rtl/gc_regs.v" into library work
 INFO: [VRFC 10-311] analyzing module gc_regs
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/axi_proto_check.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/axi_proto_check.v" into library work
 INFO: [VRFC 10-311] analyzing module axi_proto_check
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/tb_flush_data.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/tb_flush_data.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_flush_data
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/tb_stale_ar_flush.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/tb_stale_ar_flush.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_stale_ar_flush
-INFO: [VRFC 10-2263] Analyzing SystemVerilog file "sim/tb_start_while_busy.v" into library work
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "./sim/tb_start_while_busy.v" into library work
 INFO: [VRFC 10-311] analyzing module tb_start_while_busy
 === tb_flush_data ===
 done tb_flush_data 

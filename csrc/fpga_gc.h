@@ -33,17 +33,17 @@
 #define REG_BM_ADDR      0x24   // bitmap probe address (0..4095)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
 #define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
-#define REG_VERSION      0x34   // fixed 0x0004_0200 (v4.2, Phase 3A dirty set)
+#define REG_VERSION      0x34   // fixed 0x0004_0300 (v4.3: command-write address markers)
 #define REG_FREE_COUNT   0x38   // Phase 2: number of free ids in the PL list
 #define REG_FREE_DATA    0x3C   // Phase 2: read pops one free id
-#define REG_DIRTY_PUSH   0x440  // Phase 3A: write (tag<<12)|id pushes a barrier record
+#define REG_DIRTY_PUSH   0x440  // write 0xA5400000 | (tag<<12) | id (marker = WDATA[31:20])
 #define REG_DIRTY_STAT   0x444  // [8:0] occupancy [9] overflow [10] pending [19:16] last tag
                                 // [31:20] last accepted id (AGENTS #20 ack)
 #define REG_DIRTY_DRAINED  0x448  // ids consumed in the current epoch
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00040200u
+#define FOGCCC_VERSION   0x00040300u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
@@ -61,6 +61,10 @@
 #define CTRL_DIRTY_FLUSH (1U << 5)   // Phase 3A: 清脏集 FIFO + 溢出标志
 #define CTRL_ABORT       (1U << 3)   // 把引擎拉回 IDLE 并清 DONE（超时后复位用）   // 清BFS队列
 #define CTRL_DONE        (1U << 31)  // 完成标志
+// Command writes must carry their destination in WDATA[31:20]: a mispaired
+// W beat (platform AW/W reorder) then fails the check and is dropped.
+#define GC_CTRL_MARK     0xA5000000u  // CTRL (0x000)
+#define GC_PUSH_MARK     0xA5400000u  // DIRTY_PUSH (0x440)
 
 // ==================== 对象图DDR格式 ====================
 //

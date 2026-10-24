@@ -27,6 +27,7 @@ R_CTRL, R_BASE, R_COUNT, R_ROOTS, R_MARKED = 0x00, 0x04, 0x08, 0x0C, 0x10
 R_QHEAD, R_QTAIL, R_STATUS = 0x18, 0x1C, 0x20
 R_RLIST = 0x40
 CTRL_START, CTRL_CLEAR_Q, CTRL_DIRTY_FLUSH, CTRL_DONE = 1, 4, (1 << 5), (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 STATUS_IDLE = 1 << 4
 BASE = C.GRAPH_BASE
 N = 3000                     # root -> 1..N-1: long enough to place the spill mid-run
@@ -53,11 +54,11 @@ def wait_done(timeout=20.0):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040200:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
         print('FAIL magic/version 0x%08X/0x%08X (need v4.2 with spill protection)'
               % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040200' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00040300' % rr(0x30))
 
     # a fan: obj0 -> 1..199, every other object has no refs
     for i in range(N):
@@ -72,7 +73,7 @@ def main():
     wr(R_COUNT, N)
     wr(R_ROOTS, 1)
     wr(R_RLIST, 0)
-    wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
     time.sleep(0.002)
 
     # ---- run 1: spill a CLEAR_Q while the engine is mid-run --------------------
@@ -82,7 +83,7 @@ def main():
     m1 = t1 = None
     attempts = 0
     for attempts in range(1, 6):
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         # DONE is sticky from the previous run until this START is accepted.
         t0 = time.time()
         while (rr(R_CTRL) & CTRL_DONE) and time.time() - t0 < 0.01:
@@ -96,7 +97,7 @@ def main():
                 break
         if not busy:
             continue
-        wr(R_CTRL, CTRL_CLEAR_Q)                   # the spilled store
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)                   # the spilled store
         if rr(R_STATUS) & STATUS_IDLE:             # finished before it landed
             continue
         if not wait_done():
@@ -117,7 +118,7 @@ def main():
         fails.append('t1')
 
     # ---- run 2: spill a START (no clear): a re-run must not inherit the tail ----
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     if not wait_done():
         print('FAIL run 2: DONE never asserted')
         return 1
@@ -137,7 +138,7 @@ def main():
         fails.append('status')
 
     print('CTRL_SPILL_RESULT %s' % ('OK' if not fails else 'FAIL:' + ','.join(fails)))
-    wr(R_CTRL, CTRL_DIRTY_FLUSH)                   # arm; the next full-mark start clears the FIFO
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_DIRTY_FLUSH)                   # arm; the next full-mark start clears the FIFO
     regs.close()
     gph.close()
     os.close(fd)

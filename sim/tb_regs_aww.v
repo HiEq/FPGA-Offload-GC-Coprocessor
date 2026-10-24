@@ -13,18 +13,16 @@
 //       fires the push exactly once (the command tag rule);
 //   P3  a W beat is NEVER consumed without a pending AW: WREADY stays low and
 //       no register changes (so addresses cannot run ahead of data);
-//   P4  (INFO only) a foreign WDATA that lands after a DPUSH AW is accepted
-//       as a record carrying that foreign id, and a W beat held while no AW
-//       was pending is attributed to the NEXT accepted AW;
+//   P4  a foreign WDATA that lands on the DPUSH address without that command's
+//       address marker (WDATA[31:20] = 0xA54) is DROPPED: no record, no ack;
 //   P5  DIRTY_STAT[31:20]/[19:16] report the accepted push (id-level ack);
-//   P6  a forged push is visible in that ack, i.e. the software can detect it.
+//   P6  the same for CTRL (WDATA[31:20] = 0xA50): a markerless beat cannot
+//       start the engine.
 //
-// P4 is the pins-level limit, not a fixable defect: a slave cannot tell which
-// master-side store a W beat belongs to, and the block already allows only one
-// transaction at a time (AWREADY = ~aw_pending & ~BVALID), i.e. it applies the
-// standard AXI requirement that write data is ordered like write addresses.
-// If the interconnect ever breaks that order, the software contract must treat
-// a dirty record as advisory (AGENTS #20 records the residual risk).
+// P4/P6 are the fix for the pins-level hole: a slave cannot tell which
+// master-side store a W beat belongs to, so the command registers require the
+// destination to ride in the data.  A beat mispaired with another store's AW
+// then fails the marker check and is inert instead of firing a command.
 //
 // Unfixed/fixed distinction: this TB is GREEN on the current RTL -- it is the
 // evidence for the attribution above, and a guard against an "AW FIFO" style
@@ -141,9 +139,11 @@ module tb_regs_aww;
     // ---- push monitor ----
     integer    npush   = 0;
     reg [11:0] last_id = 12'h0;
+    integer    nstart  = 0;
     integer    fails   = 0;
 
     always @(posedge clk) begin
+        if (reg_start) nstart = nstart + 1;
         if (reg_dirty_push) begin
             npush   = npush + 1;
             last_id = reg_dirty_push_id;
@@ -219,6 +219,7 @@ module tb_regs_aww;
 
     integer p1_npush;
     integer p2_npush;
+    integer p6_nstart;
 
     initial begin
         $display("[AW-W] tb_regs_aww: AW/W pairing contract of gc_regs");
@@ -228,7 +229,7 @@ module tb_regs_aww;
         repeat (2) @(negedge clk);
 
         // ---- P1: matched pairs do what they say -------------------------
-        aw_w(12'h440, 32'h0000_1028);           // DPUSH tag=1 id=0x028 (40)
+        aw_w(12'h440, 32'hA540_1028);           // DPUSH tag=1 id=0x028 (40)
         aw_w(12'h008, 32'd64);                  // OBJ_COUNT = 64
         p1_npush = npush;
         if (p1_npush != 1)      fail("P1: a matched DPUSH pair must fire exactly one push");
@@ -238,8 +239,8 @@ module tb_regs_aww;
                  p1_npush, last_id, reg_obj_count);
 
         // ---- P2: the platform's duplication is ignored by the tag rule --
-        aw_w(12'h440, 32'h0000_2029);           // new tag (2), id=41
-        aw_w(12'h440, 32'h0000_2029);           // the duplicate delivery
+        aw_w(12'h440, 32'hA540_2029);           // new tag (2), id=41
+        aw_w(12'h440, 32'hA540_2029);           // the duplicate delivery
         p2_npush = npush - p1_npush;
         if (p2_npush != 1)     fail("P2: the duplicate delivery of one store must not double the record");
         if (last_id != 12'd41) fail("P2: the accepted record must be the new one (41)");
@@ -257,24 +258,24 @@ module tb_regs_aww;
         $display("[AW-W] P3 W held with no pending AW: WREADY stayed low, obj_count=%0d (expect 64)",
                  reg_obj_count);
 
-        // ---- P4: INFO -- what a channel mismatch does -------------------
-        // (a) a foreign WDATA on the DPUSH address becomes a record;
+        // ---- P4: a foreign WDATA on DPUSH without the marker is DROPPED --
         aw(12'h440);
-        w(32'h0000_0040);                       // 64: a COUNT-shaped WDATA
+        w(32'h0000_0040);                       // 64: a COUNT-shaped WDATA, no 0xA54 marker
         resp;
-        $display("[AW-W][INFO] foreign WDATA on 0x440 -> push #%0d id=%0d (a forged record)",
-                 npush, last_id);
-        // (b) a W beat held with no pending AW is attributed to the next AW.
+        if (npush != p1_npush + p2_npush)
+            fail("P4: a markerless W on 0x440 must not create a record");
+        // same for a held W attributed to the next DPUSH AW
         WDATA = 32'h0000_BEEF; WSTRB = 4'hF; WVALID = 1'b1;
         repeat (2) @(negedge clk);
-        aw(12'h008);
+        aw(12'h440);
         w(32'h0000_BEEF);
         resp;
-        $display("[AW-W][INFO] held W attributed to the next AW -> obj_count=0x%08X (a mismatched write)",
-                 reg_obj_count);
+        if (npush != p1_npush + p2_npush)
+            fail("P4: a held markerless W attributed to a DPUSH AW must not create a record");
+        $display("[AW-W] P4 markerless W on 0x440: pushes=%0d (unchanged)", npush);
 
         // ---- P5: the id-level ack reports what the FIFO accepted --------
-        aw_w(12'h440, 32'h0000_302A);               // tag 3, id 42
+        aw_w(12'h440, 32'hA540_302A);               // tag 3, id 42
         rd(12'h444);
         ack_tag = (rd_data >> 16) & 15;
         ack_id  = (rd_data >> 20) & 4095;
@@ -282,17 +283,17 @@ module tb_regs_aww;
             fail("P5: DIRTY_STAT[31:20]/[19:16] must report the accepted push");
         $display("[AW-W] P5 ack: tag=%0d id=%0d (expect 3/42)", ack_tag, ack_id);
 
-        // ---- P6: a forged push becomes VISIBLE in the ack (the detector) --
-        aw(12'h440);
-        w(32'h0000_0040);                           // foreign WDATA: tag 0, id 64
-        resp;
-        rd(12'h444);
-        ack_tag = (rd_data >> 16) & 15;
-        ack_id  = (rd_data >> 20) & 4095;
-        if (ack_id !== 64)
-            fail("P6: the ack must expose the forged id so the software can react");
-        $display("[AW-W] P6 forged push visible in the ack: tag=%0d id=%0d (expect 0/64)",
-                 ack_tag, ack_id);
+        // ---- P6: the CTRL marker is required too ------------------------
+        // reg_start is a one-cycle pulse: count pulses, do not sample later.
+        p6_nstart = nstart;
+        aw_w(12'h000, 32'h0000_0001);               // START bit, no 0xA50 marker
+        if (nstart != p6_nstart)
+            fail("P6: a markerless CTRL write must not start the engine");
+        aw_w(12'h000, 32'hA500_0001);               // the same write with the marker
+        if (nstart != p6_nstart + 1)
+            fail("P6: a marked CTRL write must reach the register");
+        $display("[AW-W] P6 CTRL marker: start pulses=%0d (expect 1 from the marked write)",
+                 nstart - p6_nstart);
 
         // ---- verdict ----------------------------------------------------
         if (fails == 0) $display("[AW-W] ==================== PASS ====================");

@@ -35,9 +35,10 @@ R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18
 R_BM_ADDR, R_BM_DATA = 0x24, 0x28
 R_MAGIC, R_VERSION = 0x30, 0x34
 R_FREE_COUNT, R_FREE_DATA = 0x38, 0x3C
-MAGIC_VALUE, VERSION_VALUE = 0x47434343, 0x00040200
+MAGIC_VALUE, VERSION_VALUE = 0x47434343, 0x00040300
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 MIN_CYCLES = 4096
 N_MAX_HW = 4096
 
@@ -254,9 +255,9 @@ def run_hw(g, neg, seed):
     wr(R_ROOT_COUNT, 1)
     wr(R_OBJ_BASE, GRAPH_BASE)
     wr(R_OBJ_COUNT, g['n'])
-    wr(R_CTRL, CTRL_CLEAR_Q)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
     time.sleep(0.002)
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     _ = rr(R_CTRL)                     # flush the posted START write
     time.sleep(0.0002)
 

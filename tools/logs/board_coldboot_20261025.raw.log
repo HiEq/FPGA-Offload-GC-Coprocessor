@@ -259,23 +259,23 @@ Freeing unused kernel image (initmem) memory: 83968K
 Run /init as init process
 INIT: version 3.04 booting
 Starting udev
-udevd[82]: starting version 3.2.14
+udevd[83]: starting version 3.2.14
 random: crng init done
-udevd[83]: starting eudev-3.2.14
+udevd[84]: starting eudev-3.2.14
 ext3: Unknown parameter 'umask'
+ext2: Unknown parameter 'umask'
+ext4: Unknown parameter 'umask'
+ext3: Unknown parameter 'umask'
+ext2: Unknown parameter 'umask'
+ext4: Unknown parameter 'umask'
+FAT-fs (mmcblk0p1): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
+ext3: Unknown parameter 'umask'
+FAT-fs (mmcblk0p4): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
 ext2: Unknown parameter 'umask'
 ext4: Unknown parameter 'umask'
 FAT-fs (mmcblk0p2): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
-ext3: Unknown parameter 'umask'
 EXT4-fs (mmcblk0p3): recovery complete
 EXT4-fs (mmcblk0p3): mounted filesystem 8fdab594-d803-4d26-9da5-4c6734b88ab6 r/w with ordered data mode. Quota mode: disabled.
-ext2: Unknown parameter 'umask'
-ext3: Unknown parameter 'umask'
-ext2: Unknown parameter 'umask'
-ext4: Unknown parameter 'umask'
-ext4: Unknown parameter 'umask'
-FAT-fs (mmcblk0p4): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
-FAT-fs (mmcblk0p1): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
 hwclock: can't open '/dev/misc/rtc': No such file or directory
 Fri Mar  9 12:34:56 UTC 2018
 hwclock: can't open '/dev/misc/rtc': No such file or directory

@@ -237,6 +237,16 @@ module tb_gc_top;
         end
     endtask
 
+    // Command writes carry their destination in WDATA[31:20]:
+    // CTRL = 0xA50, DIRTY_PUSH = 0xA54.  gc_regs drops a beat whose marker
+    // does not match, so a W beat mispaired with another store's AW is inert.
+    task ctrl_wr(input [31:0] d);
+        begin axil_wr(12'h000, 32'hA500_0000 | d); end
+    endtask
+    task dpush_wr(input [31:0] d);
+        begin axil_wr(12'h440, 32'hA540_0000 | d); end
+    endtask
+
     task axil_rd(input [11:0] a, output [31:0] d);
         begin
             @(negedge clk);
@@ -294,7 +304,7 @@ module tb_gc_top;
     integer     dtag = 0;
     task push_dirty(input [11:0] id);
         begin
-            axil_wr(R_DPUSH, {16'h0, dtag[3:0], id});
+            dpush_wr({16'h0, dtag[3:0], id});
             dtag = (dtag + 1) & 4'hF;
         end
     endtask
@@ -303,8 +313,8 @@ module tb_gc_top;
     // (CTRL = CLEAR_Q|DIRTY_FLUSH, then a full-mark START).
     task dirty_flush_now;
         begin
-            axil_wr(R_CTRL, 32'h20);             // arm
-            axil_wr(R_CTRL, 32'h1);              // full-mark START consumes it
+            ctrl_wr(32'h20);             // arm
+            ctrl_wr(32'h1);              // full-mark START consumes it
             guard = 0; rd_val = 32'hFFFFFFFF;
             while (rd_val[31] && guard < 2000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
             guard = 0; rd_val = 32'h0;
@@ -428,9 +438,9 @@ module tb_gc_top;
         $display("[TB] registers configured");
 
         // ---- 清零位图/队列, 然后启动 ----
-        axil_wr(R_CTRL, 32'h6);                   // clear_bm | clear_q
+        ctrl_wr(32'h6);                   // clear_bm | clear_q
         repeat (3000) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);                   // start
+        ctrl_wr(32'h1);                   // start
         $display("[TB] write START");
 
         // 等 DONE 拉低 (确认 start 已被引擎接收)
@@ -555,9 +565,9 @@ module tb_gc_top;
         axil_wr(R_RLIST, 32'd0);
 
         for (rr = 0; rr < 2; rr = rr + 1) begin
-            axil_wr(R_CTRL, 32'h6);                // clear_bm | clear_q
+            ctrl_wr(32'h6);                // clear_bm | clear_q
             repeat (200) @(negedge clk);
-            axil_wr(R_CTRL, 32'h1);                // start
+            ctrl_wr(32'h1);                // start
 
             // 先等 DONE 落低 (确认 start 被接收), 再等它抬高
             guard = 0; rd_val = 32'hFFFFFFFF;
@@ -588,9 +598,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd64);
         axil_wr(R_ROOTS, 32'd2);             // root_count = 2
 
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -654,9 +664,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd2);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -690,9 +700,9 @@ module tb_gc_top;
             axil_wr(R_RLIST + rr * 4, 32'd200);  // root[0..59] 全无效
         axil_wr(R_RLIST + 12'd60 * 12'd4, 32'd60); // root[60] = obj60 (地址 0x130)
         axil_wr(R_ROOTS, 32'd61);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -764,9 +774,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd64);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -838,7 +848,7 @@ module tb_gc_top;
         // A0: no barrier, no roots -> nothing may be marked
         dirty_flush_now;
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -871,7 +881,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-DIRTY A FIFO not holding exactly the 3 pushed ids");
             errors = errors + 1;
         end
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -933,10 +943,10 @@ module tb_gc_top;
             mem[ref_base/4 + 3] = 32'd10;
             mem[ref_base/4 + 4] = 32'hFFFFFFFF;
         end
-        axil_wr(R_CTRL, 32'h4);                  // clear_q only: the bitmap must SURVIVE into the
+        ctrl_wr(32'h4);                  // clear_q only: the bitmap must SURVIVE into the
         repeat (200) @(negedge clk);             // BM_KEEP epoch (under arm-and-consume a flush needs a full mark)
         push_dirty(12'd0);                       // already marked -> must be re-scanned
-        axil_wr(R_CTRL, 32'h11);                 // START | BM_KEEP
+        ctrl_wr(32'h11);                 // START | BM_KEEP
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -1017,8 +1027,8 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd64);
         axil_wr(R_ROOTS, 32'd0);
         push_dirty(12'd0);                       // one pending barrier record
-        axil_wr(R_CTRL, 32'h1);                  // START (no flush, no bm_keep)
-        axil_wr(R_CTRL, 32'h20);                 // spilled full-mark flush, mid-run
+        ctrl_wr(32'h1);                  // START (no flush, no bm_keep)
+        ctrl_wr(32'h20);                 // spilled full-mark flush, mid-run
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -1071,7 +1081,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-DIRTY-FLUSHIDLE setup occupancy=%0d != 1", rd_val[8:0]);
             errors = errors + 1;
         end
-        axil_wr(R_CTRL, 32'h20);                 // the late/bare flush, while idle
+        ctrl_wr(32'h20);                 // the late/bare flush, while idle
         repeat (50) @(negedge clk);
         axil_rd(R_DSTAT, rd_val);
         $display("[TB] T-DIRTY-FLUSHIDLE after a bare idle flush: occupancy=%0d (expect 1: armed, not applied)", rd_val[8:0]);
@@ -1079,7 +1089,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-DIRTY-FLUSHIDLE a bare idle flush dropped a pushed record");
             errors = errors + 1;
         end
-        axil_wr(R_CTRL, 32'h1);                  // the next full-mark START applies it
+        ctrl_wr(32'h1);                  // the next full-mark START applies it
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 2000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -1091,9 +1101,9 @@ module tb_gc_top;
             errors = errors + 1;
         end
         push_dirty(12'd8);
-        axil_wr(R_CTRL, 32'h20);                 // arm again
+        ctrl_wr(32'h20);                 // arm again
         repeat (20) @(negedge clk);
-        axil_wr(R_CTRL, 32'h11);                 // INCREMENTAL start: must NOT flush
+        ctrl_wr(32'h11);                 // INCREMENTAL start: must NOT flush
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 2000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -1144,13 +1154,13 @@ module tb_gc_top;
         push_dirty(12'd1);
         push_dirty(12'd1);
         qf_mon = 1'b1; qf_danger = 0; qf_wait = 0; qf_maxcnt = 0;
-        axil_wr(R_CTRL, 32'h1);                  // START
+        ctrl_wr(32'h1);                  // START
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 600000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         if (!rd_val[31]) begin
             $display("[TB][FAIL] T-DIRTY-QFULL DONE never asserted (q_full + dirty looks like a deadlock)");
             errors = errors + 1;
-            axil_wr(R_CTRL, 32'h8);              // abort so the rest of the TB can run
+            ctrl_wr(32'h8);              // abort so the rest of the TB can run
             repeat (200) @(negedge clk);
         end else begin
             axil_rd(R_MARKED, rd_val);
@@ -1183,7 +1193,7 @@ module tb_gc_top;
         axil_wr(R_ROOTS, 32'd0);
         push_dirty(12'd3);
         force dut.u_engine.q_full = 1'b1;
-        axil_wr(R_CTRL, 32'h1);                  // START
+        ctrl_wr(32'h1);                  // START
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         $display("[TB] T-DIRTY-QFULLNEG q_full forced + 1 pending record: DONE=%b after %0d polls (expect 0 = it must hang)",
@@ -1195,7 +1205,7 @@ module tb_gc_top;
             $display("[TB] T-DIRTY-QFULLNEG hung as predicted (the wait is a real deadlock)");
         end
         release dut.u_engine.q_full;
-        axil_wr(R_CTRL, 32'h8);                  // abort out of the wait
+        ctrl_wr(32'h8);                  // abort out of the wait
         repeat (300) @(negedge clk);
         axil_rd(R_STATUS, rd_val);
         $display("[TB] T-DIRTY-QFULLNEG recovered: STATUS=%h (expect 0x10: idle, no errors)", rd_val);
@@ -1208,8 +1218,8 @@ module tb_gc_top;
         dirty_flush_now;
         repeat (50) @(negedge clk);
         axil_rd(R_DSTAT, rd_val);                // current hardware tag
-        axil_wr(R_DPUSH, {16'h0, (rd_val[19:16] + 4'd1), 12'd7});
-        axil_wr(R_DPUSH, {16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // duplicate delivery
+        dpush_wr({16'h0, (rd_val[19:16] + 4'd1), 12'd7});
+        dpush_wr({16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // duplicate delivery
         axil_rd(R_DPUSHED, rd_val);
         $display("[TB] T-DIRTY-TAG duplicate delivery: pushed=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
@@ -1221,7 +1231,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-DIRTY-TAG occupancy=%0d != 1", rd_val[8:0]);
             errors = errors + 1;
         end
-        axil_wr(R_DPUSH, {16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // changed tag -> accepted
+        dpush_wr({16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // changed tag -> accepted
         axil_rd(R_DPUSHED, rd_val);
         $display("[TB] T-DIRTY-TAG changed tag: pushed=%0d (expect 2)", rd_val);
         if (rd_val !== 32'd2) begin
@@ -1264,7 +1274,7 @@ module tb_gc_top;
                 dirty_flush_now;
                 repeat (200) @(negedge clk);
                 push_dirty(12'd50);
-                axil_wr(R_CTRL, 32'h1);      // START (bm_keep = 0)
+                ctrl_wr(32'h1);      // START (bm_keep = 0)
                 guard = 0;
                 race_injected = 1'b0;
                 while (!race_injected && guard < 20000) begin
@@ -1306,10 +1316,10 @@ module tb_gc_top;
                 // only ARMS the flush; this incremental start must DISCARD it and the
                 // deferred record survives.
                 if (rc2 == 1) begin
-                    axil_wr(R_CTRL, 32'h20);     // arm only
+                    ctrl_wr(32'h20);     // arm only
                     repeat (20) @(negedge clk);
                 end
-                axil_wr(R_CTRL, 32'h11);         // START | BM_KEEP
+                ctrl_wr(32'h11);         // START | BM_KEEP
                 guard = 0; rd_val = 32'hFFFFFFFF;
                 while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
                 guard = 0; rd_val = 32'h0;
@@ -1347,8 +1357,8 @@ module tb_gc_top;
         $display("[TB] T-ID magic=%h (expect 47434343)", rd_val);
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
-        $display("[TB] T-ID version=%h (expect 00040200)", rd_val);
-        if (rd_val !== 32'h0004_0200) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        $display("[TB] T-ID version=%h (expect 00040300)", rd_val);
+        if (rd_val !== 32'h0004_0300) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
@@ -1376,9 +1386,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd32);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);                   // START
+        ctrl_wr(32'h1);                   // START
         // Wait for real marking activity: the bitmap clear alone takes 4096 cycles,
         // so aborting at 200 cycles leaves the queue empty and masks the failure.
         guard = 0;
@@ -1389,7 +1399,7 @@ module tb_gc_top;
         force dut.u_engine.q_pop_ack = 1'b0;      // hang the prefetcher, like T-HANG
         repeat (200) @(negedge clk);
         $display("[TB] T-ABORT state while hung = %0d", dut.u_engine.state);
-        axil_wr(R_CTRL, 32'h8);                   // CTRL[3] = abort
+        ctrl_wr(32'h8);                   // CTRL[3] = abort
         repeat (10) @(negedge clk);
         $display("[TB] T-ABORT state after abort = %0d (expect 0 = S_IDLE)", dut.u_engine.state);
         if (dut.u_engine.state !== 5'd0) begin
@@ -1431,7 +1441,7 @@ module tb_gc_top;
         // therefore has to flush the work queue and the prefetch/issue pipeline.
         $display("[TB] T-ABORT2 queue count before START = %0d (expect the aborted run's leftovers)",
                  dut.u_queue.count);
-        axil_wr(R_CTRL, 32'h1);                   // START, deliberately no CLEAR_Q
+        ctrl_wr(32'h1);                   // START, deliberately no CLEAR_Q
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         axil_rd(R_MARKED, rd_val);
@@ -1466,9 +1476,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd3);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         axil_rd(R_MARKED, rd_val);
@@ -1509,12 +1519,12 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd64);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
         force dut.u_engine.q_pop_ack = 1'b0;
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         repeat (300) @(negedge clk);
-        axil_wr(R_CTRL, 32'h4);                 // CLEAR_Q
+        ctrl_wr(32'h4);                 // CLEAR_Q
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 20000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         release dut.u_engine.q_pop_ack;
@@ -1534,10 +1544,10 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd1);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
         force dut.u_engine.q_full = 1'b1;
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -1590,10 +1600,10 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd2);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
         inject_err = 1'b1;
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'hFFFFFFFF;
         while (rd_val[31] && guard < 500) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         guard = 0; rd_val = 32'h0;
@@ -1611,7 +1621,7 @@ module tb_gc_top;
         end
         // ---- T8b: a clean start must clear the latched read-error bit ----
         // STATUS[1] is cleared on every start (not sticky until reset).
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         repeat (300) @(negedge clk);
         axil_rd(R_STATUS, rd_val);
         $display("[TB] T8b STATUS=%h (expect bit1=0)", rd_val);
@@ -1640,9 +1650,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd300);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         if (!rd_val[31]) begin
@@ -1678,9 +1688,9 @@ module tb_gc_top;
         axil_wr(R_BASE,  BASE);
         axil_wr(R_COUNT, 32'd300);
         axil_wr(R_ROOTS, 32'hFFFFFFFF);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         if (!rd_val[31]) begin
@@ -1712,9 +1722,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd4096);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 2000000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         if (!rd_val[31]) begin
@@ -1762,9 +1772,9 @@ module tb_gc_top;
         axil_wr(R_COUNT, 32'd200);
         axil_wr(R_ROOTS, 32'd1);
         axil_wr(R_RLIST, 32'd0);
-        axil_wr(R_CTRL, 32'h6);
+        ctrl_wr(32'h6);
         repeat (200) @(negedge clk);
-        axil_wr(R_CTRL, 32'h1);
+        ctrl_wr(32'h1);
         // wait until the fan-out has actually queued work, then spill a CLEAR_Q
         guard = 0;
         begin : t_spill_wait
@@ -1776,7 +1786,7 @@ module tb_gc_top;
                 guard = guard + 1;
             end
         end
-        axil_wr(R_CTRL, 32'h4);
+        ctrl_wr(32'h4);
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         if (!rd_val[31]) begin
@@ -1812,7 +1822,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-CTRL-RESTART first run q_tail=%0d != 200", rd_val);
             errors = errors + 1;
         end
-        axil_wr(R_CTRL, 32'h1);                        // spilled START, no CLEAR_Q
+        ctrl_wr(32'h1);                        // spilled START, no CLEAR_Q
         guard = 0; rd_val = 32'h0;
         while (!rd_val[31] && guard < 200000) begin axil_rd(R_CTRL, rd_val); guard = guard + 1; end
         axil_rd(R_MARKED, rd_val);

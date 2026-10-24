@@ -38,6 +38,8 @@ R_STATUS, R_BMADDR, R_BMDATA = 0x20, 0x24, 0x28
 R_DPUSH, R_DSTAT, R_DDRAIN, R_DPUSHED, R_DPOPPED = 0x440, 0x444, 0x448, 0x44C, 0x450
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 CTRL_BM_KEEP, CTRL_DIRTY_FLUSH = (1 << 4), (1 << 5)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
+PUSH_WR_MARK = 0xA5400000
 STATUS_FREEBUSY = 1 << 5
 BASE, N = C.GRAPH_BASE, 64
 
@@ -69,7 +71,7 @@ def push(oid):
         if _tag is None:
             _tag = (rr(R_DSTAT) >> 16) & 0xF
         _tag = (_tag + 1) & 0xF
-        wr(R_DPUSH, (_tag << 12) | (oid & 0xFFF))
+        wr(R_DPUSH, PUSH_WR_MARK | (_tag << 12) | (oid & 0xFFF))
         if not (VERIFIED or ACKED):
             return True
         for _ in range(8):
@@ -103,10 +105,10 @@ def wait_done(timeout=5.0):
 
 def flush_now():
     """arm the flush, then apply it with a full-mark START (arm-and-consume)."""
-    wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
-    wr(R_CTRL, CTRL_CLEAR_Q)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
     time.sleep(0.002)
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     return wait_done()
 
 
@@ -135,7 +137,7 @@ def round_(ids, gap_writes):
             wr(R_COUNT, N)          # a different address, same-address-space traffic
             wr(R_ROOTS, 0)
     occ, pushed, tag = rr(R_DSTAT) & 0x1FF, rr(R_DPUSHED) & 0xFFFF, (rr(R_DSTAT) >> 16) & 0xF
-    wr(R_CTRL, CTRL_START)          # roots are 0: only the dirty set does work
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)          # roots are 0: only the dirty set does work
     ok = wait_done()
     marked = rr(R_MARKED)
     drain, popped = rr(R_DDRAIN), rr(R_DPOPPED) & 0xFFFF
@@ -182,7 +184,7 @@ def round_verify(ids):
         return None
     for c in ids:
         push(c)
-    wr(R_CTRL, CTRL_START)              # roots 0: only the dirty set does work
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)              # roots 0: only the dirty set does work
     if not wait_done():
         return None
     tgt = [32 + CONTAINERS.index(c) for c in ids]
@@ -197,7 +199,7 @@ def round_verify(ids):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040200:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
         print('FAIL magic/version 0x%08X/0x%08X (need the v4.2 bitstream)'
               % (rr(0x30), rr(0x34)))
         return 1
@@ -217,10 +219,10 @@ def main():
             for i in range(200):
                 push(i % N)
         flush_now(); t0 = time.time(); burst(); t1 = time.time()
-        wr(R_CTRL, CTRL_START); wait_done()
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START); wait_done()
         globals()['ACKED'] = True
         flush_now(); t2 = time.time(); burst(); t3 = time.time()
-        wr(R_CTRL, CTRL_START); wait_done()
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START); wait_done()
         globals()['ACKED'] = False
         plain = (t1 - t0) / 200 * 1e6
         acked = (t3 - t2) / 200 * 1e6

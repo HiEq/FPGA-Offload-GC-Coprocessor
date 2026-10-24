@@ -243,8 +243,8 @@ module tb_start_while_busy;
         axil_write(12'h008, N);
         axil_write(12'h00C, 32'd1);
         axil_write(12'h040, 32'd0);
-        axil_write(12'h000, 32'd4);     // CLEAR_Q
-        axil_write(12'h000, 32'd1);     // START
+        axil_write(12'h000, 32'hA500_0004);  // CLEAR_Q (0xA50 marker)
+        axil_write(12'h000, 32'hA500_0001);  // START (0xA50 marker)
 
         // Wait until the engine is inside the long reference loop.
         wait_cnt = 0;
@@ -258,7 +258,7 @@ module tb_start_while_busy;
         end else begin
             // Duplicate START while busy: the engine must ignore it and the
             // read engine must not flush the current object's reads.
-            axil_write(12'h000, 32'd1);
+            axil_write(12'h000, 32'hA500_0001);
 
             wait_cnt = 0;
             while (!dut.w_done && wait_cnt < 400000) begin

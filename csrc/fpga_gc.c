@@ -218,11 +218,11 @@ static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
     // 屏障记录会让引擎强制重扫位图刚被清掉的位 -> 多标 + q_tail != marked。
     // 板上复现与修复验证见 tools/tests/dirty_leftover_test.py / AGENTS #18。
     // 增量 epoch 正相反: 保留位图与计数 (remark 收口前**绝不** flush)。
-    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q | (keep ? 0u : CTRL_DIRTY_FLUSH);
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_CLEAR_Q | (keep ? 0u : CTRL_DIRTY_FLUSH);
     usleep(200);  // 等200μs确保清零完成
 
     // 启动 (BM_KEEP 必须与 START 同一次写: 0x11)
-    dev->regs[REG_CTRL / 4] = CTRL_START | (keep ? CTRL_BM_KEEP : 0u);
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_START | (keep ? CTRL_BM_KEEP : 0u);
 
     // 关键: START 是 AXI-Lite posted write, 紧接着的读可能先于写生效,
     // 从而读到【上一轮遗留的 DONE=1】并直接返回旧结果.
@@ -236,7 +236,7 @@ static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
         if (--timeout == 0) {
             printf("ERROR: FPGA mark timeout after 10M polls; aborting the engine\n");
             /* abort 后等待 STATUS[4]=1（engine idle）再返回。 */
-            dev->regs[REG_CTRL / 4] = CTRL_ABORT;
+            dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_ABORT;
             if (fpga_gc_wait_idle(dev, 10000) != 0)
                 printf("ERROR: engine did not return to idle after abort\n");
             if (cycles_out) *cycles_out = 0;
@@ -274,7 +274,7 @@ void fpga_gc_dirty_push(fpga_gc_t *dev, uint32_t obj_id) {
         dev->dirty_tag_valid = 1u;
     }
     dev->dirty_tag = (dev->dirty_tag + 1u) & 0xFu;
-    dev->regs[REG_DIRTY_PUSH / 4] = (dev->dirty_tag << 12) | (obj_id & 0xFFFu);
+    dev->regs[REG_DIRTY_PUSH / 4] = GC_PUSH_MARK | (dev->dirty_tag << 12) | (obj_id & 0xFFFu);
 }
 
 int fpga_gc_dirty_push_acked(fpga_gc_t *dev, uint32_t obj_id, int retries) {
@@ -302,7 +302,7 @@ int fpga_gc_dirty_push_acked(fpga_gc_t *dev, uint32_t obj_id, int retries) {
 }
 
 void fpga_gc_dirty_flush(fpga_gc_t *dev) {
-    dev->regs[REG_CTRL / 4] = CTRL_DIRTY_FLUSH;
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_DIRTY_FLUSH;
 }
 
 uint32_t fpga_gc_dirty_status(fpga_gc_t *dev)  { return dev->regs[REG_DIRTY_STAT  / 4]; }
@@ -599,7 +599,7 @@ void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
 void fpga_gc_clear(fpga_gc_t *dev) {
     // 位图由引擎在每轮 S_CLR_BM 自动清; 队列和脏集都要清 (残留的屏障记录会
     // 扰动下一次全标记, 见 fpga_gc_mark 的注释)
-    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH;
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH;
 }
 // ============================================================
 // STATUS register: sticky error flags (cleared by the next start)

@@ -1,26 +1,26 @@
 # command: tools/debug/cold_cycle.ps1 -> regs_aww (first run after a reboot)
 # bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
-# commit: ca6d2c6   VERSION=0x00040200
-# date: 2026-10-24
+# commit: 3cdc254   VERSION=0x00040300
+# date: 2026-10-25
 cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py --plain; printf 'D''IAG_DONE\n'
 mode: plain push
-round 0  k=3  gap=True  occ=3 pushed=3 tag=2 | marked=3 drained=3 popped=3 | loss=[8] forged=[0]
-round 1  k=3  gap=False occ=4 pushed=4 tag=5 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 2  k=3  gap=False occ=4 pushed=4 tag=8 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 3  k=3  gap=False occ=4 pushed=4 tag=B | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 4  k=3  gap=False occ=4 pushed=4 tag=E | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 5  k=3  gap=False occ=4 pushed=4 tag=1 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 6  k=3  gap=False occ=4 pushed=4 tag=4 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 7  k=3  gap=False occ=4 pushed=4 tag=7 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 8  k=3  gap=False occ=4 pushed=4 tag=A | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 9  k=3  gap=False occ=4 pushed=4 tag=D | marked=4 drained=4 popped=4 | loss=[] forged=[0]
-round 10 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
-round 11 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
-round 12 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
-round 13 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
-round 14 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
-cold round (first push sequence after the boot): loss=[8] forged=[0]
-warm rounds: loss in 0/14, extra marks in 14/14 (the safe direction)
+round 0  k=3  gap=True  occ=3 pushed=3 tag=2 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 1  k=3  gap=False occ=3 pushed=3 tag=5 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 2  k=3  gap=False occ=3 pushed=3 tag=8 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 3  k=3  gap=False occ=3 pushed=3 tag=B | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 4  k=3  gap=False occ=3 pushed=3 tag=E | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 5  k=3  gap=False occ=3 pushed=3 tag=1 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 6  k=3  gap=False occ=3 pushed=3 tag=4 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 7  k=3  gap=False occ=3 pushed=3 tag=7 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 8  k=3  gap=False occ=3 pushed=3 tag=A | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 9  k=3  gap=False occ=3 pushed=3 tag=D | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 10 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 11 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 12 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 13 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 14 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+cold round (first push sequence after the boot): loss=[] forged=[]
+warm rounds: loss in 0/14, extra marks in 0/14 (the safe direction)
 REGS_AWW_RESULT OK
 DIAG_DONE
 DIAG_DONE

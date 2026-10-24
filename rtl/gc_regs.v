@@ -126,7 +126,7 @@ module gc_regs (
             if (WVALID && WREADY) begin
                 w_pending <= 1'b1;
                 case (awaddr_r)
-                    12'h000: begin
+                    12'h000: if (WDATA[31:20] == 12'hA50) begin
                         reg_start    <= WDATA[0];
                         // WDATA[1] 未使用
                         reg_clear_q  <= WDATA[2];
@@ -134,7 +134,7 @@ module gc_regs (
                         reg_bm_keep  <= WDATA[4];   // Phase 3A: 1 = keep the bitmap across the run
                         reg_dirty_flush <= WDATA[5];// Phase 3A: clear dirty FIFO + overflow
                     end
-                    12'h440: begin
+                    12'h440: if (WDATA[31:20] == 12'hA54) begin
                         // Phase 3A: DIRTY_PUSH -- command-with-tag.
                         // This board's AXI-Lite write path delivers every write
                         // twice (measured: any width, 2 records per store), so the
@@ -204,7 +204,7 @@ module gc_regs (
                     12'h024: RDATA <= {20'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
                     12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic
-                    12'h034: RDATA <= 32'h0004_0200;  // version 4.2 (Phase 3A dirty set)
+                    12'h034: RDATA <= 32'h0004_0300;  // version 4.3: address-marker on the two command writes
                     12'h038: RDATA <= reg_free_count;
                     12'h03C: begin
                         RDATA        <= {20'h0, reg_free_data};

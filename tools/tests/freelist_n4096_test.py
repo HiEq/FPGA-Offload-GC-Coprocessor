@@ -22,6 +22,7 @@ import side_table_test as C
 R_CTRL, R_BASE, R_COUNT, R_ROOTS, R_MARKED = 0x00, 0x04, 0x08, 0x0C, 0x10
 R_STATUS, R_FCOUNT, R_FDATA = 0x20, 0x38, 0x3C
 CTRL_START, CTRL_CLEAR_Q, CTRL_DIRTY_FLUSH, CTRL_DONE = 1, 4, (1 << 5), (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 STATUS_FREEBUSY = 1 << 5
 BASE = C.GRAPH_BASE
 N = 4096
@@ -34,10 +35,10 @@ wr = lambda o, v: struct.pack_into('<I', regs, o, v & 0xFFFFFFFF)
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040200:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
         print('FAIL magic/version 0x%08X/0x%08X (need v4.2)' % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040200' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00040300' % rr(0x30))
 
     # headers only: id, ref_count 0, ref_addr irrelevant
     hdr = bytearray(N * 16)
@@ -48,9 +49,9 @@ def main():
     wr(R_BASE, BASE)
     wr(R_COUNT, N)
     wr(R_ROOTS, 0)                      # nothing is reachable -> nothing is marked
-    wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
     time.sleep(0.002)
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
 
     t0 = time.time()
     while time.time() < t0 + 20.0 and not (rr(R_CTRL) & CTRL_DONE):

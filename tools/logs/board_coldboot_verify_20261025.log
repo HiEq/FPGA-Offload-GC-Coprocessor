@@ -1,0 +1,120 @@
+# command: tools/debug/serial_coldboot_verify.ps1   (after a power-on on the v4.4 image, fogccclinux)
+# bitstream: md5 AF4BAA4644A0589F0954413AE17ECE88   boot.bin: sha256 c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e
+# commit: PENDING   VERSION=0x00040300
+# date: 2026-10-25
+# test: tools/debug/serial_coldboot_verify.ps1 md5 7d79549137f045815ee7930a3a3a6c21
+# note: console capture after the power-on; BOOT.BIN located on the udev mount
+state: not logged in
+  | uname -a; uptime; cat /proc/cmdline; printf 'D''1=%s\n' $?
+  | Linux linux 6.18.10-xilinx-g4f7afe14f724 #1 SMP PREEMPT Tue May 26 15:23:35 UTC 2026 armv7l GNU/Linux
+  |  12:40:25 up 5 min,  load average: 0.00, 0.08, 0.06
+  | console=ttyPS0,115200 earlycon
+  | D1=0
+  | root@linux:~#
+
+  | f=0; for d in /boot /run/media/BOOT-mmcblk0p1 /run/media/* $DataDir
+r /mnt; do if [ -e $d/BOOT.BIN ]; then echo BOOTBIN_AT=$d; sha256sum $d/BOOT.BIN;
+; md5sum $d/BOOT.BIN; f=1; fi; done; echo BOOTBIN_SEEN=$f; test $f = 1; printf 'D
+D''2=%s\n' $?
+  | BOOTBIN_AT=/run/media/BOOT-mmcblk0p1
+  | c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | 92b61a31dccac506883aa42004714406  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | BOOTBIN_AT=/run/media/BOOT-mmcblk0p1
+  | c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | 92b61a31dccac506883aa42004714406  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | BOOTBIN_SEEN=1
+  | D2=0
+  | root@linux:~#
+
+  | mount | grep -E 'mmcblk0|boot|USERDATA'; ls /run/media/; printf 'D'
+''3=%s\n' $?
+  | /dev/mmcblk0p1 on /run/media/BOOT-mmcblk0p1 type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+  | /dev/mmcblk0p4 on /run/media/SHARE-mmcblk0p4 type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+  | /dev/mmcblk0p2 on /run/media/USERDATA-mmcblk0p2 type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+  | /dev/mmcblk0p3 on /run/media/ARCH-mmcblk0p3 type ext4 (rw,relatime)
+  | ARCH-mmcblk0p3      SHARE-mmcblk0p4
+  | BOOT-mmcblk0p1      USERDATA-mmcblk0p2
+  | D3=0
+  | root@linux:~#
+
+  | ls -la /run/media/USERDATA-mmcblk0p2/ | head -16; printf 'D''4=%s\n
+n' $?
+  | drwxrwx---    9 root     disk          4096 Jan  1  1970 .
+  | drwxr-xr-x    6 root     root           120 Jan  1  1970 ..
+  | -rwxrwx---    1 root     disk          1965 Mar  9 12:38 README.txt
+  | drwxrwx---    2 root     disk          4096 Oct 18  2026 System Volume Information
+  | drwxrwx---    2 root     disk          4096 Mar  9 12:40 bin
+  | -rwxrwx---    1 root     disk         12631 Mar  9 12:38 gc_test.py
+  | drwxrwx---    2 root     disk          4096 Oct 18  2026 ko
+  | drwxrwx---    2 root     disk          8192 Mar  9 12:43 logs
+  | -rwxrwx---    1 root     disk         11453 Oct 19  2026 neg_gc.py
+  | drwxrwx---    3 root     disk          4096 Mar  9  2018 py
+  | -rwxrwx---    1 root     disk          1485 Mar  9 12:38 run_gc.sh
+  | -rwxrwx---    1 root     disk          1603 Mar  9 12:38 run_repeat.sh
+  | drwxrwx---    3 root     disk          4096 Oct 24  2026 tests
+  | drwxrwx---    2 root     disk          4096 Mar  9 12:52 tools
+  | D4=0
+  | root@linux:~#
+
+  | test -e /proc/device-tree/reserved-memory/pl_graph@1e000000/no-map 
+ && echo PL_GRAPH_NOMAP_OK || echo PL_GRAPH_NOMAP_MISSING; cat /sys/class/fpga_ma
+anager/fpga0/state 2>/dev/null; printf 'D''5=%s\n' $?
+  | PL_GRAPH_NOMAP_OK
+  | operating
+  | D5=0
+  | root@linux:~#
+
+  | cd /run/media/USERDATA-mmcblk0p2 && ./bin/test_main; printf 'D''6=%
+%s\n' $?
+  | +--------------------------------------------+
+  | |  FOGCCC GC Coprocessor Test Suite          |
+  | |  Platform: Xilinx Zynq-7000 XC7Z100        |
+  | +--------------------------------------------+
+  | [FOGCCC] Initialized:
+  |   AXI-Lite regs @ 0x43C00000
+  |   Graph DDR     @ 0x1E000000 (1MB)
+  |   MAGIC/VERSION : 0x47434343 / 0x00040300
+  | =============================================================
+  |   Test 1: correctness (FPGA vs C)
+  | =============================================================
+  | Objects    FPGA       C          verdict
+  | ---------- ---------- ---------- --------
+  | 10         9          9          OK
+  | 50         47         47         OK
+  | 100        96         96         OK
+  | 500        474        474        OK
+  | 1000       945        945        OK
+  | 2000       1882       1882       OK
+  | 4000       3766       3766       OK
+  |   Result: ALL PASS
+  | =============================================
+  |   Test 2: Cycle Graph
+  | =============================================
+  |   Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
+  |   Roots: {0, 3}
+  |   Expected: 4  SW: 4  FPGA: 4  => PASS
+  | =============================================
+  |   Test 3: duplicate roots
+  | =============================================
+  |   roots={0}      -> marked=183  STATUS=0x0
+  |   roots={0,0,0}  -> marked=183  STATUS=0x0
+  |   PASS (duplicate roots must not double count, expect 183 == 183)
+  | --- Hardware Statistics ---
+  |   Marked objects : 183
+  |   STATUS         : 0x0
+  |   HW cycles      : 6885
+  |   HW time        : 68.85 us (@100MHz)
+  |   Queue head/tail: 183 / 183 (depth=0)
+  |   Throughput     : 2.66 M objects/sec
+  | =============================================
+  |   SUMMARY
+  | =============================================
+  |   Test 1 (Correctness) : PASS
+  |   Test 2 (Cycle)       : PASS
+  |   Test 3 (Dup roots)   : PASS
+  |   -------------------------------------------
+  |   Overall: *** ALL PASS ***
+  | =============================================
+  | D6=0
+  | root@linux:/run/media/USERDATA-mmcblk0p2#
+

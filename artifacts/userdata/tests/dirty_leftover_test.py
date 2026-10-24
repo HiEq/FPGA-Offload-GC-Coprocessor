@@ -28,6 +28,8 @@ import side_table_test as C
 
 R_CTRL, R_DSTAT, R_DPUSH, R_DPUSHED = 0x00, 0x444, 0x440, 0x44C
 CTRL_DIRTY_FLUSH = 1 << 5
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
+PUSH_WR_MARK = 0xA5400000
 LEFTOVER = (1, 2)          # small ids: inside every row of the C sweep
 
 fd = os.open('/dev/mem', os.O_RDWR | os.O_SYNC)
@@ -41,16 +43,16 @@ exe = sys.argv[1] if len(sys.argv) > 1 else './bin/test_main'
 def push(oid):
     # command-with-tag: the tag must differ from the last accepted one
     tag = (((rr(R_DSTAT) >> 16) & 0xF) + 1) & 0xF
-    wr(R_DPUSH, (tag << 12) | (oid & 0xFFF))
+    wr(R_DPUSH, PUSH_WR_MARK | (tag << 12) | (oid & 0xFFF))
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040200:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
         print('FAIL magic/version 0x%08X/0x%08X (need v4.2)' % (rr(0x30), rr(0x34)))
         return 1
 
-    wr(R_CTRL, CTRL_DIRTY_FLUSH)           # arm the flush ...
-    wr(R_CTRL, 0x1)                        # ... a full-mark START consumes it (driver order)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_DIRTY_FLUSH)           # arm the flush ...
+    wr(R_CTRL, CTRL_WR_MARK | 0x1)                        # ... a full-mark START consumes it (driver order)
     for _ in range(2000):
         if rr(R_CTRL) & (1 << 31):
             break

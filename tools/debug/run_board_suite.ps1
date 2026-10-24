@@ -48,7 +48,7 @@ foreach ($st in $steps) {
     $hdr = @(
         "# command: tools/debug/run_board_suite.ps1 -> $name",
         "# bitstream: $Bitstream   boot.bin: sha256 $BootSha",
-        "# commit: $sha   VERSION=0x00040200",
+        "# commit: $sha   VERSION=0x00040300",
         '# date: 2026-10-24',
         ''
     )

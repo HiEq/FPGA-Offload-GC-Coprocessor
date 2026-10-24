@@ -9,7 +9,7 @@
 面向托管堆的 FPGA GC 协处理器：对象内容留在 DDR，引用关系压缩成连续的 side table；
 PL 负责标记与空闲扫描，ARM 负责分配、引用更新与回收策略。
 
-> 当前证据：位流 `3332D8D6…` / `BOOT.BIN` `ac8d31cc…`，2026-10-24 冷启动复验。
+> 当前证据：位流 `AF4BAA46…` / `BOOT.BIN` `c6c71cbe…`，2026-10-25 冷启动复验。
 > 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
 > 测量口径与证据边界见 [`docs/measurement.md`](docs/measurement.md)。
 > CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
@@ -26,9 +26,9 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 | 对比对象 | 口径 | 每对象 | 加速 |
 |---|---|---|---|
 | **FPGA 标记**（`three_way.py`）| 同图 4000 对象 | **171 ns** | — |
-| C，逐条读 DDR（未缓存）| 同图同 BFS | 572 ns | **3.3×** |
-| C，数据驻留 cache | heap 副本 | 193 ns | **1.1×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 46.6 µs | **272×** |
+| C，逐条读 DDR（未缓存）| 同图同 BFS | 571 ns | **3.3×** |
+| C，数据驻留 cache | heap 副本 | 176 ns | **1.0×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 45.0 µs | **263×** |
 
 > `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
 > 四行来自同一张图（`tests/three_way.py`），出处 `tools/logs/board_three_way.log`；
@@ -77,7 +77,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
-| 0x00 | CTRL | R/W | [0] start · [1] 保留 · [2] clear_q · [3] abort · [4] bm_keep（与 [0] 同一次写）· [5] dirty_flush（武装式）· [31] done |
+| 0x00 | CTRL | R/W | [0] start · [1] 保留 · [2] clear_q · [3] abort · [4] bm_keep（与 [0] 同一次写）· [5] dirty_flush（武装式）· [31] done；**写时 `WDATA[31:20]` 必须为 `0xA50`** |
 | 0x04 | OBJ_BASE | R/W | 对象图 DDR 物理地址 |
 | 0x08 | OBJ_COUNT | R/W | 对象总数 |
 | 0x0C | ROOT_COUNT | R/W | 根集数量（≤256）|
@@ -89,11 +89,11 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0–4095，引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据（2 拍延迟；读后勿改 `BM_ADDR`）|
 | 0x30 | MAGIC | R | 固定 `0x47434343`（"GCCC"）|
-| 0x34 | VERSION | R | 固定 `0x0004_0200`（v4.2）|
+| 0x34 | VERSION | R | 固定 `0x0004_0300`（v4.3）|
 | 0x38 | FREE_COUNT | R | 未标记对象数（mark 完成后扫描，扫描期 `STATUS[5]=1`）|
 | 0x3C | FREE_DATA | R | 读一次弹出一个 free 对象 ID |
 | 0x40+ | ROOT_LIST | W | 根集 ID 数组（`0x40`–`0x43F`，最多 256 个）|
-| 0x440 | DIRTY_PUSH | W/R | **W** `(tag<<12) \| id`，tag 每次推送必须变化；**R** 当前 FIFO 占用 |
+| 0x440 | DIRTY_PUSH | W/R | **W** `0xA5400000 \| (tag<<12) \| id`（标记符 = `WDATA[31:20]`），tag 每次推送必须变化；**R** 当前 FIFO 占用 |
 | 0x444 | DIRTY_STAT | R | [8:0] 占用 · [9] 溢出（粘滞）· [10] 待处理 · [19:16] 最后接受的 tag · [31:20] 最后接受的 id |
 | 0x448 | DIRTY_DRAINED | R | 本 epoch 已消费条数（每次 start 清零）|
 | 0x44C | DIRTY_PUSHED | R | 自上次 flush 以来接受的条数 |
@@ -153,16 +153,16 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：`v4.3`（prerelease）。`v4.2` 保留为 gate 之前的镜像，便于对照。
+当前发布：`v4.4`（prerelease）。`v4.3` 保留为命令写标记之前的镜像，便于对照。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 根目录 | 86,909 B | `3829bbd4216ae0e6b0bf68b792969927fda74b0e25de01f6701ec727b3fb17c0` |
+| `card-userdata.zip` | 解压到 USERDATA 根目录 | 87,822 B | `c16babe00894f1dd95c2b01cff1d2321257112a1c2e594769da22206fcde79f2` |
 
 校验：四个二进制资产与 `SHA256SUMS.release` 置于同一目录，执行 `sha256sum -c SHA256SUMS.release`。
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)。

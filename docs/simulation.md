@@ -9,7 +9,7 @@
 - `sim\run_axi_tb.bat` / `sim/run_axi_tb.sh` —— `tb_axi_read`（未完成读事务上限）
 - `sim\run_race_tb.bat` / `sim/run_race_tb.sh` —— `tb_runstart_race`（同拍旧 R beat）
 - `sim\run_cmdfifo_tb.bat` / `sim/run_cmdfifo_tb.sh` —— `tb_cmdfifo_flush`（同拍命令 FIFO：issued AR 与同拍 enqueue）
-- `sim\run_regs_aww_tb.bat` —— `tb_regs_aww`（`gc_regs` 的 AW/W 配对契约；`P4` 只打印 AGENTS #20 的引脚级上限）
+- `sim\run_regs_aww_tb.bat` —— `tb_regs_aww`（`gc_regs` 的 AW/W 配对契约；`P4`/`P6` 是命令写标记的负控：无标记的 W 不得产生记录/START）
 - `sim\run_port_tb.bat` / `.sh` —— `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy`（start/abort 交接窗口）
 
 `tools\reproduce_all.ps1` 串起 manifest、PS 单测和**六组 xsim**：

@@ -35,6 +35,7 @@ R_STATUS, R_BM_ADDR, R_BM_DATA = 0x20, 0x24, 0x28
 R_MAGIC, R_VERSION, R_ROOT_LIST = 0x30, 0x34, 0x40
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_ABORT, CTRL_DONE = 1, 4, 8, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 HDR_BASE  = 0x0000
 N_MAX_HW  = 4096
 MIN_CYCLES = 4096
@@ -139,7 +140,7 @@ def main():
         wr(R_OBJ_BASE,   GRAPH_BASE)
         wr(R_OBJ_COUNT,  nn)
         if do_clear_q:
-            wr(R_CTRL, CTRL_CLEAR_Q)
+            wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
             time.sleep(0.002)
         return L, len(q)
 
@@ -177,7 +178,7 @@ def main():
     L, sw = build(n, do_clear_q=True)
     print("   graph: N=%d L=%d  SW BFS=%d" % (n, L, sw))
     if sw != L: fails.append("T1 SW BFS %d != L %d" % (sw, L))
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     t0 = time.time(); ok = wait_done(300); t1 = time.time()
     mkd = rr(R_MARKED); cyc = rr(R_CYCLES); st = (rr(R_STATUS) & 0xF)
     print("   T1: done=%s marked=%d cycles=%d status=0x%X wall=%.2f ms"
@@ -193,7 +194,7 @@ def main():
 
     # ---------- T2 control: same timing, no abort ----------
     task(30, "T2 control (no abort)")
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     time.sleep(0.0002)                      # 200 us
     ok = wait_done(30)
     ctrl = rr(R_CTRL); mkd = rr(R_MARKED); st = (rr(R_STATUS) & 0xF)
@@ -205,11 +206,11 @@ def main():
 
     # ---------- T3 abort ----------
     task(45, "T3 abort mid-run")
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     time.sleep(0.0002)
     done_pre = bool(rr(R_CTRL) & CTRL_DONE)  # did the run already finish in 200 us?
     st_pre = (rr(R_STATUS) & 0xF)                   # was the flag already set before the abort?
-    wr(R_CTRL, CTRL_ABORT)                  # CTRL[3]
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_ABORT)                  # CTRL[3]
     st_post = (rr(R_STATUS) & 0xF)                  # ... and immediately after it?
     t0 = time.time()
     done_seen = False; reads = 0
@@ -232,7 +233,7 @@ def main():
 
     # ---------- T4 recovery on the same graph ----------
     task(60, "T4 recovery run after abort")
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     ok = wait_done(300)
     mkd = rr(R_MARKED); cyc = rr(R_CYCLES); st = (rr(R_STATUS) & 0xF)
     print("   T4: done=%s marked=%d cycles=%d status=0x%X (expect marked=%d, status=0)"
@@ -249,15 +250,15 @@ def main():
 
     # ---------- T5 abort, then a DIFFERENT graph, START only ----------
     task(80, "T5 abort, then a different graph")
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     time.sleep(0.0002)
-    wr(R_CTRL, CTRL_ABORT)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_ABORT)
     time.sleep(0.002)
     n2 = max(64, n // 2)
     L2, sw2 = build(n2, do_clear_q=False)   # no CLEAR_Q: exactly what the driver does
     print("   T5: new graph N=%d L=%d  SW BFS=%d  (queue must have been flushed by abort)"
           % (n2, L2, sw2))
-    wr(R_CTRL, CTRL_START)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
     ok = wait_done(300)
     mkd = rr(R_MARKED); st = (rr(R_STATUS) & 0xF)
     print("   T5: done=%s marked=%d status=0x%X (expect marked=%d, status=0)"

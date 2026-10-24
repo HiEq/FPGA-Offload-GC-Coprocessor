@@ -32,8 +32,12 @@ regs = mmap.mmap(fd, 4096, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, of
 rr = lambda o: struct.unpack_from('<I', regs, o)[0]
 wr = lambda o, v: struct.pack_into('<I', regs, o, v & 0xFFFFFFFF)
 
+# Command writes carry their destination in WDATA[31:20]; gc_regs drops a
+# markerless beat (AGENTS #20).
+CTRL_WR_MARK = 0xA5000000
+
 if '--flush' in sys.argv:
-    wr(0x00, 1 << 5)                     # CTRL[5] = DIRTY_FLUSH: arms; a full-mark START applies it
+    wr(0x00, CTRL_WR_MARK | (1 << 5))                     # CTRL[5] = DIRTY_FLUSH: arms; a full-mark START applies it
     time.sleep(0.005)
 
 occ = rr(0x440) & 0x1FF

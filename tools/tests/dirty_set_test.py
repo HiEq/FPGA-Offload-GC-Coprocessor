@@ -61,6 +61,8 @@ R_RLIST = 0x40
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 CTRL_BM_KEEP, CTRL_DIRTY_FLUSH = (1 << 4), (1 << 5)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
+PUSH_WR_MARK = 0xA5400000
 STATUS_FREEBUSY = 1 << 5
 BASE = C.GRAPH_BASE
 
@@ -85,7 +87,7 @@ def push(oid):
     if _push_tag is None:
         _push_tag = (rr(R_DSTAT) >> 16) & 0xF
     _push_tag = (_push_tag + 1) & 0xF
-    wr(R_DPUSH, (_push_tag << 12) | (oid & 0xFFF))
+    wr(R_DPUSH, PUSH_WR_MARK | (_push_tag << 12) | (oid & 0xFFF))
 
 
 def push_acked(oid):
@@ -118,9 +120,9 @@ def wait_done_and_idle(timeout=5.0):
 
 
 def start_epoch(keep):
-    wr(R_CTRL, CTRL_CLEAR_Q)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
     time.sleep(0.002)
-    wr(R_CTRL, CTRL_START | (CTRL_BM_KEEP if keep else 0))
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START | (CTRL_BM_KEEP if keep else 0))
     _ = rr(R_CTRL)
 
 
@@ -128,7 +130,7 @@ def dirty_flush_now():
     """Clear the dirty FIFO now (arm-and-consume: CTRL[5] is only armed by the
     write; the engine applies it at the next accepted full-mark START).  Arm +
     full-mark start + wait; returns True when DONE was seen."""
-    wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
     start_epoch(False)
     return wait_done_and_idle()
 
@@ -144,11 +146,11 @@ def read_marks(n):
 
 
 def main():
-    if rr(R_MAGIC) != 0x47434343 or rr(R_VERSION) != 0x00040200:
+    if rr(R_MAGIC) != 0x47434343 or rr(R_VERSION) != 0x00040300:
         print('FAIL magic/version 0x%08X/0x%08X (need the v4.2 bitstream)'
               % (rr(R_MAGIC), rr(R_VERSION)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040200' % rr(R_MAGIC))
+    print('magic/version OK: 0x%08X / 0x00040300' % rr(R_MAGIC))
 
     n = 64
     wr(R_BASE, BASE)                    # 0x04: reset value is 0, never inherit it
@@ -276,7 +278,7 @@ def main():
         wr(R_COUNT, N)
         wr(R_ROOTS, 1)
         wr(R_RLIST, g['root'])
-        wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
         start_epoch(False)
         wait_done_and_idle()
         e1 = rr(R_MARKED)

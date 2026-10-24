@@ -30,6 +30,7 @@ R_STATUS, R_BM_ADDR, R_BM_DATA = 0x20, 0x24, 0x28
 R_MAGIC, R_VERSION, R_ROOT_LIST = 0x30, 0x34, 0x40
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_ABORT, CTRL_DONE = 1, 4, 8, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 HDR_BASE = 0x0000
 DELAYS_US = [3, 10, 25, 41, 50, 75, 120, 200, 300, 400, 480]
 
@@ -111,7 +112,7 @@ def main():
 
     wr(R_ROOT_LIST, 0); wr(R_ROOT_COUNT, 1)
     wr(R_OBJ_BASE, GRAPH_BASE); wr(R_OBJ_COUNT, n)
-    wr(R_CTRL, CTRL_CLEAR_Q); time.sleep(0.002)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q); time.sleep(0.002)
 
     def wait_done(ms):
         end = time.time() + ms / 1000.0
@@ -142,11 +143,11 @@ def main():
     rows = []
     for k, d in enumerate(delays):
         task(int(5 + 85.0 * k / len(delays)), "phase %d/%d (%d us)" % (k + 1, len(delays), d))
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         spin_us(d)
         st_pre  = (rr(R_STATUS) & 0xF)
         done_pre = bool(rr(R_CTRL) & CTRL_DONE)
-        wr(R_CTRL, CTRL_ABORT)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_ABORT)
         st_post = (rr(R_STATUS) & 0xF)
         done_after = False
         t0 = time.time()
@@ -154,7 +155,7 @@ def main():
             if rr(R_CTRL) & CTRL_DONE:
                 done_after = True; break
         # recovery
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         ok = wait_done(300)
         mkd = rr(R_MARKED); st_rec = (rr(R_STATUS) & 0xF)
         bad = readback_ok() if ok else -1

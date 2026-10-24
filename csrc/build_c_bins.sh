@@ -41,7 +41,7 @@ echo "=== libfogccc.so ==="
 $CC -O2 -shared -fPIC -o "$OUT_SO" "$HERE/fpga_gc.c" || { echo "!!! libfogccc.so build failed"; exit 1; }
 
 
-for f in "$OUT_TM" "$OUT_SO" "$OUT_CM"; do
+for f in "$OUT_TM" "$OUT_SO"; do
     file "$f" 2>/dev/null || true
     ls -la "$f"
 done

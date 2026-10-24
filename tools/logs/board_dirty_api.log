@@ -1,12 +1,12 @@
 # command: tools/debug/run_board_suite.ps1 -> dirty_api
-# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
-# commit: ca6d2c6   VERSION=0x00040200
+# bitstream: AF4BAA4644A0589F0954413AE17ECE88   boot.bin: sha256 c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e
+# commit: PENDING   VERSION=0x00040300
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_api_test.py; printf 'D''IAG_DONE\n'
 [FOGCCC] Initialized:
   AXI-Lite regs @ 0x43C00000
   Graph DDR     @ 0x1E000000 (1MB)
-  MAGIC/VERSION : 0x47434343 / 0x00040200
+  MAGIC/VERSION : 0x47434343 / 0x00040300
 [FOGCCC] FPGA initialized successfully
 full mark : marked=494 oracle=494 live=494 STATUS=0x0
 verified push: [True, True] (expect True/True)

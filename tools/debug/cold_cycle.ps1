@@ -40,7 +40,7 @@ $sha = (& git -C $root rev-parse --short HEAD).Trim()
 $hdr = @(
     "# command: tools/debug/cold_cycle.ps1 -> $Name (first run after a reboot)",
     "# bitstream: $Bitstream   boot.bin: sha256 $BootSha",
-    "# commit: $sha   VERSION=0x00040200",
+    "# commit: $sha   VERSION=0x00040300",
     ('# date: {0}' -f (Get-Date -Format 'yyyy-MM-dd')),
     ''
 )

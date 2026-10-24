@@ -43,6 +43,8 @@ R_RLIST = 0x40
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 CTRL_BM_KEEP, CTRL_DIRTY_FLUSH = (1 << 4), (1 << 5)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
+PUSH_WR_MARK = 0xA5400000
 STATUS_FREEBUSY, STATUS_ERR = (1 << 5), 0x0F
 DSTAT_OVF, DSTAT_COUNT = (1 << 9), 0x1FF
 BASE = C.GRAPH_BASE
@@ -65,7 +67,7 @@ def push(oid):
     if tag[0] is None:
         tag[0] = (rr(R_DSTAT) >> 16) & 0xF
     tag[0] = (tag[0] + 1) & 0xF
-    wr(R_DPUSH, (tag[0] << 12) | (oid & 0xFFF))
+    wr(R_DPUSH, PUSH_WR_MARK | (tag[0] << 12) | (oid & 0xFFF))
 
 
 def wait_done_and_idle(timeout=30.0):
@@ -83,9 +85,9 @@ def wait_done_and_idle(timeout=30.0):
 
 
 def start_epoch(keep):
-    wr(R_CTRL, CTRL_CLEAR_Q)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
     time.sleep(0.002)
-    wr(R_CTRL, CTRL_START | (CTRL_BM_KEEP if keep else 0))
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_START | (CTRL_BM_KEEP if keep else 0))
     _ = rr(R_CTRL)
 
 
@@ -99,10 +101,10 @@ def read_marks(n):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040200:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
         print('FAIL magic/version 0x%08X/0x%08X (need v4.2)' % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040200' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00040300' % rr(0x30))
 
     N, SEEDG = 1024, 12345
     g = C.build_container_graph(N, SEEDG)
@@ -155,7 +157,7 @@ def main():
     wr(R_ROOTS, 1)
     wr(R_RLIST, root)
     wr(R_BASE, BASE)                      # 0x04: reset value is 0, never inherit it
-    wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
     start_epoch(False)
     wait_done_and_idle()
     e1 = rr(R_MARKED)
@@ -232,7 +234,7 @@ def main():
     # ---- contract: the fallback full mark must recover the exact set ---------
     wr(R_ROOTS, 1)                        # the fallback re-establishes the root set
     wr(R_RLIST, root)
-    wr(R_CTRL, CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH)
     start_epoch(False)
     wait_done_and_idle()
     fb = rr(R_MARKED)
@@ -259,7 +261,7 @@ def main():
         fails.append('clear')
 
     print('DIRTY_OVERFLOW_RESULT %s' % ('OK' if not fails else 'FAIL:' + ','.join(fails)))
-    wr(R_CTRL, CTRL_DIRTY_FLUSH)          # arm; the next full-mark start clears the FIFO
+    wr(R_CTRL, CTRL_WR_MARK | CTRL_DIRTY_FLUSH)          # arm; the next full-mark start clears the FIFO
     regs.close()
     gph.close()
     os.close(fd)
