@@ -439,7 +439,7 @@ module gc_top (
         .data1_valid (w_hdr_data_valid),
         .data1_ready (w_hdr_data_ready),
 
-        .run_start   (w_start),
+        .run_start   (w_start & w_engine_idle),   // a START the FSM ignores must not flush
         .abort       (w_abort),     // drop the abandoned run's in-flight reads too
         .err         (w_rd_err),
 

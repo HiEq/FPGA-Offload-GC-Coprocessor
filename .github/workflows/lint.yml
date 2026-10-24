@@ -45,6 +45,11 @@ jobs:
           done < <(git ls-files '*.py')
           exit $fail
 
+      - name: ruff (undefined names and syntax only)
+        run: |
+          python3 -m pip install -q ruff
+          python3 -m ruff check --select E9,F63,F7,F82 --no-cache .
+
       - name: RTL syntax (iverilog)
         run: |
           sudo apt-get update -qq
@@ -74,6 +79,17 @@ jobs:
           vvp /tmp/tb_gc_top | tee /tmp/tb_gc_top.log
           ! grep -q '\[TB\]\[FAIL\]' /tmp/tb_gc_top.log
           grep -q '\[TB\] ==================== PASS' /tmp/tb_gc_top.log
+
+      - name: hand-over TBs - flush_data / stale_ar / start_while_busy (Icarus)
+        run: |
+          set -e
+          for tb in tb_flush_data tb_stale_ar_flush tb_start_while_busy; do
+            iverilog -g2012 -s $tb -o /tmp/$tb \
+                rtl/*.v sim/axi_proto_check.v sim/$tb.v
+            vvp /tmp/$tb | tee /tmp/$tb.log
+            ! grep -q '\[FAIL\]' /tmp/$tb.log
+            grep -q 'PASS' /tmp/$tb.log
+          done
 
       - name: C warnings (gcc -Wall -Wextra -Werror)
         run: |

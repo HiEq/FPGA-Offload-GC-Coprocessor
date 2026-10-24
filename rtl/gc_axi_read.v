@@ -155,8 +155,8 @@ module gc_axi_read #(
                 d0r <= d0w;                 // data nobody consumed
                 d1r <= d1w;
                 flushing <= 1'b1;           // discard responses still in flight
-            end else if (flushing && h0empty && h1empty) begin
-                flushing <= 1'b0;           // every pre-flush AR has come back
+            end else if (flushing && h0empty && h1empty && !ARVALID) begin
+                flushing <= 1'b0;           // every pre-flush AR came back AND none is pending
             end
 
             if (cmd0_valid && cmd0_ready) begin
@@ -236,9 +236,9 @@ module gc_axi_read #(
                 end
             end
 
-            if (data0_valid && data0_ready)
-                d0r <= d0r + 1'b1;
-            if (data1_valid && data1_ready)
+            if (data0_valid && data0_ready && !run_start && !abort)
+                d0r <= d0r + 1'b1;      // a flush owns the pointers in that cycle
+            if (data1_valid && data1_ready && !run_start && !abort)
                 d1r <= d1r + 1'b1;
         end
     end
