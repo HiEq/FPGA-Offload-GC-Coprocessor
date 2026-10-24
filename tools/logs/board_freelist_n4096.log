@@ -1,6 +1,6 @@
 # command: tools/debug/run_board_suite.ps1 -> freelist_n4096
-# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: 1035e3a   VERSION=0x00040200
+# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
+# commit: ca6d2c6   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/freelist_n4096_test.py; printf 'D''IAG_DONE\n'
 magic/version OK: 0x47434343 / 0x00040200

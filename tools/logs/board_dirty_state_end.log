@@ -1,9 +1,16 @@
-# command: python3 -u tests/dirty_state.py (end of chain)
-# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: 0850b29   VERSION=0x00040200
+# command: python3 -u tests/dirty_state.py; python3 -u tests/dirty_leftover_test.py  (end of chain)
+# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
+# commit: ca6d2c6   VERSION=0x00040200
 # date: 2026-10-24
-cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_state.py; printf 'D''IAG_DONE\n'
-DIRTY_STATE occ=0 ovf=0 pending=0 tag=F drained=0 pushed=0 popped=0 version=0x00040200
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_state.py; python3 -u tests/dirty_leftover_test.py; printf 'DD''IAG_DONE\n'
+DIRTY_STATE occ=0 ovf=0 pending=0 tag=7 drained=0 pushed=200 popped=200 version=0x00040200
+DIAG_DONE
+leftover barrier records: occ=3 pushed=3 ids=[1, 2]
+test_main: rc=0 verdict=ALL PASS
+  | roots={0}      -> marked=183  STATUS=0x0
+  | roots={0,0,0}  -> marked=183  STATUS=0x0
+DIRTY_LEFTOVER_RESULT OK
 DIAG_DONE
 DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

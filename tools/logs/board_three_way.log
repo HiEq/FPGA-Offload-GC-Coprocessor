@@ -1,8 +1,9 @@
 # command: cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/three_way.py
-# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: ae2a287   VERSION=0x00040200
+# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
+# commit: ca6d2c6   VERSION=0x00040200
 # date: 2026-10-24
-cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/three_way.py; printf 'D''IIAG_DONE\n'
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/three_way.py; printf 'D''IAG_DONE\n'
 [FOGCCC] Initialized:
   AXI-Lite regs @ 0x43C00000
   Graph DDR     @ 0x1E000000 (1MB)
@@ -10,13 +11,13 @@ cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/three_way.py; printf 'D''I
 [FOGCCC] FPGA initialized successfully
   objects   mkd     HW us    C-u us    C-c us    Py ms  Cu/HW  Cc/HW  Py/HW  verdict
  ----------------------------------------------------------------------------------------
-       10     9      44.1       7.0       3.5    0.811    0.2x    0.1x     18x  OK
-       50    47      48.6      26.8       8.3    2.260    0.6x    0.2x     47x  OK
-      100    96      57.0      56.0      13.7    4.301    1.0x    0.2x     76x  OK
-      500   474     113.7     259.9      68.9   20.699    2.3x    0.6x    182x  OK
-     1000   945     184.6     519.1     139.7   41.987    2.8x    0.8x    227x  OK
-     2000  1882     339.3    1058.0     299.0   82.064    3.1x    0.9x    242x  OK
-     4000  3766     645.5    2143.8     728.9  166.238    3.3x    1.1x    258x  OK
+       10     9      44.2       7.0       3.1    0.856    0.2x    0.1x     19x  OK
+       50    47      48.7      27.0       7.8    2.364    0.6x    0.2x     49x  OK
+      100    96      57.0      56.4      15.7    4.596    1.0x    0.3x     81x  OK
+      500   474     113.8     259.9      69.5   21.824    2.3x    0.6x    192x  OK
+     1000   945     184.7     518.8     146.7   44.038    2.8x    0.8x    238x  OK
+     2000  1882     339.2    1066.0     323.7   86.104    3.1x    1.0x    254x  OK
+     4000  3766     644.4    2154.0     728.5  175.419    3.3x    1.1x    272x  OK
 
  FPGA us = engine cycles only; C-u us = in-process C BFS on the same uncached DDR graph;
  C-c us  = same BFS on a heap copy (cache-resident bound, copy not timed); Py ms = interpreter BFS.

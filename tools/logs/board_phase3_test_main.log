@@ -1,9 +1,9 @@
-# command: tools/debug/run_phase3_board.ps1 -> /run/media/USERDATA-mmcblk0p2/bin/test_main
-# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: ae2a287   VERSION=0x00040200
+# command: tools/debug/run_phase3_board.ps1 -> test_main
+# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
+# commit: ca6d2c6   VERSION=0x00040200
 # date: 2026-10-24
-cd /run/media/USERDATA-mmcblk0p2 && chmod +x bin/test_main && ./bin/test_main; 
- printf 'T''M=%s\n' $?
+
+cd /run/media/USERDATA-mmcblk0p2 && chmmod +x bin/test_main && ./bin/test_main; printf 'T''M=%s\n' $?
 +--------------------------------------------+
 |  FOGCCC GC Coprocessor Test Suite          |
 |  Platform: Xilinx Zynq-7000 XC7Z100        |
@@ -44,10 +44,10 @@ Objects    FPGA       C          verdict
 --- Hardware Statistics ---
   Marked objects : 183
   STATUS         : 0x0
-  HW cycles      : 6920
-  HW time        : 69.20 us (@100MHz)
+  HW cycles      : 6899
+  HW time        : 68.99 us (@100MHz)
   Queue head/tail: 183 / 183 (depth=0)
-  Throughput     : 2.64 M objects/sec
+  Throughput     : 2.65 M objects/sec
 
 =============================================
   SUMMARY

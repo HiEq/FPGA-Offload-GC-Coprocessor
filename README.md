@@ -9,7 +9,7 @@
 面向托管堆的 FPGA GC 协处理器：对象内容留在 DDR，引用关系压缩成连续的 side table；
 PL 负责标记与空闲扫描，ARM 负责分配、引用更新与回收策略。
 
-> 当前证据：位流 `3D3A9F1D…` / `BOOT.BIN` `63e52587…`，2026-10-24 冷启动复验。
+> 当前证据：位流 `3332D8D6…` / `BOOT.BIN` `ac8d31cc…`，2026-10-24 冷启动复验。
 > 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
 > 测量口径与证据边界见 [`docs/measurement.md`](docs/measurement.md)。
 > CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
@@ -26,9 +26,9 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 | 对比对象 | 口径 | 每对象 | 加速 |
 |---|---|---|---|
 | **FPGA 标记**（`three_way.py`）| 同图 4000 对象 | **171 ns** | — |
-| C，逐条读 DDR（未缓存）| 同图同 BFS | 569 ns | **3.3×** |
-| C，数据驻留 cache | heap 副本 | 194 ns | **1.1×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 44.1 µs | **258×** |
+| C，逐条读 DDR（未缓存）| 同图同 BFS | 572 ns | **3.3×** |
+| C，数据驻留 cache | heap 副本 | 193 ns | **1.1×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 46.6 µs | **272×** |
 
 > `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
 > 四行来自同一张图（`tests/three_way.py`），出处 `tools/logs/board_three_way.log`；
@@ -141,7 +141,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 | 套件 | 结果 |
 |---|---|
-| 冷启动 `D1..D6` / `test_main` | `0` / 4/4（冷启动日志；当前卡 3/3 见 `board_test_main.log`）|
+| 冷启动 `D1..D6` / `test_main` | `0` / 3/3（同一次上电的日志；卡上当前二进制）|
 | 阶段 2 / 阶段 3 | `PHASE2_PASS`、`CONTRACT_RESULT OK`、dirty 全套 OK、收尾 `occ=0` |
 | `run_gc.sh 4096 8 2` | 8/8 |
 | `abort_test` / `abort_sweep` / `done_race` | T1–T5 / 11/11 / P3 0/20 |
@@ -153,13 +153,13 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：`v4.2`（tag `cc2f02b`）。
+当前发布：`v4.3`（prerelease）。`v4.2` 保留为 gate 之前的镜像，便于对照。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
 | `card-userdata.zip` | 解压到 USERDATA 根目录 | 86,909 B | `3829bbd4216ae0e6b0bf68b792969927fda74b0e25de01f6701ec727b3fb17c0` |

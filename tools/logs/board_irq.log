@@ -1,6 +1,6 @@
 # command: tools/debug/cold_cycle.ps1 -> irq (first run after a reboot)
-# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
-# commit: 1035e3a   VERSION=0x00040200
+# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
+# commit: ca6d2c6   VERSION=0x00040200
 # date: 2026-10-24
 cd /run/media/USERDATA-mmcblk0p2 && sh tests/irq_drv_test.sh; printtf 'D''IAG_DONE\n'
 == insmod /run/media/USERDATA-mmcblk0p2/ko/fogccc-irq.ko ==
@@ -17,7 +17,7 @@ fogccc: ready, /dev/fogccc_irq (virq 44, hwirq 61)
 == run one GC test (done 0 -> 1) ==
    seed=11   (replay exactly: --seed 11)
 fogccc: irq fired (#1), line disabled
-  [ 1/ 1] N=   591 exp=   443 | HW      107.02 us (  10702 cyc) | free   148 | SW      20.76 ms |   193.9x | build    46.2 ms | OK
+  [ 1/ 1] N=   591 exp=   443 | HW      106.39 us (  10639 cyc) | free   148 | SW      20.51 ms |   192.8x | build    46.1 ms | OK
   PASSED (all invariants): 1/1
 == state after run: 1 0 44 ==
 fogccc: using virq 44 (hwirq 61)
