@@ -17,6 +17,10 @@ PL 负责标记与空闲扫描，ARM 负责分配、引用更新与回收策略�
 Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与接口](#3-设计与接口) ·
 [证据](#4-证据) · [发布](#5-发布) · [目录与调试](#6-目录与调试) · [License](#7-license)
 
+详细文档：[上板/串口](docs/board-usage.md) · [构建与平台](docs/build.md) ·
+[测量口径](docs/measurement.md) · [仿真矩阵](docs/simulation.md) ·
+[设计细节](docs/design-details.md) · [全部文档](docs/README.md)
+
 ## 1. 结果
 
 | 对比对象 | 口径 | 每对象 | 加速 |
