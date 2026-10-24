@@ -127,7 +127,7 @@ python3 tests/dirty_overflow_test.py       # Phase 3A 溢出契约 + 退回全�
 python3 tests/ctrl_spill_test.py           # CTRL 写重投递防护
 python3 tests/dirty_api_test.py            # 阶段 3A C 驱动 + ctypes 绑定接口（含 --neg）
 python3 tests/dirty_leftover_test.py       # 残留屏障记录 ⇒ 必须 flush
-./bin/test_main                            # 4 项 C 测试（需 root）
+./bin/test_main                            # 3 项 C 测试（需 root）
 insmod ko/fogccc-irq.ko                    # 仅插驱动
 ```
 

@@ -33,7 +33,7 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
     segfaults on the first run, so it stays out of the tree until it has a working oracle.
     *Board evidence (2026-10-24, cold boot from `BOOT.BIN` `63e52587…`, bitstream `3D3A9F1D…`).*
     `tools/logs/board_coldboot_verify_20261024.log`: `D1..D6=0`, the card's `BOOT.BIN` sha256 matches
-    the release asset, `test_main` 4/4.  Full chain green: phase 2 `PHASE2_PASS`, `CONTRACT_RESULT OK`,
+    the release asset, `test_main` 3/3.  Full chain green: phase 2 `PHASE2_PASS`, `CONTRACT_RESULT OK`,
     `DIRTY_SET` / `DIRTY_CONCURRENT` / `DIRTY_OVERFLOW` / `CTRL_SPILL` / `DIRTY_API` / `FREELIST4096`,
     end-of-chain `DIRTY_STATE occ=0`, `run_gc` 8/8, `abort` T1-T5, `abort_sweep` 11/11, `done_race`
     P3 0/20, `repeat`, `cmark` 72/72.  `irq` reports `IRQ_DRIVEN_DONE_OK` only as the first command

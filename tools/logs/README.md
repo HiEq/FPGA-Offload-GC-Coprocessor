@@ -26,7 +26,7 @@
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
-| `board_test_main.log` | `./bin/test_main` | 4/4 `ALL PASS`（Test 1：4000 对象 646.0 µs vs C 2169.8 µs = 3.4×）| README §1 结果 |
+| `board_test_main.log` | `./bin/test_main` | 3/3 `ALL PASS`（Test 1 只比计数；耗时见 `board_three_way.log`）| README §1 结果 |
 | `board_gc_test.log` | `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
 | `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
 | `board_abort_test.log` | `python3 -u tests/abort_test.py` | T1–T5 `RESULT: PASS` | README abort 契约 |
@@ -36,7 +36,7 @@
 | `board_repeat.log` | `sh run_repeat.sh 10` | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ `REPEAT_DONE` | docs 板上速查 |
 | `board_freelist_n4096.log` | `python3 -u tests/freelist_n4096_test.py` | 4096 边界全空闲 ⇒ `FREELIST4096_RESULT OK` | docs 阶段 2 / 工具测试索引 |
 | `board_phase2_regression.log` / `board_phase2_regression.raw.log` | `tools/serial_phase2.ps1` | side-table 正/负控 + `gc_test 4096 8 2` ⇒ `RESULT: PHASE2_PASS` | docs 阶段 2 |
-| `board_phase3_test_main.log` | `tools/debug/run_phase3_board.ps1` 第 1 步 | 4/4 `ALL PASS` | docs 阶段 3 |
+| `board_phase3_test_main.log` | `tools/debug/run_phase3_board.ps1` 第 1 步 | 3/3 `ALL PASS` | docs 阶段 3 |
 | `board_phase3_dirty_set.log` | 同上 第 4 步 `tests/dirty_set_test.py` | `DIRTY_SET_RESULT OK` | docs 阶段 3A |
 | `board_phase3_dirty_set_base_neg_20261023.log` | 同上脚本的**修复前**版本，重启后第一个跑（`0x04` 仍是复位值 0）| 引擎按地址 0 读对象头 ⇒ 不追引用（`A marked=2`、`D e1=1`）⇒ `DIRTY_SET_RESULT FAIL` | AGENTS #19（对象基址泄漏负控）|
 | `board_phase3_dirty_set_boot_neg_20261023.log` | `tests/dirty_set_test.py` 作**重启后第一个**测试 | `A occ=3 pushed=3` 但 `marked=2`（id 0 的记录没进位图）⇒ `DIRTY_SET_RESULT FAIL`；暖机后同一脚本 `occ=4 marked=6` ⇒ 「AW/W 乱配 ⇒ 伪造/丢失 `DIRTY_PUSH`」的复现件 | AGENTS #20（**开放**）|
@@ -49,7 +49,7 @@
 | `board_phase3_leftover.log` | `tests/dirty_leftover_test.py` | 旧二进制 `q_tail=10 != marked=9` FAIL → 修好后 `ALL PASS` | docs flush 契约 |
 | `board_dirty_state_end.log` | `dirty_state.py` + `dirty_leftover_test.py`（链末）| `DIRTY_STATE occ=0`；留两条记录后 `test_main` 仍 `ALL PASS` ⇒ `DIRTY_LEFTOVER_RESULT OK` | AGENTS #18(a) |
 | `board_phase3_dirty_api.log` | `tests/dirty_api_test.py` | 阶段 3A 的 C 驱动 + ctypes 接口（含 `--neg`）| docs 阶段 3 接口 |
-| `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（冷启动后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `63e52587…`；`fpga_manager=operating`；`test_main` 4/4 | README 冷启动 / AGENTS #21 |
+| `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（冷启动后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `63e52587…`；`fpga_manager=operating`；`test_main` 3/3 | README 冷启动 / AGENTS #21 |
 | `board_coldboot_20261024.raw.log` | 冷启动整段串口（只读探活）| U-Boot → Linux → `login:`；启动窗口内未写入任何字节 | README 冷启动 / AGENTS #21 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 四组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
