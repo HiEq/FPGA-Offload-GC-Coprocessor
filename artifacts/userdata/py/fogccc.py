@@ -121,6 +121,46 @@ _lib.fpga_gc_dirty_popped.argtypes = [ctypes.POINTER(FpgaGcStruct)]
 _lib.fpga_gc_mark_incremental.restype = ctypes.c_uint32
 _lib.fpga_gc_mark_incremental.argtypes = [ctypes.POINTER(FpgaGcStruct), ctypes.POINTER(ctypes.c_uint32)]
 
+# ---- complete ctypes declarations (tests/test_repo_contract.py enforces these)
+_P = ctypes.POINTER(FpgaGcStruct)
+_lib.fpga_gc_init.restype = ctypes.c_int
+_lib.fpga_gc_init.argtypes = [_P]
+_lib.fpga_gc_close.restype = None
+_lib.fpga_gc_close.argtypes = [_P]
+_lib.fpga_gc_build_graph.restype = ctypes.c_int
+_lib.fpga_gc_build_graph.argtypes = [_P, ctypes.c_int, ctypes.c_int]
+_lib.fpga_gc_set_roots.restype = None
+_lib.fpga_gc_set_roots.argtypes = [_P, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int]
+_lib.fpga_gc_mark.restype = ctypes.c_uint32
+_lib.fpga_gc_mark.argtypes = [_P, ctypes.POINTER(ctypes.c_uint32)]
+_lib.fpga_gc_mark_incremental.restype = ctypes.c_uint32
+_lib.fpga_gc_mark_incremental.argtypes = [_P, ctypes.POINTER(ctypes.c_uint32)]
+_lib.fpga_gc_sw_mark.restype = ctypes.c_uint32
+_lib.fpga_gc_sw_mark.argtypes = [_P, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int]
+_lib.fpga_gc_clear.restype = None
+_lib.fpga_gc_clear.argtypes = [_P]
+_lib.fpga_gc_status.restype = ctypes.c_uint32
+_lib.fpga_gc_status.argtypes = [_P]
+_lib.fpga_gc_read_mark.restype = ctypes.c_uint32
+_lib.fpga_gc_read_mark.argtypes = [_P, ctypes.c_uint32]
+_lib.fpga_gc_print_stats.restype = None
+_lib.fpga_gc_print_stats.argtypes = [_P]
+_lib.fpga_gc_dirty_push.restype = None
+_lib.fpga_gc_dirty_push.argtypes = [_P, ctypes.c_uint32]
+_lib.fpga_gc_dirty_push_acked.restype = ctypes.c_int
+_lib.fpga_gc_dirty_push_acked.argtypes = [_P, ctypes.c_uint32, ctypes.c_int]
+_lib.fpga_gc_dirty_flush.restype = None
+_lib.fpga_gc_dirty_flush.argtypes = [_P]
+_lib.fpga_gc_dirty_status.restype = ctypes.c_uint32
+_lib.fpga_gc_dirty_status.argtypes = [_P]
+_lib.fpga_gc_dirty_drained.restype = ctypes.c_uint32
+_lib.fpga_gc_dirty_drained.argtypes = [_P]
+_lib.fpga_gc_dirty_pushed.restype = ctypes.c_uint32
+_lib.fpga_gc_dirty_pushed.argtypes = [_P]
+_lib.fpga_gc_dirty_popped.restype = ctypes.c_uint32
+_lib.fpga_gc_dirty_popped.argtypes = [_P]
+
+
 
 # ==================== Python封装类 ====================
 class FOGCCC:

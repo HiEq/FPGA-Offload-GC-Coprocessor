@@ -65,7 +65,7 @@ for %%L in (1 2 4 8 16 24 32) do (
   )
 )
 echo === SWEEP DONE ===
-echo cache dir: %CACHE%
+for %%I in ("%CACHE%") do echo cache dir: Cache\%%~nxI
 if defined FAILED (
   echo === SWEEP HAD FAILURES ===
   exit /b 1

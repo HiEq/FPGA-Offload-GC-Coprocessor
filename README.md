@@ -424,13 +424,13 @@ T-DIRTY-TAG/RACE + T-ABORT/T-ABORT2 + T-MAXFAN/T-ROOTCLAMP/T-STAR + AXI 协议�
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 分区根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 93,810 B | `c95881697e86ced7019dfaf72e902bfe5d36bd8b0f2a3bbca99fd1576d400abb` |
+| `card-userdata.zip` | 解压到 USERDATA 分区根目录 | 94,173 B | `17c47aed386aa3907946af3825a1a64a5be1475729545a0dedac2f1189658c16` |
 
 > 以上由 `tools/make_release_zips.ps1` + `tools/make_release_manifest.ps1` 生成；`BOOT.BIN` 是
-> `DIRTY_FLUSH` 改为 arm-and-consume（AGENTS #19）后重打的镜像（**2026-10-23 已上电复测，全部套件通过**）。卡包只含运行所需脚本与二进制，
+> hand-over 修复（AGENTS #21）后重打的镜像；该镜像的上电复测结果见 `tools/logs/README.md` 的日志索引。卡包只含运行所需脚本与二进制，
 > 不含任何解释器基准脚本。
 >
 > **语义变更（`VERSION` 仍是 `0x0004_0200`）**：`CTRL[5]=DIRTY_FLUSH` 自 2026-10-23 起是 **arm-and-consume**

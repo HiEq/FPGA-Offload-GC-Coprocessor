@@ -61,7 +61,7 @@ findstr /C:"[TB] ==================== PASS" xsim_tb.log >nul
 if errorlevel 1 goto :nopass
 
 echo === SIM DONE ===
-echo cache dir: %CACHE%
+for %%I in ("%CACHE%") do echo cache dir: Cache\%%~nxI
 exit /b 0
 
 :nopass

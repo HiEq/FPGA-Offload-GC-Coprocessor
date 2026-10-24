@@ -7,7 +7,32 @@
 
 Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profile) · [2 Modes](#2-interaction-modes) · [3 Ambiguity](#3-ambiguity-triage) · [4 Verification](#4-verification-requirements) · [5 Calibration](#5-calibration-mechanics) · [6 Pacing](#6-session-pacing-and-landing) · [7 Commitments](#7-agent-commitments) · [8 Overrides](#8-developer-override-phrases) · [9 Summary](#9-one-line-summary)
 
-21. **OPEN 2026-10-24 — three behaviours the `dev-hieq` line guards and this line does not.** `dev-hieq` carries three directed testbenches (`sim/tb_flush_data.v`, `tb_stale_ar_flush.v`, `tb_start_while_busy.v`) that fail on this tree: `[FLUSH-DATA][FAIL] stale data survived abort: d0=0x22222222`; `[STALE-AR][FAIL] stale beat visible: d0=0xccccdddd` (two phases); `[BUSY-START][FAIL] timeout after duplicate START; state=14 q=26 dq=0`. Reading them against our RTL: a START pulse accepted while the engine is busy still reaches `gc_axi_read.run_start`, so the read path flushes under the running epoch and its outstanding beats are gone (the hang the BUSY-START test reports); and a beat that is already in the output stage at `abort` is still visible as `d0` after the flush. That line fixed all three in its #43 ("ignore a busy START and drop a pending AR at flush"). Consequences here: a *redelivered* `START` (this platform redelivers stores, AGENTS #18) can hang a run instead of being a harmless redundant re-run — AGENTS #19's `T-CTRL-RESTART` only covers a re-run that starts after DONE. Not fixed: the fix belongs in the `gc_top`/`gc_axi_read` start path (gate `run_start` with `engine_idle`, and drop the output register on `abort`), needs the three TBs back as the negative control, a rebuild and a full board re-run — raised, not done opportunistically (§4.9). *Review:* before the next release. The TB sources are not in this tree; they are `sim/tb_*.v` on the `dev-hieq` history (`7fdf426`).
+21. **CLOSED 2026-10-24 (sim; board re-run below).** Three hand-over defects the `dev-hieq` line
+    guarded with directed testbenches and this line did not. All three are fixed in the RTL, and the
+    three testbenches are back in the tree as the guards.
+    *Defects and fixes.* (a) `gc_top.v` passed a bare `w_start` to `gc_axi_read.run_start`. A START
+    the mark FSM ignores because it is busy (`S_IDLE` is the only accepting state) still flushed the
+    read path under the running epoch, so its outstanding beats were discarded and the run hung;
+    now `.run_start(w_start & w_engine_idle)`. (b) `gc_axi_read.v` popped the data FIFO on
+    `data0_valid && data0_ready` even in the cycle where `run_start`/`abort` reloaded the pointers
+    (`d0r <= d0w` then `d0r <= d0r + 1`), leaving one stale beat for the next run; the pops are now
+    gated with `!run_start && !abort`. (c) `flushing` cleared on `h0empty && h1empty` alone, so an
+    AR that was issued but not yet handshaken was still outstanding when the flush ended and its
+    response was stored; the exit condition now also requires `!ARVALID`, so that AR is waited out
+    and its response discarded.
+    *Guards.* `sim/tb_flush_data.v`, `sim/tb_stale_ar_flush.v`, `sim/tb_start_while_busy.v` are back
+    under `sim/`; `sim/run_port_tb.{bat,sh}` runs them, `tools/reproduce_all.ps1` has them as a step,
+    and `lint.yml` runs them under Icarus. Negative control: the same three testbenches fail on the
+    pre-fix RTL (`stale data survived abort: d0=0x22222222`; `stale beat visible: 0xccccdddd`;
+    `timeout after duplicate START; state=14 q=26`), i.e. the guards can fail.
+    *Evidence.* `sim\run_port_tb.bat` -> all three PASS; `tools/reproduce_all.ps1` -> `RESULT: PASS`
+    (six sim steps); `tests/test_repo_contract.py` -> 55 tests OK. Bitstream `3d3a9f1d…`
+    (WNS +0.123 / WHS +0.060, LUT 26,930 / FF 71,497) repacked into `BOOT.BIN` `63e52587…`;
+    `verify_bootbin.py` PASS (only the bitstream partition changed).
+    *Not shipped from that line:* `csrc/test_fpga_gc_host.c` compiles against this driver but
+    segfaults on the first run, so it stays out of the tree until it has a working oracle.
+    *Board evidence: pending.* The full suite re-runs on the repacked card before `v4.2` leaves
+    prerelease; this entry is updated with the log names when it lands.
 
 ---
 
