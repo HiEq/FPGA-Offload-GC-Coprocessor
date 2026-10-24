@@ -38,9 +38,9 @@ static int test_correctness(fpga_gc_t *dev) {
     printf("=============================================================\n");
     printf("  Test 1: correctness + speed (FPGA vs C)\n");
     printf("=============================================================\n");
-    printf("%-10s %-10s %-14s %-14s %-10s\n",
+    printf("%-12s %-12s %-16s %-16s %-12s\n",
            "Objects", "marked", "FPGA us", "C us", "vs C");
-    printf("---------- ---------- -------------- -------------- ----------\n");
+    printf("------------ ------------ ---------------- ---------------- ------------\n");
 
     int sizes[] = {10, 50, 100, 500, 1000, 2000, 4000};
     int n_sizes = (int)(sizeof(sizes) / sizeof(sizes[0]));
@@ -82,7 +82,7 @@ static int test_correctness(fpga_gc_t *dev) {
         if (hw_us > 0) snprintf(cbuf, sizeof cbuf, "%.1fx", sw_us / hw_us);
         else           snprintf(cbuf, sizeof cbuf, "n/a");
 
-        printf("%-10d %-10u %-14.1f %-14.1f %-10s%s\n",
+        printf("%-12d %-12u %-16.1f %-16.1f %-12s%s\n",
                n, fpga_count, hw_us, sw_us, cbuf,
                match ? "" : "  <<<< MISMATCH");
         rows++;

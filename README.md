@@ -156,7 +156,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71` |
 | `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 根目录 | 93,134 B | `3e5012e8c987f9a3ef71da6b659ff9074d95cb884f8ae0da743a67974bd53889` |
+| `card-userdata.zip` | 解压到 USERDATA 根目录 | 93,030 B | `57277d969b0de4fc722a41c99dbf8d9ed980c14d73b42c85b1ba1fe54ec71b3b` |
 
 校验：四个资产置于同一目录，`sha256sum -c artifacts/SHA256SUMS.release`。
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)。

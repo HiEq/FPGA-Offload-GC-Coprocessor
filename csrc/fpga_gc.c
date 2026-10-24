@@ -186,8 +186,6 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
     free(ref_offs);
 
     dev->obj_count = n;
-    printf("[FOGCCC] Graph: %d objects, %u bytes, avg_refs=%d\n",
-           n, cur_off, avg_refs);
     return n;
 }
 
