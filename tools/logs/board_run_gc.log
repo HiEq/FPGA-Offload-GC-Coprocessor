@@ -1,0 +1,74 @@
+# command: tools/debug/run_board_suite.ps1 -> run_gc
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
+# date: 2026-10-24
+cd /run/media/USERDATA-mmcblk0p2 && sh  run_gc.sh 4096 8 2; printf 'D''IAG_DONE\n'
+==========================================================
+ FOGCCC on-board test
+   script : /run/media/USERDATA-mmcblk0p2/gc_test.py
+   params : maxN=4096  trials=8  avg_refs=2
+   log    : /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_124710.log
+==========================================================
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   seed=181208208   (replay exactly: --seed 181208208)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
+   MAGIC = 0x47434343   VERSION = 0x00040200
+====================================================================================
+@@TASK 5 trial 1/8  N=1220  (expect 915)
+  [ 1/ 8] N=1220 exp= 915 | HW    175.07 us (17507 cyc) | free  305 | SW    42.08 ms |  240.4x | build   95.0 ms | OK
+@@TASK 15 trial 2/8  N=592  (expect 444)
+  [ 2/ 8] N= 592 exp= 444 | HW    106.97 us (10697 cyc) | free  148 | SW    20.15 ms |  188.4x | build   47.5 ms | OK
+@@TASK 26 trial 3/8  N=2244  (expect 1683)
+  [ 3/ 8] N=2244 exp=1683 | HW    298.89 us (29889 cyc) | free  561 | SW    78.11 ms |  261.3x | build  176.6 ms | OK
+@@TASK 36 trial 4/8  N=1573  (expect 1179)
+  [ 4/ 8] N=1573 exp=1179 | HW    222.24 us (22224 cyc) | free  394 | SW    55.00 ms |  247.5x | build  139.2 ms | OK
+@@TASK 47 trial 5/8  N=1504  (expect 1128)
+  [ 5/ 8] N=1504 exp=1128 | HW    211.76 us (21176 cyc) | free  376 | SW    52.28 ms |  246.9x | build  120.4 ms | OK
+@@TASK 58 trial 6/8  N=1870  (expect 1402)
+  [ 6/ 8] N=1870 exp=1402 | HW    262.48 us (26248 cyc) | free  468 | SW    65.78 ms |  250.6x | build  149.9 ms | OK
+@@TASK 68 trial 7/8  N=2078  (expect 1558)
+  [ 7/ 8] N=2078 exp=1558 | HW    282.02 us (28202 cyc) | free  520 | SW    73.34 ms |  260.1x | build  168.7 ms | OK
+@@TASK 79 trial 8/8  N=3343  (expect 2507)
+  [ 8/ 8] N=3343 exp=2507 | HW    427.83 us (42783 cyc) | free  836 | SW   117.32 ms |  274.2x | build  267.3 ms | OK
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+ trial      N    exp   garb    HW cycles      HW us     SW ms  speedup   HWmk   SWmk  verdict
+ --------------------------------------------------------------------------------------------
+     1   1220    915    305        17507     175.07     42.08   240.4x    915    915  OK
+     2    592    444    148        10697     106.97     20.15   188.4x    444    444  OK
+     3   2244   1683    561        29889     298.89     78.11   261.3x   1683   1683  OK
+     4   1573   1179    394        22224     222.24     55.00   247.5x   1179   1179  OK
+     5   1504   1128    376        21176     211.76     52.28   246.9x   1128   1128  OK
+     6   1870   1402    468        26248     262.48     65.78   250.6x   1402   1402  OK
+     7   2078   1558    520        28202     282.02     73.34   260.1x   1558   1558  OK
+     8   3343   2507    836        42783     427.83    117.32   274.2x   2507   2507  OK
+ --------------------------------------------------------------------------------------------
+  trials                : 8
+  skipped (graph too big): 0
+  seed                  : 181208208   (replay: --seed 181208208)
+  PASSED (all invariants): 8/8
+  total HW cycles        : 198726  (= 1987.26 us @100MHz)
+  end-to-end note        : graph build+write (Python) 145.6 ms avg vs HW 0.248 ms avg
+  total SW (Python)      : 504.06 ms
+  speedup min/avg/max    : 188.4x / 246.2x / 274.2x
+  N range                : 592 .. 3343
+
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done
+
+==========================================================
+ done.  log saved on the card: /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_124710.log
+ exit code: 0
+==========================================================
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

@@ -1,16 +1,13 @@
-# command: cd <datadir> && python3 -u tests/dirty_leftover_test.py
-# test: tools/tests/dirty_leftover_test.py md5 
-585cd82a99a146e2838137bc80f7d7a4
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
-# date: 2026-10-23
-
-cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_leftover_test.py; printf 'Z''1=%s\n' $?
+# command: cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/dirty_leftover_test.py
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
+# date: 2026-10-24
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_leftover_test.py; printf 'D''IAG_DONE\n'
 leftover barrier records: occ=3 pushed=3 ids=[1, 2]
 test_main: rc=0 verdict=ALL PASS
   | roots={0}      -> marked=183  STATUS=0x0
   | roots={0,0,0}  -> marked=183  STATUS=0x0
 DIRTY_LEFTOVER_RESULT OK
 DIAG_DONE
-Z1=0
+DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

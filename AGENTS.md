@@ -7,7 +7,7 @@
 
 Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profile) · [2 Modes](#2-interaction-modes) · [3 Ambiguity](#3-ambiguity-triage) · [4 Verification](#4-verification-requirements) · [5 Calibration](#5-calibration-mechanics) · [6 Pacing](#6-session-pacing-and-landing) · [7 Commitments](#7-agent-commitments) · [8 Overrides](#8-developer-override-phrases) · [9 Summary](#9-one-line-summary)
 
-21. **CLOSED 2026-10-24 (sim; board re-run below).** Three hand-over defects the `dev-hieq` line
+21. **CLOSED 2026-10-24 (sim + board).** Three hand-over defects the `dev-hieq` line
     guarded with directed testbenches and this line did not. All three are fixed in the RTL, and the
     three testbenches are back in the tree as the guards.
     *Defects and fixes.* (a) `gc_top.v` passed a bare `w_start` to `gc_axi_read.run_start`. A START
@@ -31,8 +31,16 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
     `verify_bootbin.py` PASS (only the bitstream partition changed).
     *Not shipped from that line:* `csrc/test_fpga_gc_host.c` compiles against this driver but
     segfaults on the first run, so it stays out of the tree until it has a working oracle.
-    *Board evidence: pending.* The full suite re-runs on the repacked card before `v4.2` leaves
-    prerelease; this entry is updated with the log names when it lands.
+    *Board evidence (2026-10-24, cold boot from `BOOT.BIN` `63e52587…`, bitstream `3D3A9F1D…`).*
+    `tools/logs/board_coldboot_verify_20261024.log`: `D1..D6=0`, the card's `BOOT.BIN` sha256 matches
+    the release asset, `test_main` 4/4.  Full chain green: phase 2 `PHASE2_PASS`, `CONTRACT_RESULT OK`,
+    `DIRTY_SET` / `DIRTY_CONCURRENT` / `DIRTY_OVERFLOW` / `CTRL_SPILL` / `DIRTY_API` / `FREELIST4096`,
+    end-of-chain `DIRTY_STATE occ=0`, `run_gc` 8/8, `abort` T1-T5, `abort_sweep` 11/11, `done_race`
+    P3 0/20, `repeat`, `cmark` 72/72.  `irq` reports `IRQ_DRIVEN_DONE_OK` only as the first command
+    after a boot (DONE is latched otherwise: ordering, not a regression).
+    A/B on the same image, each run being the first `DIRTY_PUSH` burst after a reboot:
+    `--acked` gives `loss=[] retries=2`, `--plain` gives `loss=[8]`
+    (`tools/logs/board_regs_aww_acked.log`, `tools/logs/board_regs_aww.log`).
 
 ---
 

@@ -1,25 +1,19 @@
-# command: cd <datadir> && python3 -u tests/dirty_concurrent_test.py --plain-push
-# test: tools/tests/dirty_concurrent_test.py md5 57a1c015c19110e754b7d9e22da774b2
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
+# command: cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/dirty_concurrent_test.py --plain-push
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
 # date: 2026-10-24
-# note: NEGATIVE CONTROL for the concurrent barrier path: the same test with the old
-# note: fire-and-forget push (no tag+id read-back, no retry).  RESULT OF THIS RUN: no loss
-# note: happened (every round matched the oracle) -- at 250 pushes the cold-window loss is
-# note: intermittent, unlike the 3-push regs_aww case.  The acked run on the same image
-# note: reports retries=1, i.e. a loss did occur there and the ack repaired it.
-
-cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/dirty_concurreent_test.py --plain-push
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_concurrent_test.py --plain-push; printf 'D''IAG_DONE\n'
 magic/version OK: 0x47434343 / 0x00040200
 graph: n=1024 live=768 garbage=256 heavy=767 heavy_refs=1024 seed=12345
-round: e1=768 pushed=251 drained=185(conc)+66(remark) popped=251 | marked=910 oracle=910 | busy_seen=True live_pushes=34/100
-timing: epoch2_window_us=5343 mutator_wake_us=139 first_push_us=247 mutator_total_us=11573 ctrl_at_first_push=0x00000010
-stress 1: pushed=251 drained=186/65 popped=251 marked=910 oracle=910 busy=True live_pushes=35 -> OK
-stress 2: pushed=252 drained=187/65 popped=252 marked=910 oracle=910 busy=True live_pushes=36 -> OK
-stress 3: pushed=252 drained=187/65 popped=252 marked=910 oracle=910 busy=True live_pushes=35 -> OK
-stress 4: pushed=252 drained=187/65 popped=252 marked=910 oracle=910 busy=True live_pushes=35 -> OK
+round: e1=768 pushed=252 drained=187(conc)+65(remark) popped=252 | marked=910 oracle=910 | busy_seen=True live_pushes=36/100
+timing: epoch2_window_us=5422 mutator_wake_us=149 first_push_us=254 mutator_total_us=11122 ctrl_at_first_push=0x00000010
+stress 1: pushed=252 drained=189/63 popped=252 marked=910 oracle=910 busy=True live_pushes=37 -> OK
+stress 2: pushed=252 drained=189/63 popped=252 marked=910 oracle=910 busy=True live_pushes=37 -> OK
+stress 3: pushed=252 drained=189/63 popped=252 marked=910 oracle=910 busy=True live_pushes=37 -> OK
+stress 4: pushed=252 drained=189/63 popped=252 marked=910 oracle=910 busy=True live_pushes=37 -> OK
 neg no-barrier: e1=768 pushed=0 drained=0/0 marked=768 missed=142 (pushed must be 0, missed > 0)
 mode: plain push (negative control) | ack retries=0 giveups=0
 DIRTY_CONCURRENT_RESULT OK
+DIAG_DONE
 DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

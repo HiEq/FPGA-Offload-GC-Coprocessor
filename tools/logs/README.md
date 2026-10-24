@@ -28,10 +28,11 @@
 | --- | --- | --- | --- |
 | `board_test_main.log` | `./bin/test_main` | 4/4 `ALL PASS`（Test 1：4000 对象 646.0 µs vs C 2169.8 µs = 3.4×）| README §4 三方对比 |
 | `board_gc_test.log` | `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
+| `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
 | `board_abort_test.log` | `python3 -u tests/abort_test.py` | T1–T5 `RESULT: PASS` | README abort 契约 |
 | `board_abort_sweep.log` | `python3 -u tests/abort_sweep.py` | `RESULT: PASS (11/11)`（各相位 `bitmap_bad=0`）| README abort 相位 |
 | `board_done_race.log` | `python3 -u tests/done_race_test.py` | `RESULT: PASS`（P3 20/20；P1/P2 0/300）| AGENTS #9 / #18 |
-| `board_irq.log` | `cd <datadir> && D=<datadir> sh tests/irq_drv_test.sh`（重启后 PL 刚配置，`done=0`）| `IRQ_DRIVEN_DONE_OK (before='0 1 44' after='1 0 44')` | README 中断链路 |
+| `board_irq.log` | `cd <datadir> && sh tests/irq_drv_test.sh`（**必须是重启后第一条命令**：`done` 必须为 0）| `IRQ_DRIVEN_DONE_OK (before='0 1 44' after='1 0 44')` | README 中断 / AGENTS #20 |
 | `board_repeat.log` | `sh run_repeat.sh 10` | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ `REPEAT_DONE` | docs 板上速查 |
 | `board_freelist_n4096.log` | `python3 -u tests/freelist_n4096_test.py` | 4096 边界全空闲 ⇒ `FREELIST4096_RESULT OK` | docs 阶段 2 / 工具测试索引 |
 | `board_phase2_regression.log` / `board_phase2_regression.raw.log` | `tools/serial_phase2.ps1` | side-table 正/负控 + `gc_test 4096 8 2` ⇒ `RESULT: PHASE2_PASS` | docs 阶段 2 |
@@ -40,15 +41,17 @@
 | `board_phase3_dirty_set_base_neg_20261023.log` | 同上脚本的**修复前**版本，重启后第一个跑（`0x04` 仍是复位值 0）| 引擎按地址 0 读对象头 ⇒ 不追引用（`A marked=2`、`D e1=1`）⇒ `DIRTY_SET_RESULT FAIL` | AGENTS #19（对象基址泄漏负控）|
 | `board_phase3_dirty_set_boot_neg_20261023.log` | `tests/dirty_set_test.py` 作**重启后第一个**测试 | `A occ=3 pushed=3` 但 `marked=2`（id 0 的记录没进位图）⇒ `DIRTY_SET_RESULT FAIL`；暖机后同一脚本 `occ=4 marked=6` ⇒ 「AW/W 乱配 ⇒ 伪造/丢失 `DIRTY_PUSH`」的复现件 | AGENTS #20（**开放**）|
 | `board_phase3_dirty_concurrent_plain_neg.log` | 同上加 `--plain-push`（旧的不带回执推送）| **负控**：冷窗口那条记录丢失后表现为推送计数偏短或 `marked != oracle`，与带回执的正证形成对照 | AGENTS #20（并发路径 A/B）|
+| `board_dirty_concurrent_plain.log` | `dirty_concurrent_test.py --plain-push`（暖机）| `DIRTY_CONCURRENT_RESULT OK`；暖机期不丢，冷窗口的确定性 A/B 见 `board_regs_aww` 两行 | AGENTS #20 |
 | `board_phase3_dirty_concurrent.log` | 同上 第 5 步（mutator 走 id 级回执）| `DIRTY_CONCURRENT_RESULT OK`；`ack: retries=1 giveups=0`（回执抓到一条本会丢的记录）；`live_pushes` 30–31/100 | docs 阶段 3B / AGENTS #20 |
 | `board_phase3_dirty_overflow.log` | 同上 第 6 步 | `DIRTY_OVERFLOW_RESULT OK` | docs 溢出契约 |
 | `board_phase3_ctrl_spill.log` | 同上 第 7 步 `tests/ctrl_spill_test.py` | `CTRL_SPILL_RESULT OK` | docs 写路径防护 |
 | `board_phase3_freelist_contract.log` | 同上 第 3 步 | `CONTRACT_RESULT OK` | docs 阶段 2 契约 |
 | `board_phase3_leftover.log` | `tests/dirty_leftover_test.py` | 旧二进制 `q_tail=10 != marked=9` FAIL → 修好后 `ALL PASS` | docs flush 契约 |
+| `board_dirty_state_end.log` | `dirty_state.py` + `dirty_leftover_test.py`（链末）| `DIRTY_STATE occ=0`；留两条记录后 `test_main` 仍 `ALL PASS` ⇒ `DIRTY_LEFTOVER_RESULT OK` | AGENTS #18(a) |
 | `board_phase3_dirty_api.log` | `tests/dirty_api_test.py` | 阶段 3A 的 C 驱动 + ctypes 接口（含 `--neg`）| docs 阶段 3 接口 |
-| `board_coldboot_verify_20261023.log` | `tools/debug/serial_coldboot_verify.ps1` | `D1..D6=0`（`D2` 已修：BOOT.BIN 查找纳入 udev 挂载点 `/run/media/BOOT-mmcblk0p1`，板端现在真的 `sha256sum`/`md5sum` 了）| docs 冷启动 |
-| `board_coldboot_20261023.raw.log` | 控制台 `reboot` 后的整段启动串口 | U-Boot → Linux → `login:`（当前镜像；FSBL 在每次启动时重配 PL）| docs 冷启动 / AGENTS #18 |
-| `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1` | 72/72 OK（HW vs C 未缓存 2.6–3.4×）| README C 基线 |
+| `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（冷启动后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `63e52587…`；`fpga_manager=operating`；`test_main` 4/4 | README 冷启动 / AGENTS #21 |
+| `board_coldboot_20261024.raw.log` | 冷启动整段串口（只读探活）| U-Boot → Linux → `login:`；启动窗口内未写入任何字节 | README 冷启动 / AGENTS #21 |
+| `cmark_sweep.log` | `tools/tests/run_cmark_sweep.ps1`（4 组共 72 次）| 72/72 OK，HW vs C 未缓存 2.7–3.4×（位流 `3D3A9F1D…`）| README C 基线 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 四组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
@@ -57,12 +60,13 @@
 | `xsim_dirtyflushidle_armconsume_20261023.log` | `sim\run_sim.bat` | arm-and-consume RTL → FLUSHIDLE/FLUSHSPILL/QFULL/QFULLNEG/RACE **全过** | AGENTS #19（arm-and-consume）|
 | `xsim_qfull_dirty_20261023.log` | `sim\run_sim.bat` | T-DIRTY-QFULL **观测**（峰值占用 4094/4096、`q_full`&&dirty 0 拍、`S_DIRTY_PUSH` 等待 0 拍）+ 强制负控 T-DIRTY-QFULLNEG（`force q_full` + 待处理记录 ⇒ 引擎按分析挂住）⇒「不可达」有了两段证据 | AGENTS #19（q_full+dirty）|
 | `board_regs_aww_cost.log` | 同脚本 `--cost`（200 次推送 ×2）| plain **16.0 µs/push** vs acked **30.5 µs/push**（**1.91×**，暖机期 `retries=0`）| AGENTS #20（回执开销）|
-| `board_regs_aww_acked.log` | 同脚本 `--acked`（tag+id 回执），重启后第一个跑 | 冷轮 `loss=[]`、`retries=1`（丢的那条被回执发现并重试）⇒ 暖轮 `loss 0/14` ⇒ `REGS_AWW_RESULT OK` | AGENTS #20（F2 正向）|
-| `board_regs_aww.log` | 重启后第一个跑 `tests/regs_aww_board_test.py`（15 轮：冷 1 + 暖 14）| 冷轮 `loss=[8]`（4 次启动 4 次丢一条）；暖轮 `loss 0/14` ⇒ `REGS_AWW_RESULT OK` | AGENTS #20（B2 窗口测量）|
+| `xsim_handover_neg_20261024.log` | `tools/debug/neg_handover.ps1`（把 `gc_top.v`/`gc_axi_read.v` 换回修复前）| **负控**：三个 TB 全部 `[FAIL]` —— `stale data survived abort: d0=0x22222222` / `stale beat visible: 0xccccdddd`(×2) / `timeout after duplicate START; state=14 q=26` | AGENTS #21 |
+| `board_regs_aww_acked.log` | `regs_aww_board_test.py --acked`，重启后第一个跑 | 冷轮 `loss=[]`、`retries=2`（丢的记录被 id 回执发现并重试）⇒ 暖轮 `loss 0/14` ⇒ `REGS_AWW_RESULT OK` | AGENTS #20 |
+| `board_regs_aww.log` | 同一脚本 `--plain`，重启后第一个跑（A/B 对照）| 冷轮 `loss=[8]`（同一镜像、同一时序，plain 丢一条）；暖轮 `loss 0/14` ⇒ `REGS_AWW_RESULT OK` | AGENTS #20 |
 | `board_regs_aww_verify_effect.log` | 同脚本 `--verify-effect`，重启后第一个跑 | 冷轮**检测到漏**并退回全标记恢复（2 次启动 2 次）；暖轮 14/14 无需回退 ⇒ `VERIFY_EFFECT_RESULT OK` | AGENTS #20（F1 按效果验收）|
 | `board_regs_aww_verified.log` | 同脚本 `--verified`（标签回查 + 重试），重启后第一个跑 | `retries=0 giveups=0` 却仍 `loss=[8]`（3 次启动 3 次）⇒ **标签回查不足以证明 id 落地**（伪造记录可复用同一个 4 位 tag）；暖轮仍 `loss 0/14` | AGENTS #20（A 侧负结果）|
 | `board_regs_aww_probe_forge_20261023.log` | 同上脚本的早期版本 | 每轮都多标 id 0（其 WDATA=0 来自位图探测写）⇒ 暖机期也会发生 AW/W 错配，方向是**多标**（安全）| AGENTS #20（暖机侧证据）|
-| `xsim_regs_aww_20261023.log` | `sim\run_regs_aww_tb.bat` | `gc_regs` 的 AW/W 契约：配对写正确 / 重复投递只算一次 / 无 AW 时不消费 W（三条保证）+ P4 INFO（外来 WDATA 变伪造记录、挂住的 W 落到下一个 AW）| AGENTS #20（归因证据）|
+| `xsim_regs_aww_20261024.log` | `sim\run_regs_aww_tb.bat` | `gc_regs` 的 AW/W 契约：配对写正确 / 重复投递只算一次 / 无 AW 时不消费 W（P1–P3）+ P4 INFO（外来 WDATA 成伪造记录）+ P5/P6（回执暴露伪造）⇒ `PASS` | AGENTS #20 |
 | `xsim_freelist_20261022.log` | 已退役的独立 `tb_freelist` 台架 | 273 errors（台架期望过期，非 RTL 缺口）；台架源与 runner 已移除 | 退役说明 |
 
 > **口径**：2026-10-22 起不再保留解释器口径的日志（AGENTS #10）。本目录只有

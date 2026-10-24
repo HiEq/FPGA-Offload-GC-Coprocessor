@@ -1,9 +1,8 @@
-# command: cd <datadir> && python3 -u tests/abort_sweep.py
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
-# date: 2026-10-23
-
-cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/abort_sweep.py; printf 'A''2=%s\n' $?
+# command: tools/debug/run_board_suite.ps1 -> abort_sweep
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
+# date: 2026-10-24
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/abort_sweep.py; printf 'D''IAG_DONE\n'
 ====================================================================================
  FOGCCC  abort phase sweep   N=4096 L=3072 avg_refs=2 seed=20261019
    MAGIC=0x47434343 VERSION=0x00040200
@@ -38,5 +37,5 @@ cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/abort_sweep.py; printf 'A
    3us=0x0 10us=0x0 25us=0x0 41us=0x0 50us=0x0 75us=0x0 120us=0x0 200us=0x0 300us=0x0 400us=0x0 480us=0x0
    skipped (run already finished before the abort): 0
    RESULT: PASS (11/11 phases stopped and recovered exactly)
-A2=0
+DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

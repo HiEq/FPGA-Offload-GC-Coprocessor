@@ -1,9 +1,8 @@
-# command: cd <datadir> && python3 -u tests/done_race_test.py
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
-# date: 2026-10-23
-
-cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/done_race_test.py; printf 'D''3=%s\n' $?
+# command: tools/debug/run_board_suite.ps1 -> done_race
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
+# date: 2026-10-24
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/done_race_test.py; printf 'D''IAG_DONE\n'
 ====================================================================================
  FOGCCC  stale-DONE race  --  board-level experiment (AGENTS gap 9)
    iters(P1/P2)=300  flip-iters(P3)=20  seed=20261019
@@ -31,5 +30,5 @@ cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/done_race_test.py; printf
    P2 poll early-return hits       : 0/300 (stale value: 0)  (observed, not asserted)
    P3 driver-order mismatches      : 0/20  (the pass/fail criterion)
    RESULT: PASS (P3 invariant: the driver order always returned the current run's result)
-D3=0
+DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

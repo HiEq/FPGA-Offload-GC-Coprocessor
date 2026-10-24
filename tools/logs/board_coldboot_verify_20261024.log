@@ -1,0 +1,139 @@
+# command: powershell -File tools/debug/serial_coldboot_verify.ps1   (after a cold boot on the NEW image)
+# bitstream: md5 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
+# date: 2026-10-24
+# note: full console capture; the BOOT.BIN search includes the udev mount
+state: already logged in
+  | uname -a; uptime; cat /proc/cmdline; printf 'D''1=%s\n' $?
+  | Linux linux 6.18.10-xilinx-g4f7afe14f724 #1 SMP PREEMPT Tue May 26 15:23:35 UTC 2026 armv7l GNU/Linux
+  |  12:40:10 up 5 min,  load average: 0.00, 0.07, 0.05
+  | console=ttyPS0,115200 earlycon
+  | D1=0
+  | root@linux:~#
+
+  | f=0; for d in /boot /run/media/BOOT-mmcblk0p1 /run/media/* $DataDir
+r /mnt; do if [ -e $d/BOOT.BIN ]; then echo BOOTBIN_AT=$d; sha256sum $d/BOOT.BIN;
+; md5sum $d/BOOT.BIN; f=1; fi; done; echo BOOTBIN_SEEN=$f; test $f = 1; printf 'D
+D''2=%s\n' $?
+  | BOOTBIN_AT=/run/media/BOOT-mmcblk0p1
+  | 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | 1afe68e0ce7ef568b8cc0b8d1d01953b  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | BOOTBIN_AT=/run/media/BOOT-mmcblk0p1
+  | 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | 1afe68e0ce7ef568b8cc0b8d1d01953b  /run/media/BOOT-mmcblk0p1/BOOT.BIN
+  | BOOTBIN_SEEN=1
+  | D2=0
+  | root@linux:~#
+
+  | mount | grep -E 'mmcblk0|boot|USERDATA'; ls /run/media/; printf 'D'
+''3=%s\n' $?
+  | /dev/mmcblk0p1 on /run/media/BOOT-mmcblk0p1 type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+  | /dev/mmcblk0p4 on /run/media/SHARE-mmcblk0p4 type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+  | /dev/mmcblk0p2 on /run/media/USERDATA-mmcblk0p2 type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+  | /dev/mmcblk0p3 on /run/media/ARCH-mmcblk0p3 type ext4 (rw,relatime)
+  | ARCH-mmcblk0p3      SHARE-mmcblk0p4
+  | BOOT-mmcblk0p1      USERDATA-mmcblk0p2
+  | D3=0
+  | root@linux:~#
+
+  | ls -la /run/media/USERDATA-mmcblk0p2/ | head -16; printf 'D''4=%s\n
+n' $?
+  | drwxrwx---   10 root     disk          4096 Jan  1  1970 .
+  | drwxr-xr-x    6 root     root           120 Jan  1  1970 ..
+  | drwxrwx---    2 root     disk          4096 Oct 24  2026 FOUND.000
+  | -rwxrwx---    1 root     disk          2213 Oct 22  2026 README.txt
+  | drwxrwx---    2 root     disk          4096 Oct 18  2026 System Volume Information
+  | drwxrwx---    2 root     disk          4096 Mar  9 12:40 bin
+  | -rwxrwx---    1 root     disk         23256 Oct 23  2026 cmark
+  | -rwxrwx---    1 root     disk         12511 Oct 22  2026 gc_test.py
+  | drwxrwx---    2 root     disk          4096 Oct 18  2026 ko
+  | drwxrwx---    2 root     disk          8192 Mar  9 12:38 logs
+  | -rwxrwx---    1 root     disk         11453 Oct 19  2026 neg_gc.py
+  | drwxrwx---    3 root     disk          4096 Mar  9  2018 py
+  | -rwxrwx---    1 root     disk          1415 Oct 22  2026 run_cmark.sh
+  | -rwxrwx---    1 root     disk          1485 Oct 19  2026 run_gc.sh
+  | -rwxrwx---    1 root     disk          1950 Oct 22  2026 run_repeat.sh
+  | drwxrwx---    3 root     disk          4096 Mar  9 12:35 tests
+  | D4=0
+  | root@linux:~#
+
+  | test -e /proc/device-tree/reserved-memory/pl_graph@1e000000/no-map 
+ && echo PL_GRAPH_NOMAP_OK || echo PL_GRAPH_NOMAP_MISSING; cat /sys/class/fpga_ma
+anager/fpga0/state 2>/dev/null; printf 'D''5=%s\n' $?
+  | PL_GRAPH_NOMAP_OK
+  | operating
+  | D5=0
+  | root@linux:~#
+
+  | cd /run/media/USERDATA-mmcblk0p2 && ./bin/test_main; printf 'D''6=%
+%s\n' $?
+  | +--------------------------------------------+
+  | |  FOGCCC GC Coprocessor Test Suite          |
+  | |  Platform: Xilinx Zynq-7000 XC7Z100        |
+  | +--------------------------------------------+
+  | [FOGCCC] Initialized:
+  |   AXI-Lite regs @ 0x43C00000
+  |   Graph DDR     @ 0x1E000000 (1MB)
+  |   MAGIC/VERSION : 0x47434343 / 0x00040200
+  | =============================================================
+  |   Test 1: correctness + speed (FPGA vs C)
+  | =============================================================
+  | Objects  marked   FPGA us     C us        vs C
+  | -------- -------- ----------- ----------- --------
+  | [FOGCCC] Graph: 10 objects, 4236 bytes, avg_refs=3
+  | 10       9        44.2        16.1        0.4x
+  | [FOGCCC] Graph: 50 objects, 4860 bytes, avg_refs=3
+  | 50       47       48.6        28.9        0.6x
+  | [FOGCCC] Graph: 100 objects, 5756 bytes, avg_refs=3
+  | 100      96       57.0        57.9        1.0x
+  | [FOGCCC] Graph: 500 objects, 16328 bytes, avg_refs=3
+  | 500      474      113.8       265.8       2.3x
+  | [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
+  | 1000     945      185.1       518.1       2.8x
+  | [FOGCCC] Graph: 2000 objects, 64624 bytes, avg_refs=3
+  | 2000     1882     339.5       1062.8      3.1x
+  | [FOGCCC] Graph: 4000 objects, 129824 bytes, avg_refs=3
+  | 4000     3766     646.5       2141.2      3.3x
+  |   Result: ALL PASS
+  |   >>> 3766 objects marked in 646.5 us (171.7 ns/obj)
+  | =============================================
+  |   Test 2: Cycle Graph
+  | =============================================
+  | [FOGCCC] Graph: 5 objects, 4136 bytes, avg_refs=2
+  |   Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
+  |   Roots: {0, 3}
+  |   Expected: 4  SW: 4  FPGA: 4  => PASS
+  | =============================================
+  |   Test 3: Repeat Consistency (100 runs)
+  | =============================================
+  | [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
+  |   Expected: 945  Marked: 945 (consistent across 100 runs)
+  |   Cycles: min=18411 max=18648 jitter=237
+  |   Result: PASS
+  | =============================================
+  |   Test 4: duplicate roots
+  | =============================================
+  | [FOGCCC] Graph: 200 objects, 7352 bytes, avg_refs=3
+  |   roots={0}      -> marked=183  STATUS=0x0
+  |   roots={0,0,0}  -> marked=183  STATUS=0x0
+  |   PASS (duplicate roots must not double count, expect 183 == 183)
+  | --- Hardware Statistics ---
+  |   Marked objects : 183
+  |   STATUS         : 0x0
+  |   HW cycles      : 6927
+  |   HW time        : 69.27 us (@100MHz)
+  |   Queue head/tail: 183 / 183 (depth=0)
+  |   Throughput     : 2.64 M objects/sec
+  | =============================================
+  |   SUMMARY
+  | =============================================
+  |   Test 1 (Correctness) : PASS
+  |   Test 2 (Cycle)       : PASS
+  |   Test 3 (Repeat)      : PASS
+  |   Test 4 (Dup roots)   : PASS
+  |   -------------------------------------------
+  |   Overall: *** ALL PASS ***
+  | =============================================
+  | D6=0
+  | root@linux:/run/media/USERDATA-mmcblk0p2#
+

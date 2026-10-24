@@ -1,21 +1,16 @@
-# command: tools/serial_phase2.ps1 (pushes tests, then side-table + gc_test)
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
-# date: 2026-10-23
-
---- date: 2026-10-23 23:28:09 ---
+--- date: 2026-10-24 15:38:40 ---
 --- push tests ---
 opened COM3 @ 115200
 --- side table positive ---
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/side_table_test.py --hw --n 512 --seed 12345; printf 'R''C=%s\n' $$?
 SIDE_TABLE_HW graph n=512 live=384 edges=874 root=0 reachable=384 garbage=128 seed=12345
-SIDE_TABLE_HW PASS marked=384 free=128 cycles=9222 qtail=384
+SIDE_TABLE_HW PASS marked=384 free=128 cycles=9201 qtail=384
 RC=0
 --- side table negative control ---
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/side_table_test.py --hw --neg --n 512 --seed 12345; printf 'N''EGRRC=%s\n' $?
 SIDE_TABLE_HW graph n=512 live=384 edges=874 root=0 reachable=384 garbage=128 seed=12345
 SIDE_TABLE_HW negative control: victim=0 ref_count forced to 0
-SIDE_TABLE_HW neg marked=1 oracle=384 free=511/128 bitmap_bad=383 status=0x0 cycles=4135
+SIDE_TABLE_HW neg marked=1 oracle=384 free=511/128 bitmap_bad=383 status=0x0 cycles=4136
 SIDE_TABLE_HW NEG-OK
 NEGRC=0
 --- gc_test sweep ---

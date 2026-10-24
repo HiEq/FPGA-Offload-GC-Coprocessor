@@ -10,10 +10,12 @@
 > `SHA256SUMS`、`tb_runstart_race` / `tb_cmdfifo_flush`），**不做 Vivado 综合/实现、xsim、PetaLinux 或上板**。
 > 证据口径与边界见 [`docs/measurement.md`](docs/measurement.md)；详细文档索引见 [`docs/`](docs/README.md)。
 >
-> **位流 ↔ 证据**：板级证据的上一版是位流 md5 `81F2C277…`；`artifacts/BOOT.BIN` 现已携带**位流 `05AA145D…`**
-> （BOOT sha256 `4786ce62…`，`DIRTY_STAT[31:20]` = 最后接受的 id，见 AGENTS #20），已写卡（回读一致）。
-> 该镜像已在 2026-10-23 晚**上电复验**（`irq`/冷启动/阶段 2·3 全链/dirty 家族/`gc`·`abort`·`sweep`·`done_race`/`repeat`/`cmark` 全绿），
-> 下面 `tools/logs/` 各套件都是它的证据；四条历史负控日志仍属 `81F2C277…`（见 `tools/logs/README.md`）。
+> **位流 ↔ 证据**：`artifacts/BOOT.BIN` 携带**位流 `3D3A9F1D…`**（BOOT sha256 `63e52587…`；
+> `DIRTY_STAT[31:20]` = 最后接受的 id，见 AGENTS #20），已写卡并回读一致。
+> 该镜像在 2026-10-24 **冷启动复验**：`irq` / `D1..D6` / 阶段 2·3 全链 / dirty 家族 /
+> `gc`·`abort`·`sweep`·`done_race` / `repeat` / `cmark` 全绿，`tools/logs/` 下各套件即其证据；
+> 三处 hand-over 竞态（AGENTS #21）由 `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy` 守护。
+> 历史负控日志仍属 `81F2C277…`（见 `tools/logs/README.md`）。
 
 Contents: [项目与平台](#1-项目与平台) · [快速开始](#2-快速开始) · [设计与接口](#3-设计与接口) ·
 [正确性、性能与测量](#4-正确性性能与测量) · [发布与上板](#5-发布与上板) ·
@@ -23,14 +25,14 @@ Contents: [项目与平台](#1-项目与平台) · [快速开始](#2-快速开�
 
 | 对比对象 | 口径 | 每对象 | FPGA速度对比此项 |
 |---|---|---|---|
-| **FPGA 标记**（`test_main`，位流 `05AA145D…`）| 4000 对象图 | **~171 ns** | — |
-| **FPGA 标记**（`cmark`，位流 `05AA145D…`）| 4096 对象梯度 | 17.5–20.6 拍 ≈ 175–206 ns | — |
+| **FPGA 标记**（`test_main`，位流 `3D3A9F1D…`）| 4000 对象图 | **~171 ns** | — |
+| **FPGA 标记**（`cmark`，位流 `3D3A9F1D…`）| 4096 对象梯度 | 17.5–20.6 拍 ≈ 175–206 ns | — |
 | C，逐条读 DDR（未缓存，公平口径）| 同图同 BFS | 492–681 ns | **2.6–3.4× 更快** |
 | C，数据驻留 cache | heap 副本 | 126–181 ns | **0.6–1.0×** |
 | Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **212–282×** |
 
 > 引擎数字来自 `cmark` 扫描 `tools/logs/cmark_sweep.log`（4 组共 72 次）与 `test_main`
-> （`tools/logs/board_phase3_test_main.log`），均为位流 `05AA145D…` / BOOT `4786ce62…`。
+> （`tools/logs/board_test_main.log`），均为位流 `3D3A9F1D…` / BOOT `63e52587…`。
 > `FPGA` 一列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销；**cache 命中时要一起报**
 > ——那是 C 的上限。完整口径与端到端成本见「正确性、性能与测量」。
 >
@@ -331,18 +333,18 @@ epoch 三步：**全标记**（`CTRL[5]` flush）→ **增量步**（`CTRL=0x11`
 ### 三方对比（FPGA / C 未缓存 / Python 脚本）
 `test_main` 的 Test 1 在**同样的对象数、同样的 avg_refs=3** 下，把 FPGA 标记与**同一套 BFS 的 C 实现**
 （`fpga_gc_sw_mark`）对比；C 同时是 `marked` 的独立 oracle。表里时间的口径见下方「测量口径」。
-实测（XC7Z100，PL 100 MHz，**位流 md5 `05AA145D…` / BOOT sha256 `4786ce62…`**，
-2026-10-23，`tools/logs/board_test_main.log`）：
+实测（XC7Z100，PL 100 MHz，**位流 md5 `3D3A9F1D…` / BOOT sha256 `63e52587…`**，
+2026-10-24，`tools/logs/board_test_main.log`）：
 
 ```
 Objects  marked   FPGA us   C us      vs C
-10       9        44.1      13.9      0.3x
+10       9        44.2      13.8      0.3x
 50       47       48.7      29.7      0.6x
-100      96       57.1      59.7      1.0x
-500      474      113.7     265.4     2.3x
-1000     945      184.4     520.6     2.8x
-2000     1882     340.3     1070.3    3.1x
-4000     3766     646.0     2169.8    3.4x
+100      96       57.0      58.2      1.0x
+500      474      113.5     261.9     2.3x
+1000     945      184.4     519.9     2.8x
+2000     1882     339.9     1056.9    3.1x
+4000     3766     646.2     2159.6    3.3x
 ```
 
 - `vs C`：FPGA 与 C 的比值，>1× 表示 FPGA 更快。
@@ -367,14 +369,14 @@ Ver1–Ver4 的每对象周期从 90.2 降到 15.4，四步优化（多笔未完
 
 | 组 | maxN / trials / avg_refs | HW 拍/对象 | C-uncached | C-cached | **HW / C-unc** | **HW / C-cac** |
 | -- | ------------------------ | ---------- | ---------- | -------- | -------------- | -------------- |
-| 1  | 4096 / 24 / 2            | 17.5       | 559 ns     | 169 ns   | **3.2x**       | **1.0x**       |
-| 2  | 4096 / 16 / 4            | 20.2       | 681 ns     | 181 ns   | **3.4x**       | **0.9x**       |
-| 3  | 4096 / 16 / 1            | 17.7       | 492 ns     | 139 ns   | **2.8x**       | **0.8x**       |
-| 4  | 2048 / 16 / 2            | 20.6       | 545 ns     | 126 ns   | **2.6x**       | **0.6x**       |
+| 1  | 4096 / 24 / 2            | 17.5       | 560 ns     | 168 ns   | **3.2x**       | **1.0x**       |
+| 2  | 4096 / 16 / 4            | 20.2       | 678 ns     | 183 ns   | **3.4x**       | **0.9x**       |
+| 3  | 4096 / 16 / 1            | 17.7       | 491 ns     | 136 ns   | **2.8x**       | **0.8x**       |
+| 4  | 2048 / 16 / 2            | 20.6       | 550 ns     | 130 ns   | **2.7x**       | **0.6x**       |
 
 72 次全部 OK；三个实现（HW / C 非缓存 / C 缓存）标记数均等于真值 L。
 
-> 上表用**位流** `05AA145D…`（2026-10-23，`tools/logs/cmark_sweep.log`）跑满 72/72 OK；
+> 上表用**位流** `3D3A9F1D…`（2026-10-24，`tools/logs/cmark_sweep.log`）跑满 72/72 OK；
 > C 侧波动 ±3%。命令：`tools/tests/run_cmark_sweep.ps1`。
 
 **结论**：

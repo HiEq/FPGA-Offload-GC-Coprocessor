@@ -1,23 +1,19 @@
-# command: cd <datadir> && python3 -u tests/dirty_concurrent_test.py
-# test: tools/tests/dirty_concurrent_test.py md5 57a1c015c19110e754b7d9e22da774b2
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
+# command: tools/debug/run_phase3_board.ps1 -> python3 -u tests/dirty_concurrent_test.py
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
 # date: 2026-10-24
-# note: mutator pushes through the id-level ack (tag+id read-back, retry on a mismatch).
-# note: this is the positive side of the A/B: every round matches the oracle and the ack
-# note: counter shows whether a would-be-lost record had to be retried.
-
-cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/dirty_concurreent_test.py 
+cd /run/media/USERDATA-mmcblk0p2 && pyt
+thon3 -u tests/dirty_concurrent_test.py
 magic/version OK: 0x47434343 / 0x00040200
 graph: n=1024 live=768 garbage=256 heavy=767 heavy_refs=1024 seed=12345
 round: e1=768 pushed=252 drained=181(conc)+71(remark) popped=252 | marked=910 oracle=910 | busy_seen=True live_pushes=29/100
-timing: epoch2_window_us=5343 mutator_wake_us=150 first_push_us=261 mutator_total_us=13519 ctrl_at_first_push=0x00000010
-stress 1: pushed=251 drained=181/70 popped=251 marked=910 oracle=910 busy=True live_pushes=30 -> OK
+timing: epoch2_window_us=5410 mutator_wake_us=189 first_push_us=300 mutator_total_us=13463 ctrl_at_first_push=0x00000010
+stress 1: pushed=252 drained=182/70 popped=252 marked=910 oracle=910 busy=True live_pushes=30 -> OK
 stress 2: pushed=252 drained=182/70 popped=252 marked=910 oracle=910 busy=True live_pushes=30 -> OK
-stress 3: pushed=252 drained=182/70 popped=252 marked=910 oracle=910 busy=True live_pushes=30 -> OK
-stress 4: pushed=252 drained=182/70 popped=252 marked=910 oracle=910 busy=True live_pushes=30 -> OK
+stress 3: pushed=252 drained=182/70 popped=252 marked=910 oracle=910 busy=True live_pushes=31 -> OK
+stress 4: pushed=252 drained=182/70 popped=252 marked=910 oracle=910 busy=True live_pushes=31 -> OK
 neg no-barrier: e1=768 pushed=0 drained=0/0 marked=768 missed=142 (pushed must be 0, missed > 0)
-mode: acked push | ack retries=1 giveups=0
+mode: acked push | ack retries=0 giveups=0
 DIRTY_CONCURRENT_RESULT OK
 DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 

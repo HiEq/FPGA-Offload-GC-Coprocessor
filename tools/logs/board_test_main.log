@@ -1,9 +1,10 @@
-# command: cd <datadir> && ./bin/test_main
-# bitstream: 05AA145DE4DEBAAC4D0B9B918C4FB0C5   boot.bin: 4786ce62eec034c5babc8c706eca3d6a58d4d6f6761fb1d7bcc4fbdf47363278
-# commit: f948097   VERSION=0x00040200
-# date: 2026-10-23
+# command: cd /run/media/USERDATA-mmcblk0p2 && ./bin/test_main
+# bitstream: 3D3A9F1D94E425F7A83B4C4E44B0B69B   boot.bin: sha256 63e525870584f3eb9cced20c0c6626ec286ca46cc68f3992c6d232a6fb661a71
+# commit: c2278fc   VERSION=0x00040200
+# date: 2026-10-24
 
-cd /run/media/USERDATA-mmcblk0p2 && ./bbin/test_main; printf 'T''M=%s\n' $?
+cd /run/media/USERDATA-mmcblk0p2 && ./b
+bin/test_main; printf 'D''IAG_DONE\n'
 +--------------------------------------------+
 |  FOGCCC GC Coprocessor Test Suite          |
 |  Platform: Xilinx Zynq-7000 XC7Z100        |
@@ -12,30 +13,27 @@ cd /run/media/USERDATA-mmcblk0p2 && ./bbin/test_main; printf 'T''M=%s\n' $?
   AXI-Lite regs @ 0x43C00000
   Graph DDR     @ 0x1E000000 (1MB)
   MAGIC/VERSION : 0x47434343 / 0x00040200
-
 =============================================================
   Test 1: correctness + speed (FPGA vs C)
 =============================================================
 Objects  marked   FPGA us     C us        vs C    
 -------- -------- ----------- ----------- --------
 [FOGCCC] Graph: 10 objects, 4236 bytes, avg_refs=3
-10       9        44.1        13.9        0.3x    
+10       9        44.2        13.8        0.3x    
 [FOGCCC] Graph: 50 objects, 4860 bytes, avg_refs=3
 50       47       48.7        29.7        0.6x    
 [FOGCCC] Graph: 100 objects, 5756 bytes, avg_refs=3
-100      96       57.1        59.7        1.0x    
+100      96       57.0        58.2        1.0x    
 [FOGCCC] Graph: 500 objects, 16328 bytes, avg_refs=3
-500      474      113.7       265.4       2.3x    
+500      474      113.5       261.9       2.3x    
 [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
-1000     945      184.4       520.6       2.8x    
+1000     945      184.4       519.9       2.8x    
 [FOGCCC] Graph: 2000 objects, 64624 bytes, avg_refs=3
-2000     1882     340.3       1070.3      3.1x    
+2000     1882     339.9       1056.9      3.1x    
 [FOGCCC] Graph: 4000 objects, 129824 bytes, avg_refs=3
-4000     3766     646.0       2169.8      3.4x    
+4000     3766     646.2       2159.6      3.3x    
   Result: ALL PASS
-
-  >>> 3766 objects marked in 646.0 us (171.5 ns/obj)
-
+  >>> 3766 objects marked in 646.2 us (171.6 ns/obj)
 =============================================
   Test 2: Cycle Graph
 =============================================
@@ -43,15 +41,13 @@ Objects  marked   FPGA us     C us        vs C
   Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
   Roots: {0, 3}
   Expected: 4  SW: 4  FPGA: 4  => PASS
-
 =============================================
   Test 3: Repeat Consistency (100 runs)
 =============================================
 [FOGCCC] Graph: 1000 objects, 32728 bytes, avg_refs=3
   Expected: 945  Marked: 945 (consistent across 100 runs)
-  Cycles: min=18379 max=18508 jitter=129
+  Cycles: min=18374 max=18525 jitter=151
   Result: PASS
-
 =============================================
   Test 4: duplicate roots
 =============================================
@@ -59,15 +55,13 @@ Objects  marked   FPGA us     C us        vs C
   roots={0}      -> marked=183  STATUS=0x0
   roots={0,0,0}  -> marked=183  STATUS=0x0
   PASS (duplicate roots must not double count, expect 183 == 183)
-
 --- Hardware Statistics ---
   Marked objects : 183
   STATUS         : 0x0
-  HW cycles      : 6875
-  HW time        : 68.75 us (@100MHz)
+  HW cycles      : 6871
+  HW time        : 68.71 us (@100MHz)
   Queue head/tail: 183 / 183 (depth=0)
   Throughput     : 2.66 M objects/sec
-
 =============================================
   SUMMARY
 =============================================
@@ -78,5 +72,5 @@ Objects  marked   FPGA us     C us        vs C
   -------------------------------------------
   Overall: *** ALL PASS ***
 =============================================
-TM=0
+DIAG_DONE
 root@linux:/run/media/USERDATA-mmcblk0p2# 
