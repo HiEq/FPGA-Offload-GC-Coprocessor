@@ -107,7 +107,18 @@ cd /run/media/USERDATA-mmcblk0p2
 
 分工：`test_main` 只查正确性（FPGA 计数 == C）；`run_gc.sh` 跑可靠性；`three_way.py` 出同图性能对比。
 
-### 4. 重复性测试
+### 4. 同图性能对比（FPGA / C 未缓存 / C 缓存 / Python）
+
+`sh
+cd /run/media/USERDATA-mmcblk0p2
+python3 tests/three_way.py
+`
+
+同一张图依次跑四种实现，四个标记计数必须相等；末行 THREE_WAY_RESULT OK。
+FPGA us 只含引擎时间，C 的时间在 C 内计时，Python 列是量级参照。
+数据表见 [measurement.md](measurement.md)。
+
+### 5. 重复性测试
 
 ```sh
 sh run_repeat.sh 10          # 默认 10 次
@@ -115,12 +126,11 @@ sh run_repeat.sh 10          # 默认 10 次
 
 两组：不同种子 vs Python 参照、同种子 5 次；末行 `REPEAT_DONE`。
 
-### 5. 单独调用
+### 6. 单独调用
 
 ```sh
 python3 gc_test.py 4096 8 2 --seed 12345   # 指定种子可复现
 python3 tests/freelist_contract_test.py    # Phase 2 free-list 软件契约负控（A/B/C/D 四段）
-python3 tests/three_way.py                 # 同一张图：FPGA / C 未缓存 / C 缓存 / Python
 python3 tests/dirty_set_test.py            # Phase 3A 脏集（A0/A/B/C/D + D-neg）
 python3 tests/dirty_concurrent_test.py     # Phase 3B 并发 mutator + remark（5 轮 + 负控）
 python3 tests/dirty_overflow_test.py       # Phase 3A 溢出契约 + 退回全标记
@@ -131,7 +141,7 @@ python3 tests/dirty_leftover_test.py       # 残留屏障记录 ⇒ 必须 flush
 insmod ko/fogccc-irq.ko                    # 仅插驱动
 ```
 
-### 6. 结果判读
+### 7. 结果判读
 
 | 关键行 | 含义 |
 |---|---|
@@ -145,7 +155,7 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 
 日志：`/mnt/userdata/logs/gc_run_<日期>_<时间>.log`。
 
-### 7. 常见问题
+### 8. 常见问题
 
 - `sh: run_gc.sh: No such file or directory` → 当前目录不是数据分区；先
   `cd /run/media/USERDATA-mmcblk0p2`，或改用绝对路径
