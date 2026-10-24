@@ -26,7 +26,7 @@
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
-| `board_test_main.log` | `./bin/test_main` | 4/4 `ALL PASS`（Test 1：4000 对象 646.0 µs vs C 2169.8 µs = 3.4×）| README §4 三方对比 |
+| `board_test_main.log` | `./bin/test_main` | 4/4 `ALL PASS`（Test 1：4000 对象 646.0 µs vs C 2169.8 µs = 3.4×）| README §1 结果 |
 | `board_gc_test.log` | `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
 | `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
 | `board_abort_test.log` | `python3 -u tests/abort_test.py` | T1–T5 `RESULT: PASS` | README abort 契约 |

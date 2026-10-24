@@ -94,7 +94,7 @@ sh run_gc.sh 2048 5 3
 
 期望：`PASSED (all invariants): trials/trials`，并打印相对同一进程内 Python BFS 参照的加速比。
 
-### 3. 三方对比（FPGA / C 未缓存 / Python 脚本）
+### 3. FPGA vs C（同图、同 BFS）
 
 ```sh
 cd $D
@@ -103,6 +103,7 @@ cd $D
 
 `test_main` 直接读器件并跑图，不需要额外脚本；需要 root。
 
+`test_main` 只与 C 对比；Python 参照在 `run_gc.sh`（上面的第 2 节）。
 数据表与口径见 [`measurement.md`](measurement.md)。
 
 分工：`test_main` 是主对比（FPGA vs 同图 C BFS）；`run_gc.sh` 跑可靠性；`run_cmark.sh` 只比 FPGA vs C。

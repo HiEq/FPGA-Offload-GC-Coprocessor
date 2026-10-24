@@ -3,7 +3,7 @@
 > 主 [`README.md`](../README.md) 只给汇总表；逐组数据、口径与出处在这里。
 > 当前证据位流 `3D3A9F1D…` / `BOOT.BIN` `63e52587…`（2026-10-24）。
 
-## 三方对比（`test_main` Test 1）
+## FPGA vs C（`test_main` Test 1）
 
 同一张图、同一个 `avg_refs=3`，FPGA 标记与同一套 BFS 的 C 实现（`fpga_gc_sw_mark`）对比；
 C 同时是 `marked` 的独立 oracle。

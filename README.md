@@ -28,8 +28,10 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 | Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | — | **212–282×** |
 
 > `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
-> 逐组数据、C 侧口径与端到端成本见 [`docs/measurement.md`](docs/measurement.md)；
-> 数字出处 `tools/logs/board_test_main.log`、`tools/logs/cmark_sweep.log`。
+> `test_main` 只比 FPGA 与 C（同图、同 BFS、同阶段）；Python 行来自 `run_gc.sh` 的
+> `py_bfs.py` 参照，不在 `test_main` 表里。逐组数据与口径见
+> [`docs/measurement.md`](docs/measurement.md)；出处 `tools/logs/board_test_main.log`、
+> `tools/logs/cmark_sweep.log`。
 
 **实现范围**：stop-the-world，写 `START`、轮询 `DONE`。对象图由 `csrc/fpga_gc.c` /
 `python/fogccc.py` 按「对象头 + 引用数组」布局构造；**未接入**任何语言运行时的 `gc` 模块。
