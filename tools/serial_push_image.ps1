@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # serial_push_image.ps1 - replace a file on the card over the serial console
 #
 #   powershell -File tools\serial_push_image.ps1 -Src artifacts\BOOT.BIN
@@ -6,23 +6,25 @@
 #   powershell -File tools\serial_push_image.ps1 -Src artifacts\image.ub -Remote /boot/image.ub
 #
 # Why this exists: the host has no card reader, so the card is updated from the
-# board itself.  The file is gzipped on the host (BOOT.BIN compresses ~8x),
-# streamed as raw bytes into `head -c <n>` on the board, every chunk is checked
-# by md5 and the rebuilt file by sha256.  Only then is it swapped into place;
-# the previous file is kept as <Remote>.bak.
+# board itself.  The file is gzipped on the host (BOOT.BIN compresses ~8x), cut
+# into chunks, base64-encoded and streamed as ASCII text.  Per chunk the board
+# runs:
 #
-# Route used, per chunk:  stty raw -echo; head -c N > part; stty sane
-# A base64 heredoc through the shell is ~6x slower (one line at a time), which
-# is why this tool streams raw bytes instead.  ~11.5 KB/s at 115200 baud;
-# a 18.6 MB BOOT.BIN takes ~3.5 min.
+#   dd bs=1 count=<chars> of=part.b64 < /dev/ttyPS0
+#   openssl base64 -d -in part.b64 -out part
 #
-# Preconditions: the board is booted and sitting at a root shell.  Do not run
-# this while the board is booting.
+# `dd` reads exactly the number of base64 characters sent, so the receiver ends
+# by itself.  This is the only route that works on both images: BusyBox `head`
+# has no -c, the fogccc image has no `base64`, and stty raw on its console is
+# not reliable (binary into it corrupts the line discipline and kills the
+# shell).  A watchdog kills a dd whose sender died, so a failed attempt cannot
+# wedge the console.  Every chunk is checked by md5 and the rebuilt file by
+# sha256; the previous file is kept as <Remote>.bak and the swap is a rename.
 # ============================================================
 param(
     [Parameter(Mandatory=$true)][string]$Src,
     [string]$Remote = '/boot/BOOT.BIN',
-    [int]$ChunkKB = 512,
+    [int]$ChunkKB = 256,
     [string]$Port = 'auto',
     [switch]$NoSwap
 )
@@ -37,7 +39,15 @@ $stage = "$Remote.new"
 function Sha256([string]$p) { (Get-FileHash -Algorithm SHA256 -Path $p).Hash.ToLower() }
 function Md5([string]$p) { (Get-FileHash -Algorithm MD5 -Path $p).Hash.ToLower() }
 
-# --- host side: gzip once, split into chunks, hash every chunk --------------
+$ms1 = [int][TimeSpan]::FromSeconds(1).TotalMilliseconds
+$ms20 = [int][TimeSpan]::FromSeconds(20).TotalMilliseconds
+$ms30 = [int][TimeSpan]::FromSeconds(30).TotalMilliseconds
+$ms60 = [int][TimeSpan]::FromSeconds(60).TotalMilliseconds
+$ms300 = [int][TimeSpan]::FromSeconds(300).TotalMilliseconds
+$ms600 = [int][TimeSpan]::FromSeconds(600).TotalMilliseconds
+$ms900 = [int][TimeSpan]::FromSeconds(900).TotalMilliseconds
+
+# --- host side: gzip, split, base64 each chunk, hash it ---------------------
 $sw = [Diagnostics.Stopwatch]::StartNew()
 $want = Sha256 $Src
 $size = (Get-Item $Src).Length
@@ -51,7 +61,7 @@ $gzStream.Dispose(); $out.Dispose(); $in.Dispose()
 "gzip: {0:N0} bytes" -f (Get-Item $gz).Length
 
 $raw = [IO.File]::ReadAllBytes($gz)
-$chunkSize = $ChunkKB * 1024
+$chunkSize = $ChunkKB * 1KB
 $n = [int][Math]::Ceiling($raw.Length / $chunkSize)
 $parts = @()
 $partsDir = Join-Path $env:TEMP 'push_image_parts'
@@ -64,7 +74,13 @@ for ($i = 0; $i -lt $n; $i++) {
     [Array]::Copy($raw, $off, $slice, 0, $len)
     $bin = Join-Path $partsDir ('p{0:d3}.bin' -f $i)
     [IO.File]::WriteAllBytes($bin, $slice)
-    $parts += [pscustomobject]@{ Index = $i; Bin = $bin; Md5 = (Md5 $bin); Bytes = $len }
+    $text = [Convert]::ToBase64String($slice, [Base64FormattingOptions]::InsertLineBreaks).Replace("`r`n", "`n") + "`n"
+    $txt = Join-Path $partsDir ('p{0:d3}.b64' -f $i)
+    [IO.File]::WriteAllText($txt, $text, (New-Object Text.UTF8Encoding $false))
+    $parts += [pscustomobject]@{
+        Index = $i; Bin = $bin; Text = $txt; Chars = $text.Length
+        Md5 = (Md5 $bin); Bytes = $len
+    }
 }
 "parts: {0} x <= {1:N0} bytes" -f $n, $chunkSize
 
@@ -87,15 +103,7 @@ function Send([string]$text) {
     $b = [Text.Encoding]::ASCII.GetBytes($text)
     $off = 0
     while ($off -lt $b.Length) {
-        $len = [Math]::Min(4096, $b.Length - $off)
-        $sp.Write($b, $off, $len)
-        $off += $len
-    }
-}
-function Send-Bytes([byte[]]$b) {
-    $off = 0
-    while ($off -lt $b.Length) {
-        $len = [Math]::Min(4096, $b.Length - $off)
+        $len = [Math]::Min(4KB, $b.Length - $off)
         $sp.Write($b, $off, $len)
         $off += $len
     }
@@ -110,7 +118,7 @@ try {
     $seenLogin = $false
     $sentBoot = $false
     while ((Get-Date) -lt $deadline) {
-        [void](Read-Until '[\s\S]' 1000)
+        [void](Read-Until '[\s\S]' $ms1)
         $buf = $s.Sb.ToString()
         if ($buf -match 'Zynq>' -and -not $sentBoot) { Send "boot`n"; $sentBoot = $true; continue }
         if ($buf -match 'root@[^\r\n]*[#$]') { $shell = $true; break }
@@ -122,22 +130,20 @@ try {
 
     Send "stty -echo`n"
     Send ("rm -rf {0}; mkdir -p {0}; printf 'PUSH_''READY\n'`n" -f $partDir)
-    if (-not (Read-Until 'PUSH_READY' 30000)) { throw 'board did not acknowledge' }
+    if (-not (Read-Until 'PUSH_READY' $ms30)) { throw 'board did not acknowledge' }
 
     foreach ($pt in $parts) {
         $i = $pt.Index
         $ok = $false
         for ($try = 1; $try -le 3 -and -not $ok; $try++) {
             $t0 = $sw.Elapsed.TotalSeconds
-            Send ("stty -echo; printf 'G''O{1:d3}\n'; stty raw; head -c {0} > {2}/p{1:d3}; stty sane; stty -echo; printf 'PA''RT{1:d3}_OK\n'`n" -f $pt.Bytes, $i, $partDir)
-            if (-not (Read-Until ("GO{0:d3}" -f $i) 30000)) { throw ("part {0}: no GO" -f $i) }
-            # GO is printed just before `stty raw` runs; give it a beat so the
-            # first bytes are not processed by the cooked line discipline.
-            Start-Sleep -Milliseconds 250
-            Send-Bytes ([IO.File]::ReadAllBytes($pt.Bin))
-            if (-not (Read-Until ("PART{0:d3}_OK" -f $i) 600000)) { throw ("part {0}: timeout" -f $i) }
-            Send ("md5sum {2}/p{1:d3}; stat -c %s {2}/p{1:d3}; printf 'P''{1:d3}_END\n'`n" -f 0, $i, $partDir)
-            $r = Read-Until ("P{0:d3}_END" -f $i) 30000
+            # dd reads exactly the base64 characters we send, then the pipeline
+            # decodes and reports.  The watchdog kills a dd whose sender died.
+            Send ("set +m; dd bs=1 count={0} of={2}/p{1:d3}.b64 < /dev/ttyPS0 2>/dev/null & DP=`$!; ( sleep 120; kill `$DP 2>/dev/null ) & WP=`$!; wait `$DP; kill `$WP 2>/dev/null; openssl base64 -d -in {2}/p{1:d3}.b64 -out {2}/part{1:d3}; md5sum {2}/part{1:d3}; stat -c %s {2}/part{1:d3}; printf 'PA''RT{1:d3}_OK\n'`n" -f $pt.Chars, $i, $partDir)
+            Start-Sleep -Milliseconds 400
+            Send ([IO.File]::ReadAllText($pt.Text))
+            if (-not (Read-Until ("PART{0:d3}_OK" -f $i) $ms600)) { throw ("part {0}: timeout" -f $i) }
+            $r = $s.Sb.ToString()
             $md5m = [regex]::Matches($r, '[0-9a-f]{32}\s+\S+')
             $md5line = if ($md5m.Count) { $md5m[$md5m.Count - 1].Value } else { $null }
             $sizem = [regex]::Matches($r, '(?m)^\s*(\d+)\s*$')
@@ -148,8 +154,8 @@ try {
         if (-not $ok) { throw ("part {0} failed after 3 tries" -f $i) }
     }
 
-    Send ("cat {0}/p* | gzip -dc > {1}; sha256sum {1}; printf 'S''TAGE_END\n'`n" -f $partDir, $stage)
-    $r = Read-Until 'STAGE_END' 900000
+    Send ("cat {0}/part* | gzip -dc > {1}; sha256sum {1}; printf 'S''TAGE_END\n'`n" -f $partDir, $stage)
+    $r = Read-Until 'STAGE_END' $ms900
     $ham = [regex]::Matches($r, '[0-9a-f]{64}\s+\S+')
     $h = if ($ham.Count) { $ham[$ham.Count - 1].Value } else { $null }
     if (-not $h) { throw ("no sha256 for the staged file: {0}" -f $r) }
@@ -159,13 +165,13 @@ try {
 
     if ($NoSwap) {
         Send ("printf 'S''WAP_SKIPPED\n'`n")
-        [void](Read-Until 'SWAP_SKIPPED' 20000)
+        [void](Read-Until 'SWAP_SKIPPED' $ms20)
         "RESULT: staged only  {0}  (previous image untouched)" -f $stage
     } else {
         # Keep the previous image next to the new one; the rename is on the same
         # filesystem, so BOOT.BIN is either the old or the new file, never a mix.
         Send ("if [ -e {0} ]; then cp -f {0} {0}.bak; fi; mv -f {1} {0}; sync; sha256sum {0}; printf 'S''WAP_END\n'`n" -f $Remote, $stage)
-        $r = Read-Until 'SWAP_END' 300000
+        $r = Read-Until 'SWAP_END' $ms300
         $ham = [regex]::Matches($r, '[0-9a-f]{64}\s+\S+')
         $h = if ($ham.Count) { $ham[$ham.Count - 1].Value } else { $null }
         if (-not $h) { throw ("no sha256 after the swap: {0}" -f $r) }
@@ -175,12 +181,10 @@ try {
         "RESULT: OK  {0} -> {1}  sha256 {2}  ({3:n1}s)" -f (Split-Path $Src -Leaf), $Remote, $got2, $sw.Elapsed.TotalSeconds
         "next: reboot the board to load the new image (the FSBL reconfigures the PL on every boot)"
         Send ("ls -l {0} {0}.bak 2>/dev/null; rm -rf {1}; printf 'PUSH_''DONE\n'`n" -f $Remote, $partDir)
-        [void](Read-Until 'PUSH_DONE' 60000)
+        [void](Read-Until 'PUSH_DONE' $ms60)
     }
 }
 finally {
     try { Send "stty sane`n" } catch {}
     Close-BoardSerialSession -Session $s
 }
-
-
