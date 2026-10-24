@@ -309,7 +309,7 @@ class EvidenceTest(unittest.TestCase):
         readme = read("README.md")
         self.assertEqual(self.unquoted(readme), [],
                          "README does not quote a release-asset hash; the table drifted")
-        self.assertIn("sha256sum -c artifacts/SHA256SUMS.release", readme,
+        self.assertIn("sha256sum -c SHA256SUMS.release", readme,
                       "README must document how to verify the release assets")
 
     def test_negative_control_stale_hash_is_detected(self):
