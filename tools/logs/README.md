@@ -24,7 +24,7 @@
 > 历史负控（`*_neg_*`、`board_phase3_leftover`、`board_regs_aww_verified`、`board_regs_aww_probe_forge_*`）与 `xsim_*_20261022/23` 属各自测过的那一版，文件头保留原样；
 > 2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
 > `board_phase3_dirty_api.log` 与 `board_dirty_api.log` 记录的是同一脚本、同一镜像，已删除前者。
-> 这次断电上电的串口文本没抓到（这块板子的 USB-UART 在断电期间没有从 Windows 消失）；`board_coldboot_20261024.raw.log` 是同一次上电（落在 archlinux）的启动记录，`board_coldboot_reboot_20261024.raw.log` 是随后切到 fogccclinux 的 reboot 记录。
+> 2026-10-25：同一镜像再做了一次真实断电上电，完整启动文本见 `board_coldboot_20261025.raw.log`（fogccclinux，U-Boot → Linux → `login:`）；`board_coldboot_20261024.raw.log` 是同镜像更早那次上电（落在 archlinux）的记录，`board_coldboot_reboot_20261024.raw.log` 是随后切到 fogccclinux 的 reboot 记录。
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
@@ -53,6 +53,7 @@
 | `board_coldboot_verify_20261024.log` | `tools/debug/serial_coldboot_verify.ps1`（上电后立即）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `ac8d31cc…`；`fpga_manager=operating`；`test_main` 3/3 `ALL PASS` | README 冷启动 / AGENTS #22 |
 | `board_coldboot_20261024.raw.log` | 这次上电的整段串口（只读探活；上电落在 archlinux）| U-Boot 2026.01 → Linux → `login:`；启动窗口内未写入任何字节 | README 冷启动 / AGENTS #22 |
 | `board_coldboot_reboot_20261024.raw.log` | 切到 fogccclinux 后的 reboot 整段串口 | PetaLinux 启动 → `linux login:`；之后全部板级日志都在这个环境里跑 | README 冷启动 / AGENTS #22 |
+| `board_coldboot_20261025.raw.log` | 同一镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → `PetaLinux 2026.1` → `login:`；上电后卡上 `BOOT.BIN` sha256 仍为 `ac8d31cc…` | README 冷启动 / AGENTS #22 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 六组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
