@@ -1,7 +1,7 @@
 # Hardcoded-literal baseline: <count> <category> <path>.
 # Regenerate with `python3 tests/hardcoded.py --write-baseline` after an
 # intentional addition; removing entries is always allowed.
-31 magic csrc/fpga_gc.c
+32 magic csrc/fpga_gc.c
 1 magic csrc/fpga_gc.h
 2 magic csrc/py_bfs.py
 1 magic driver/fogccc_irq.c
@@ -12,7 +12,7 @@
 1 magic rtl/gc_bitmap.v
 1 magic rtl/gc_freelist.v
 6 magic rtl/gc_mark_engine.v
-28 magic rtl/gc_regs.v
+27 magic rtl/gc_regs.v
 1 hostpath tools/debug/README.md
 5 magic tools/debug/board_cmd.ps1
 3 magic tools/debug/cold_cycle.ps1
@@ -23,12 +23,12 @@
 3 magic tools/debug/irq_loss_test.sh
 2 magic tools/debug/run_board_suite.ps1
 2 magic tools/debug/run_phase3_board.ps1
-4 magic tools/debug/serial_coldboot_verify.ps1
+3 magic tools/debug/serial_coldboot_verify.ps1
 2 magic tools/debug/verify_bootbin.py
 1 magic tools/debug/wait_boot.ps1
 1 path tools/fogccc.bat
 1 magic tools/log.bat
-2 magic tools/reproduce_all.ps1
+1 magic tools/reproduce_all.ps1
 6 magic tools/serial-monitor.ps1
 3 path tools/serial-monitor.ps1
 5 magic tools/serial-session.ps1
