@@ -12,7 +12,7 @@
 # date: <YYYY-MM-DD>
 ```
 
-若生成日志的**测试脚本本身晚于 `commit`**（例如刚改完测试再上板），在头里补一行把脚本钉死：
+若生成日志的**测试脚本本身晚于 commit**（例如刚改完测试再上板），在头里补一行把脚本钉死：
 
 ```
 # test: tools/tests/<name>.py md5 <md5>
@@ -65,7 +65,7 @@
 | `board_v47_regression.log` | `regs_aww --verify-effect`（v4.7 回归）| `VERIFY_EFFECT_RESULT OK`（暖轮 0/14 失败、0/14 需回退）⇒ 修复后的探针路径可用 | AGENTS #26 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 六组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
-| `host_read_mark.log` | `csrc/test_read_mark_host.c`（真实驱动 + 数组冒充寄存器块）| 忙引擎 → `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲 → 按位 `0/1` ⇒ `READ_MARK_RESULT OK`。负控（哨兵改成 `0`）→ `FAIL` | AGENTS #26（哨兵来源）|
+| `host_read_mark.log` | `csrc/test_read_mark_host.c`（真实驱动 + 数组冒充寄存器块）| 忙引擎 → `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲 → 按位 `0/1` ⇒ `READ_MARK_RESULT OK`。负控（哨兵改成 0）→ `FAIL` | AGENTS #26（哨兵来源）|
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
 | `xsim_dirtyflush_ungated_20261023.log` | `sim\run_sim.bat` | T-DIRTY-FLUSHSPILL：**无任何防护**的 RTL → `drained=0`/`marked=0`（2 errors）| AGENTS #19 负控 1 |
 | `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|

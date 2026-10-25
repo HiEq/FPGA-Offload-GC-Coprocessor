@@ -1,7 +1,7 @@
 # 发布记录：变更内容、验证结果与已知限制
 
 Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容、验证结果与已知限制见下文。
-本页在 `dev-hieq`（开发线，含逐提交历史与证据）与 `main`（发布分支）上都可读；`main` 只承载最近一次同步的 tag 树，每次同步一个 squash 提交。
+本页在 dev-hieq（开发线，含逐提交历史与证据）与 main（发布分支）上都可读；main 只承载最近一次同步的 tag 树，每次同步一个 squash 提交。
 证据日志位于 [`tools/logs/`](../tools/logs/README.md)，每份文件头记录命令、位流、BOOT 哈希、提交与日期。
 
 | 版本 | 日期 | 摘要 | tag |
@@ -14,9 +14,9 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 | v4.2 | 2026-10-24 | 硬件 GC 标记（Phase 3A/3B） | `cc2f02b` |
 | v4.1 | 2026-10-20 | PL flush 修复（`run_start`/`abort` + 命令 FIFO） | `f9a6b5b` |
 
-`tag` 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
+tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.1` 仍是正式版，但不再是最新。
+GitHub Latest 指向 v4.6。v4.2–v4.5 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
 
 ---
 
@@ -34,7 +34,7 @@ GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.
 - 宿主单测 6/6 `OK`；负控：对修复前的模块（`FOGCCC_PATH` 指向 `git show v4.6:python/fogccc.py`）同一套用例 2/6 失败（哨兵用例与“全哨兵”用例）。
 - 板级 `barrier_verify_test.py`：`BARRIER_VERIFY_RESULT OK`（`marked 16 -> True`、`unmarked id 3 -> False`、`mixed -> False`）。
 - 板上哨兵对照（同一张卡上同时加载修复前/后的 `fogccc.py`，`read_mark` 固定返回 `0xFFFFFFFF`）：修复前 `True`，修复后 `False`。
-- 哨兵来源由 `csrc/test_read_mark_host.c` 直接验证：用数组冒充寄存器块，`STATUS` 不带 `IDLE` 时真实的 `fpga_gc_read_mark()` 返回 `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲时按位返回 `0/1`。负控（把两处 `return 0xFFFFFFFF` 改成 `0`）同一用例 `FAIL`。该步已加入 `gate` 工作流。
+- 哨兵来源由 `csrc/test_read_mark_host.c` 直接验证：用数组冒充寄存器块，`STATUS` 不带 `IDLE` 时真实的 `fpga_gc_read_mark()` 返回 `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲时按位返回 `0/1`。负控（把两处 `return 0xFFFFFFFF` 改成 0）同一用例 `FAIL`。该步已加入 `gate` 工作流。
 - 回归：`test_main` 3/3 `ALL PASS`、`dirty_api_test.py` `DIRTY_API_RESULT OK`、`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退）。
 
 **已知限制**
@@ -83,7 +83,7 @@ GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.
 
 **已知限制**
 
-- 时序裕量较小：WNS/WHS 均为 `+0.049 ns`（根集读通道增加了一条路径），满足约束但接近临界。
+- 时序裕量较小：WNS/WHS 均为 +0.049 ns（根集读通道增加了一条路径），满足约束但接近临界。
 - `DIRTY_PUSH` 的 28 位巧合（外部 store 恰好携带 `0xA54` 标记且 `(tag,id)` 相同）仍无法从设备侧区分；当前寄存器集合中不存在可产生该模式的写操作，因此不可达。
 - 根集读回仅在引擎空闲时使用（驱动在写入根集之后、启动之前读取）；若在运行中并发读取，将与引擎争用同一读端口。
 
