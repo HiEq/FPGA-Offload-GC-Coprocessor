@@ -33,12 +33,13 @@ GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.
 - 宿主单测 6/6 `OK`；负控：对修复前的模块（`FOGCCC_PATH` 指向 `git show v4.6:python/fogccc.py`）同一套用例 2/6 失败（哨兵用例与“全哨兵”用例）。
 - 板级 `barrier_verify_test.py`：`BARRIER_VERIFY_RESULT OK`（`marked 16 -> True`、`unmarked id 3 -> False`、`mixed -> False`）。
 - 板上哨兵对照（同一张卡上同时加载修复前/后的 `fogccc.py`，`read_mark` 固定返回 `0xFFFFFFFF`）：修复前 `True`，修复后 `False`。
+- 哨兵来源由 `csrc/test_read_mark_host.c` 直接验证：用数组冒充寄存器块，`STATUS` 不带 `IDLE` 时真实的 `fpga_gc_read_mark()` 返回 `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲时按位返回 `0/1`。负控（把两处 `return 0xFFFFFFFF` 改成 `0`）同一用例 `FAIL`。该步已加入 `gate` 工作流。
 - 回归：`test_main` 3/3 `ALL PASS`、`dirty_api_test.py` `DIRTY_API_RESULT OK`、`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退）。
 
 **已知限制**
 
 - `barrier_verify()` 仍是“必要但不充分”：epoch 之前就已标记的目标无法证明该容器被重扫，调用方应按本轮新可达的目标检查，或用全量计数/判据兜底。
-- 哨兵路径在板上没有确定性触发方式（需要引擎不空闲或读地址写不生效），板级证据用“固定返回哨兵的假 `read_mark`”构造；真实的“引擎忙”返回路径只由代码阅读与单测覆盖。
+- 哨兵路径在板上没有确定性触发方式（需要引擎不空闲或探针地址写不生效）：板级用“固定返回哨兵的假 `read_mark`”构造 Python 决策这一侧；哨兵本身由 `csrc/test_read_mark_host.c` 用真实驱动代码覆盖（`gate` 工作流执行）。
 
 ---
 

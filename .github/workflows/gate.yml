@@ -26,6 +26,14 @@ jobs:
           fetch-depth: 0        # tests read `git ls-files --eol` and the index
       - name: repository contracts
         run: python3 -m unittest discover -s tests -p "test_*.py" -v
+      - name: C driver host test (fake register block)
+        # fpga_gc_read_mark() returns 0xFFFFFFFF when the probe cannot be trusted.
+        # The board cannot be forced into that state, so the real driver code runs
+        # here against an array standing in for the AXI-Lite register block.
+        run: |
+          gcc -O2 -Wall -Wextra -Werror -o /tmp/test_read_mark_host \
+              csrc/test_read_mark_host.c csrc/fpga_gc.c
+          /tmp/test_read_mark_host
 
   commit-policy:
     if: github.event_name == 'pull_request'
