@@ -6,8 +6,10 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-面向托管堆的 FPGA GC 协处理器：对象内容留在 DDR，引用关系压缩成连续的 side table；
-PL 负责标记与空闲扫描，ARM 负责分配、引用更新与回收策略。
+面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）：对象体留在 DDR，引用关系抽成连续 side table
+（每对象一个 u32 数组，`0xFFFFFFFF` 结尾）；PL 负责标记与空闲扫描，分配、引用更新与回收策略
+由 PS 侧软件负责——本仓库提供寄存器与驱动接口，未接入语言运行时。stop-the-world，
+上限 4096 对象 / 1 MB 图区，测量范围仅标记与空闲扫描。
 
 > 当前证据：位流 `6D479244…` / `BOOT.BIN` `26fb8621…`，2026-10-25 冷启动复验。
 > 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
