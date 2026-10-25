@@ -51,4 +51,4 @@
 > T-DIRTY 的反向验证：A0（去掉屏障 → `marked=0`）、B（按根路径去重 → obj10 漏标）、
 > RACE2（remark 前 flush → obj60 漏标）——三段都在同一 TB 内断言"必须发生的后果"。
 > 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
-> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
+> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS（当时的四测试二进制；卡上当前 `test_main` 为 3/3）。
