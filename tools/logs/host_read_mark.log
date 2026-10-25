@@ -1,0 +1,27 @@
+# command: gcc -O2 -Wall -Wextra -Werror -o /tmp/rm_host csrc/test_read_mark_host.c csrc/fpga_gc.c && /tmp/rm_host
+# negative control: sed 's/return 0xFFFFFFFF;/return 0;/' csrc/fpga_gc.c > /tmp/fpga_gc_neg.c; gcc -I csrc ... ; /tmp/rm_neg
+# commit: 030d430a   VERSION=0x00040301   host tree (WSL Ubuntu 22.04, gcc 11.4)
+# date: 2026-10-25
+# note: real fpga_gc_read_mark() against an array standing in for the register block; also run by the gate workflow
+=== positive ===
+ok   busy engine -> sentinel                        = 0xFFFFFFFF
+ok   busy engine -> BM_ADDR untouched               = 0x0
+ok   idle, bit set -> 1                             = 0x1
+ok   idle -> BM_ADDR = obj id                       = 0x3
+ok   idle, bit clear -> 0                           = 0x0
+ok   id 4096 -> 0                                   = 0x0
+ok   id 4096 -> BM_ADDR untouched                   = 0xFFFF
+ok   bit 31 set -> 1                                = 0x1
+ok   bit 31 set, bit 30 -> 0                        = 0x0
+READ_MARK_RESULT OK
+=== negative ===
+FAIL busy engine -> sentinel                        = 0x0, want 0xFFFFFFFF
+ok   busy engine -> BM_ADDR untouched               = 0x0
+ok   idle, bit set -> 1                             = 0x1
+ok   idle -> BM_ADDR = obj id                       = 0x3
+ok   idle, bit clear -> 0                           = 0x0
+ok   id 4096 -> 0                                   = 0x0
+ok   id 4096 -> BM_ADDR untouched                   = 0xFFFF
+ok   bit 31 set -> 1                                = 0x1
+ok   bit 31 set, bit 30 -> 0                        = 0x0
+READ_MARK_RESULT FAIL
