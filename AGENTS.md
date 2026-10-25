@@ -579,8 +579,15 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
 - Commit hashes written into logs and docs are the **remote** hashes. The local
   tree is rebuilt on push, so a local `git rev-parse` can name a commit that never
   exists upstream; check with `git log origin/<branch>` before citing one.
-- `dev-hieq` is the release line: tags, assets and evidence live there. `main` is
-  only advanced by an explicit pull request, so it can trail the newest release.
+- `dev-hieq` is the **development line**: commits, evidence logs and tags live there.
+  `main` is the **release branch**: it carries the tree of one released tag, brought
+  over by a single-commit pull request from a `chore/release-vX.Y` branch created at
+  the current `main` head, then `git read-tree --reset -u <tag>` and squash-merged.
+  Pick the tag explicitly — never "whatever is newest" — and name it in the subject
+  (`chore(release): sync main to v4.7`); syncing an older tag is allowed, say so in
+  the message. After the first sync the two branches share no history, so a tag is
+  not an ancestor of `main`: `git describe` does not work there, use the Release
+  page or `git tag --contains`. `main` is only as current as the last sync.
 
 ### 10.1 Documentation style
 
