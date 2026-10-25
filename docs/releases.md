@@ -9,6 +9,7 @@ Release 页面只保留本页链接与资产哈希；逐版本的变化、证据
 | v4.4 | 2026-10-25 | 命令写携带目的地址标记 | `3a902b20` |
 | v4.3 | 2026-10-24 | cmdfifo 同拍 enqueue 门控进入镜像 | `23c7cc8b` |
 | v4.2 | 2026-10-24 | 硬件 GC 标记（Phase 3A/3B） | `cc2f02b` |
+| v4.1 | 2026-10-20 | PL flush 修复（`run_start`/`abort` + 命令 FIFO） | `f9a6b5b` |
 
 ---
 
@@ -93,7 +94,29 @@ Release 页面只保留本页链接与资产哈希；逐版本的变化、证据
 
 ---
 
+## v4.1
+
+**改了什么**
+
+- `gc_top.v`：`gc_axi_read.run_start` 改为 `w_start & w_engine_idle`，忙时到达的 START 不再清掉进行中 epoch 的读通路。
+- `gc_axi_read.v`：数据 FIFO 的 pop 在 `run_start`/`abort` 同拍被门控；`flushing` 退出条件加上 `!ARVALID`，已发出未握手的 AR 等回来再丢弃。
+- 命令 FIFO 的 `issue_any` 在 `run_start`/`abort` 同拍被门控（AGENTS #17 第一阶段）。
+
+**验证**
+
+- `sim/run_cmdfifo_tb.bat`：未修复 RTL 残留 `ARADDR=0x30000008`，修复后无残留；`run_race_tb` / `run_sim` / `run_axi_tb` PASS。
+- 板级：`test_main` 4/4、`run_gc` 8/8、`abort` T1–T5、`abort_sweep` 11/11、`done_race` P3 20/20。
+
+**已知边界**
+
+- 平台的 AW/W 错配当时未处理（v4.4 起加标记）。
+- 该版 `card-userdata.zip` 与后续版本不同（v4.1 的卡上二进制）。
+
+---
+
 ## 共同边界（所有版本）
+
+Release 页面只保留本页链接和资产哈希表；变更、验证与边界的正文写在这里。
 
 - 平台会重投递每一次 AXI-Lite 写，且副本不总是相邻；从设备侧无法把 W 拍归属到某个 store。命令写标记与写后回读是当前能做的两层防护。
 - `DIRTY_PUSH` 的残余暴露面是一个 28 位巧合；彻底消除需要端到端 ack（硬件发一次性令牌、软件回写、硬件确认），当前未实现。

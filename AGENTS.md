@@ -554,6 +554,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
 - The repository carries the **current** design only. Prototype and historical
   artefacts (old RTL archives, old boot images, one-off test scripts) stay on the
   local machine; the numbers they produced live in the README's tables.
+- A Release body is a link to `docs/releases.md#vX.Y` plus the asset SHA256 table (and the checksum line). The change list, the verification summary and the known boundaries live in `docs/releases.md`, one section per version.
 - Release assets are limited to what a stranger needs to boot and self-test:
   the boot-image pair, the two card zips, and the kernel module that matches the
   published image. Nothing else is attached.
