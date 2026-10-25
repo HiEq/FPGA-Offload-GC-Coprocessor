@@ -13,10 +13,10 @@
 | 工具链 | Vivado 2026.1 / PetaLinux 2026.1 |
 | 时钟域 | 单一时钟 FCLK0 = 100 MHz（引擎 / AXI-Lite / AXI HP），无 CDC |
 | AXI HP | 64-bit，每拍 1 个 32-bit 字，8 字节对齐 + 半字选择 |
-| 实测资源 | LUT 26,930 (9.71%) / FF 71,497 (12.89%) / BRAM 5.5 (0.73%) / DSP 0 |
-| 时序 | WNS +0.123 ns / WHS +0.060 ns |
+| 实测资源 | LUT 26,826 (9.67%) / FF 71,460 (12.88%) / BRAM 5.5 (0.73%) / DSP 0 |
+| 时序 | WNS +0.049 ns / WHS +0.049 ns（v4.5 根集读回后，裕量接近临界） |
 
-资源与时序取自 `vivado/build.tcl` 的实现报告；`fogccc_proj/` 不入库，可由该脚本重建。
+资源与时序取自 `vivado/build.tcl` 的实现报告（v4.5 位流 md5 `6D4792448135C3796E3CAA1AD86EEA30`，2026-10-25）；v4.6 未重建 PL，数值不变。`fogccc_proj/` 不入库，可由该脚本重建。
 
 ## 工具链版本
 

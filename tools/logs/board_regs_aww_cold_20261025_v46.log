@@ -1,6 +1,6 @@
 # command: python3 -u tests/regs_aww_board_test.py   (first push sequence after a real power cycle)
 # bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
-# commit: 1e3a588   VERSION=0x00040301   card binaries: v4.6 (test_main md5 d9e5b85f033a6144ddd31624173d1116)
+# commit: f7d2433 (remote hash of the tree that ran)   VERSION=0x00040301   card binaries: v4.6 (test_main md5 d9e5b85f033a6144ddd31624173d1116)
 # date: 2026-10-25
 # note: run immediately after the power-on captured in board_coldboot_20261025_v46.raw.log
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/regs_aww_board_test.py; printf 'D''IAG_DONE\n'

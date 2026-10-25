@@ -1,6 +1,6 @@
 # command: tools/debug/serial_coldboot_verify.ps1   (first run after a power-on, v4.6 binaries on the v4.5 image, fogccclinux)
 # bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
-# commit: 1e3a588   VERSION=0x00040301
+# commit: f7d2433 (remote hash of the tree that ran)   VERSION=0x00040301
 # date: 2026-10-25
 # test: tools/debug/serial_coldboot_verify.ps1 md5 7d79549137f045815ee7930a3a3a6c21
 # note: power-on capture tools/logs/board_coldboot_20261025_v46.raw.log (U-Boot -> Linux -> login:)

@@ -325,14 +325,17 @@ class FOGCCC:
                 'id': (st >> 20) & 0xFFF}
 
     def barrier_verify(self, ids) -> bool:
-        """True when every listed id is marked after the epoch.
+        """True only when every listed id reads back as marked.
 
         Pass one target per dirtied container.  All marked means no missed mark was
-        observed; anything unmarked must trigger a full mark.  Necessary, not
+        observed; anything unmarked must trigger a full mark.  A read of
+        ``0xFFFFFFFF`` means the probe could not produce a trustworthy value (the
+        engine was not idle, the wait timed out, or the probe-address write did not
+        stick) and is treated as *unverified*, not as a mark.  Necessary, not
         sufficient: a target already marked before the epoch hides whether its
         container was re-scanned.  One bitmap probe per id (0x24/0x28).
         """
-        return all(self.read_mark(int(i)) for i in ids)
+        return all(self.read_mark(int(i)) == 1 for i in ids)
 
     def dirty_push_verified(self, obj_id: int, retries: int = 4, poll: int = 8) -> bool:
         """Push a barrier record and confirm the command reached the FIFO.

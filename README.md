@@ -89,7 +89,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0–4095，引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据（2 拍延迟；读后勿改 `BM_ADDR`）|
 | 0x30 | MAGIC | R | 固定 `0x47434343`（"GCCC"）|
-| 0x34 | VERSION | R | 固定 `0x0004_0301`（v4.3）|
+| 0x34 | VERSION | R | 固定 `0x0004_0301`（v4.5 起）|
 | 0x38 | FREE_COUNT | R | 未标记对象数（mark 完成后扫描，扫描期 `STATUS[5]=1`）|
 | 0x3C | FREE_DATA | R | 读一次弹出一个 free 对象 ID |
 | 0x40+ | ROOT_LIST | R/W | 根集 ID 数组（`0x40`–`0x43F`，最多 256 个）；读回用于写后校验 |
