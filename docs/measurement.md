@@ -9,9 +9,9 @@
 `marked`；`test_main` Test 1 只输出计数，不输出耗时。七行 10–4000 全部 `OK`，出处
 `tools/logs/board_test_main.log`。`marked < Objects` 是随机图中从根 0 不可达的对象。
 
-## 同图四方（`tests/three_way.py`）
+## 同图FPGA/C/Python对比测试（`tests/three_way.py`）
 
-同一张图依次跑 FPGA、C 未缓存、C 缓存、Python；四个计数必须相等。
+同一张图依次跑 FPGA、C 未缓存、C 缓存、Python；
 C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_three_way.log`。
 
 | 对象 | mkd | FPGA us | C-u us | C-c us | Py ms | Cu/HW | Cc/HW | Py/HW |
