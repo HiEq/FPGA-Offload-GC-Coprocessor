@@ -5,11 +5,31 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.6 | 2026-10-25 | 位图探针地址写后校验（仅 USERDATA） | `PENDING` |
 | v4.5 | 2026-10-25 | 数据寄存器写后校验（根集可读回） | `a02f7ada` |
 | v4.4 | 2026-10-25 | 命令写携带目的地址标记 | `3a902b20` |
 | v4.3 | 2026-10-24 | cmdfifo 同拍 enqueue 门控进入镜像 | `23c7cc8b` |
 | v4.2 | 2026-10-24 | 硬件 GC 标记（Phase 3A/3B） | `cc2f02b` |
 | v4.1 | 2026-10-20 | PL flush 修复（`run_start`/`abort` + 命令 FIFO） | `f9a6b5b` |
+
+---
+
+## v4.6
+
+**变更内容**
+
+- `csrc/fpga_gc.c`：`fpga_gc_read_mark()` 的探针地址写改为经 `reg_wr_verified()`（写入 → 回读 → 重试），失败返回 `0xFFFFFFFF`。`barrier_verify()` 依赖该探针，此前一次 AW/W 错配就可能探测到错误对象，从而漏判“未重扫”。
+- 仅重新编译 USERDATA 侧二进制；`BOOT.BIN`、位流与 `VERSION=0x0004_0301` 均未变化。
+
+**验证结果**
+
+- 板上（v4.5 镜像）：`test_main` 3/3、`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退）、`dirty_api_test` `DIRTY_API_RESULT OK`（含 `acked push`）。
+- 位流与 BOOT 未变，冷启动证据沿用 v4.5（`board_coldboot_verify_20261025_v45.log`）。
+
+**已知限制**
+
+- 探针校验失败时返回 `0xFFFFFFFF`，由调用方按“未知”处理：`barrier_verify()` 会退回全标记（安全方向），`dump_marks()` 会打印异常值（可见）。不是硬错误。
+- 其余限制同 v4.5。
 
 ---
 

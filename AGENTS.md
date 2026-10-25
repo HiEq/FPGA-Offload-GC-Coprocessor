@@ -64,6 +64,10 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
     *Residual.* The 28-bit coincidence from #20 is unchanged (a foreign store carrying the exact marker and `(tag,id)`); it is not reachable with the current register set. Data-register corruption is now detected and retried, not prevented.
     *Release.* `v4.5` (prerelease) from this commit.
 
+25. **2026-10-25 — v4.6: the bitmap probe address is verified too.** `fpga_gc_read_mark()` wrote `BM_ADDR` (0x024) directly and only "flushed" it with a read; a mispaired W beat there would probe the wrong object, and `barrier_verify()` — the software backstop for #20 — could then miss a container that was never re-scanned. The probe address now goes through `reg_wr_verified()` and returns `0xFFFFFFFF` on failure (callers treat that as unknown: `barrier_verify` falls back to a full mark, `dump_marks` prints it). Card binaries rebuilt and pushed with `sync`; `BOOT.BIN`, bitstream and `VERSION=0x00040301` are unchanged, so the v4.5 cold-boot evidence still applies.
+    *Board (2026-10-25, v4.5 image + v4.6 binaries).* `test_main` 3/3, `regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK` (0/14 needed the fallback), `dirty_api_test` `DIRTY_API_RESULT OK` (incl. `acked push`).
+    *Release.* `v4.6` (prerelease); only `card-userdata.zip` and `SHA256SUMS.release` change against v4.5.
+
 ---
 
 ## 0. Operating summary

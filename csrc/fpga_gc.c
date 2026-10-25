@@ -567,8 +567,11 @@ uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
     (void)fpga_gc_wait_freeidle(dev, 10000);
     if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
         return 0xFFFFFFFF;
-    dev->regs[REG_BM_ADDR / 4] = obj_id;
-    (void)dev->regs[REG_BM_ADDR / 4];      // flush the posted write
+    /* Verify the probe address: a mispaired W beat here would probe the wrong
+     * object, and barrier_verify() would then miss a container that was never
+     * re-scanned.  reg_wr_verified() also flushes the posted write. */
+    if (reg_wr_verified(dev, REG_BM_ADDR, obj_id) != 0)
+        return 0xFFFFFFFF;
     uint32_t word = dev->regs[REG_BM_DATA / 4];
     return (word >> (obj_id & 31)) & 1U;
 }
