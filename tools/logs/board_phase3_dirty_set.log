@@ -1,10 +1,10 @@
 # command: tools/debug/run_phase3_board.ps1 -> tests/dirty_set_test.py
-# bitstream: AF4BAA4644A0589F0954413AE17ECE88   boot.bin: sha256 c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e
-# commit: 84a9de3   VERSION=0x00040300
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: PENDING   VERSION=0x00040301
 # date: 2026-10-25
 
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_set_test.py
-magic/version OK: 0x47434343 / 0x00040300
+magic/version OK: 0x47434343 / 0x00040301
 A0 no-barrier: done=True marked=0 drained=0 (expect 0/0)
 A dirty-run: occ=3 pushed=3 | marked=6 drained=3 popped=3 free=58 (expect pushed==occ in [3,6), drained==popped==pushed, marked=6 free=58)
 B keep+rescan: epoch_marked=1 cumulative=[0, 1, 2, 3, 10, 40, 41] (expect 1 / [0, 1, 2, 3, 10, 40, 41])

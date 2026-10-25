@@ -1,10 +1,10 @@
 # command: tools/debug/run_phase3_board.ps1 -> tests/dirty_overflow_test.py
-# bitstream: AF4BAA4644A0589F0954413AE17ECE88   boot.bin: sha256 c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e
-# commit: 84a9de3   VERSION=0x00040300
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: PENDING   VERSION=0x00040301
 # date: 2026-10-25
 
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_overflow_test.py
-magic/version OK: 0x47434343 / 0x00040300
+magic/version OK: 0x47434343 / 0x00040301
 graph: n=1024 live=768 garbage=256 heavy=767 burst=400
 epoch 1 full mark: marked=768 (expect 768)
 epoch 2 burst: done=True live_samples=4 | occ=256 ovf=1 | pushed=342 popped=86 drained=86

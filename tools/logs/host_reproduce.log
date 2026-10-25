@@ -1,6 +1,6 @@
 # command: powershell -File tools/reproduce_all.ps1   (VIVADO_BIN set in the environment)
 # bitstream: n/a (host-side: manifest + test-serial-session.ps1 + tb_gc_top/tb_axi_read/tb_runstart_race/tb_cmdfifo_flush/tb_regs_aww + tb_flush_data/tb_stale_ar_flush/tb_start_while_busy)
-# commit: 84a9de3   VERSION=0x00040300
+# commit: PENDING   VERSION=0x00040301
 # date: 2026-10-25
 # note: Vivado 2026.1; absolute build paths shortened to repo-relative
 === binary manifest ===
@@ -64,7 +64,7 @@ Built simulation snapshot tb_sim
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sun Oct 25 02:12:37 2026
+  **** Start of session at: Sun Oct 25 13:02:11 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -74,6 +74,7 @@ Time resolution is 1 ps
 run -all
 [TB] DONE=0 after reset OK (#4)
 [TB] graph: N=300, live=250, island=50
+[TB] root readback OK (7)
 [TB] registers configured
 [TB] write START
 [TB] DONE raised, marking started
@@ -307,52 +308,52 @@ run -all
 [TB] T-DIRTY A0 (no barrier): marked=0 (expect 0)
 [TB] T-DIRTY A0 drained=0 (expect 0)
 [TB] T-DIRTY A pre-run: occupancy=3 pending=1 ovf=0 (expect 3/1/0)
-[DRT] t=548575000 st=25 pop=0 cnt=3(obj=0) pushed=3 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=548585000 st=26 pop=0 cnt=3(obj=0) pushed=3 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=548605000 st=25 pop=0 cnt=2(obj=0) pushed=3 popped=1 drained=1 empty=0 qcnt=1
-[DRT] t=548615000 st=26 pop=0 cnt=2(obj=0) pushed=3 popped=1 drained=1 empty=0 qcnt=1
-[DRT] t=548635000 st=25 pop=0 cnt=1(obj=40) pushed=3 popped=2 drained=2 empty=0 qcnt=1
-[DRT] t=548645000 st=26 pop=0 cnt=1(obj=40) pushed=3 popped=2 drained=2 empty=0 qcnt=1
-[DRT] t=548665000 st=25 pop=0 cnt=0(obj=41) pushed=3 popped=3 drained=3 empty=1 qcnt=2
-[DRT] t=548675000 st=26 pop=0 cnt=0(obj=41) pushed=3 popped=3 drained=3 empty=1 qcnt=2
+[DRT] t=548695000 st=25 pop=0 cnt=3(obj=0) pushed=3 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=548705000 st=26 pop=0 cnt=3(obj=0) pushed=3 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=548725000 st=25 pop=0 cnt=2(obj=0) pushed=3 popped=1 drained=1 empty=0 qcnt=1
+[DRT] t=548735000 st=26 pop=0 cnt=2(obj=0) pushed=3 popped=1 drained=1 empty=0 qcnt=1
+[DRT] t=548755000 st=25 pop=0 cnt=1(obj=40) pushed=3 popped=2 drained=2 empty=0 qcnt=1
+[DRT] t=548765000 st=26 pop=0 cnt=1(obj=40) pushed=3 popped=2 drained=2 empty=0 qcnt=1
+[DRT] t=548785000 st=25 pop=0 cnt=0(obj=41) pushed=3 popped=3 drained=3 empty=1 qcnt=2
+[DRT] t=548795000 st=26 pop=0 cnt=0(obj=41) pushed=3 popped=3 drained=3 empty=1 qcnt=2
 [TB] T-DIRTY A drained=3
 [TB] T-DIRTY A pushed=3 (expect 3)
 [TB] T-DIRTY A popped=3 (expect 3)
 [TB] T-DIRTY A: marked=6 drained=3 free=58 OK
-[DRT] t=556485000 st=0 pop=0 cnt=1(obj=x) pushed=4 popped=3 drained=3 empty=0 qcnt=0
-[DRT] t=556575000 st=25 pop=0 cnt=1(obj=0) pushed=4 popped=3 drained=0 empty=0 qcnt=0
-[DRT] t=556585000 st=26 pop=0 cnt=1(obj=0) pushed=4 popped=3 drained=0 empty=0 qcnt=0
-[DRT] t=556605000 st=25 pop=0 cnt=0(obj=0) pushed=4 popped=4 drained=1 empty=1 qcnt=1
-[DRT] t=556615000 st=26 pop=0 cnt=0(obj=0) pushed=4 popped=4 drained=1 empty=1 qcnt=1
+[DRT] t=556605000 st=0 pop=0 cnt=1(obj=x) pushed=4 popped=3 drained=3 empty=0 qcnt=0
+[DRT] t=556695000 st=25 pop=0 cnt=1(obj=0) pushed=4 popped=3 drained=0 empty=0 qcnt=0
+[DRT] t=556705000 st=26 pop=0 cnt=1(obj=0) pushed=4 popped=3 drained=0 empty=0 qcnt=0
+[DRT] t=556725000 st=25 pop=0 cnt=0(obj=0) pushed=4 popped=4 drained=1 empty=1 qcnt=1
+[DRT] t=556735000 st=26 pop=0 cnt=0(obj=0) pushed=4 popped=4 drained=1 empty=1 qcnt=1
 [TB] T-DIRTY B bitmap: marked=7 bad=0 (expect 7 / 0)
 [MON] t=600000000 st=1 cur=10 qh=0 qt=0 ARV=0 ARA=1e0000a8 cw=87 cr=87 dw=87 dr=87 hw=87 hr=87 drdy=0 dval=0
-[DRT] t=608595000 st=0 pop=0 cnt=1(obj=x) pushed=1 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=608665000 st=0 pop=0 cnt=2(obj=x) pushed=2 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=608735000 st=0 pop=0 cnt=3(obj=x) pushed=3 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=608805000 st=0 pop=0 cnt=4(obj=x) pushed=4 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=608875000 st=0 pop=0 cnt=5(obj=x) pushed=5 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=608945000 st=0 pop=0 cnt=6(obj=x) pushed=6 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609015000 st=0 pop=0 cnt=7(obj=x) pushed=7 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609085000 st=0 pop=0 cnt=8(obj=x) pushed=8 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609155000 st=0 pop=0 cnt=9(obj=x) pushed=9 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609225000 st=0 pop=0 cnt=10(obj=x) pushed=10 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609295000 st=0 pop=0 cnt=11(obj=x) pushed=11 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609365000 st=0 pop=0 cnt=12(obj=x) pushed=12 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609435000 st=0 pop=0 cnt=13(obj=x) pushed=13 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609505000 st=0 pop=0 cnt=14(obj=x) pushed=14 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609575000 st=0 pop=0 cnt=15(obj=x) pushed=15 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609645000 st=0 pop=0 cnt=16(obj=x) pushed=16 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609715000 st=0 pop=0 cnt=17(obj=x) pushed=17 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609785000 st=0 pop=0 cnt=18(obj=x) pushed=18 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609855000 st=0 pop=0 cnt=19(obj=x) pushed=19 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609925000 st=0 pop=0 cnt=20(obj=x) pushed=20 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=609995000 st=0 pop=0 cnt=21(obj=x) pushed=21 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=610065000 st=0 pop=0 cnt=22(obj=x) pushed=22 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=610135000 st=0 pop=0 cnt=23(obj=x) pushed=23 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=610205000 st=0 pop=0 cnt=24(obj=x) pushed=24 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=610275000 st=0 pop=0 cnt=25(obj=x) pushed=25 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=610345000 st=0 pop=0 cnt=26(obj=x) pushed=26 popped=0 drained=0 empty=0 qcnt=0
-[DRT] t=610415000 st=0 pop=0 cnt=27(obj=x) pushed=27 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=608715000 st=0 pop=0 cnt=1(obj=x) pushed=1 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=608785000 st=0 pop=0 cnt=2(obj=x) pushed=2 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=608855000 st=0 pop=0 cnt=3(obj=x) pushed=3 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=608925000 st=0 pop=0 cnt=4(obj=x) pushed=4 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=608995000 st=0 pop=0 cnt=5(obj=x) pushed=5 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609065000 st=0 pop=0 cnt=6(obj=x) pushed=6 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609135000 st=0 pop=0 cnt=7(obj=x) pushed=7 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609205000 st=0 pop=0 cnt=8(obj=x) pushed=8 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609275000 st=0 pop=0 cnt=9(obj=x) pushed=9 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609345000 st=0 pop=0 cnt=10(obj=x) pushed=10 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609415000 st=0 pop=0 cnt=11(obj=x) pushed=11 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609485000 st=0 pop=0 cnt=12(obj=x) pushed=12 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609555000 st=0 pop=0 cnt=13(obj=x) pushed=13 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609625000 st=0 pop=0 cnt=14(obj=x) pushed=14 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609695000 st=0 pop=0 cnt=15(obj=x) pushed=15 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609765000 st=0 pop=0 cnt=16(obj=x) pushed=16 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609835000 st=0 pop=0 cnt=17(obj=x) pushed=17 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609905000 st=0 pop=0 cnt=18(obj=x) pushed=18 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=609975000 st=0 pop=0 cnt=19(obj=x) pushed=19 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610045000 st=0 pop=0 cnt=20(obj=x) pushed=20 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610115000 st=0 pop=0 cnt=21(obj=x) pushed=21 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610185000 st=0 pop=0 cnt=22(obj=x) pushed=22 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610255000 st=0 pop=0 cnt=23(obj=x) pushed=23 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610325000 st=0 pop=0 cnt=24(obj=x) pushed=24 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610395000 st=0 pop=0 cnt=25(obj=x) pushed=25 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610465000 st=0 pop=0 cnt=26(obj=x) pushed=26 popped=0 drained=0 empty=0 qcnt=0
+[DRT] t=610535000 st=0 pop=0 cnt=27(obj=x) pushed=27 popped=0 drained=0 empty=0 qcnt=0
 [TB] T-DIRTY C status=02bf0700 (expect bit9=1, occupancy=256)
 [TB] T-DIRTY C overflow flag OK
 [TB] T-DIRTY-FLUSHSPILL drained=1 (expect 1: the record survived)
@@ -364,12 +365,12 @@ run -all
 [TB] T-DIRTY-FLUSHIDLE after a bare idle flush: occupancy=1 (expect 1: armed, not applied)
 [TB] T-DIRTY-FLUSHIDLE after a full-mark start: occupancy=0 (expect 0)
 [TB] T-DIRTY-FLUSHIDLE after an incremental start: drained=1 (expect 1: the record was processed, not flushed)
-[MON] t=1000000000 st=16 cur=0 qh=5 qt=1220 ARV=1 ARA=1e041458 cw=62 cr=110 dw=103 dr=24 hw=109 hr=103 drdy=0 dval=1
-[MON] t=1200000000 st=7 cur=2372 qh=2379 qt=3 ARV=0 ARA=1e009468 cw=86 cr=86 dw=86 dr=86 hw=86 hr=86 drdy=0 dval=0
+[MON] t=1000000000 st=16 cur=0 qh=5 qt=1214 ARV=1 ARA=1e041440 cw=56 cr=105 dw=97 dr=18 hw=104 hr=97 drdy=0 dval=1
+[MON] t=1200000000 st=7 cur=2370 qh=2377 qt=3 ARV=0 ARA=1e009448 cw=86 cr=86 dw=86 dr=86 hw=86 hr=86 drdy=0 dval=0
 [TB] T-DIRTY-QFULL done: marked=4096 (expect 4096)
 [TB] T-DIRTY-QFULL observed: peak occupancy=4094/4096  q_full&&dirty cycles=0  S_DIRTY_PUSH waits=0
-[MON] t=1400000000 st=16 cur=0 qh=5 qt=2755 ARV=1 ARA=1e042c60 cw=63 cr=111 dw=104 dr=25 hw=110 hr=104 drdy=0 dval=1
-[MON] t=1600000000 st=14 cur=2888 qh=2891 qt=0 ARV=1 ARA=1e00b4a0 cw=85 cr=85 dw=85 dr=85 hw=85 hr=85 drdy=0 dval=0
+[MON] t=1400000000 st=16 cur=0 qh=5 qt=2749 ARV=1 ARA=1e042c48 cw=57 cr=105 dw=98 dr=19 hw=104 hr=98 drdy=0 dval=1
+[MON] t=1600000000 st=14 cur=2886 qh=2889 qt=0 ARV=1 ARA=1e00b480 cw=85 cr=85 dw=85 dr=85 hw=85 hr=85 drdy=0 dval=0
 [MON] t=1800000000 st=26 cur=4095 qh=0 qt=0 ARV=0 ARA=1e00fff8 cw=85 cr=85 dw=85 dr=85 hw=85 hr=85 drdy=0 dval=0
 [MON] t=2000000000 st=26 cur=4095 qh=0 qt=0 ARV=0 ARA=1e00fff8 cw=85 cr=85 dw=85 dr=85 hw=85 hr=85 drdy=0 dval=0
 [MON] t=2200000000 st=26 cur=4095 qh=0 qt=0 ARV=0 ARA=1e00fff8 cw=85 cr=85 dw=85 dr=85 hw=85 hr=85 drdy=0 dval=0
@@ -387,7 +388,7 @@ run -all
 [TB] T-DIRTY-RACE remark (rc2=1) drained=1 (expect 1, the deferred record)
 [TB] T-DIRTY-RACE remark (rc2=1) obj60 marked=1 (expect 1: arm-and-consume keeps it)
 [TB] T-ID magic=47434343 (expect 47434343)
-[TB] T-ID version=00040300 (expect 00040300)
+[TB] T-ID version=00040301 (expect 00040300)
 [TB] T-ABORT queue fill = 8 when the stall is applied
 [TB] T-ABORT state while hung = 7
 [TB] T-ABORT state after abort = 0 (expect 0 = S_IDLE)
@@ -420,9 +421,9 @@ run -all
 [TB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align, VALID stable)
 
 [TB] ==================== PASS ====================
-$finish called at time : 4191330 ns : File "./sim/tb_gc_top.v" Line 1863
+$finish called at time : 4191450 ns : File "./sim/tb_gc_top.v" Line 1872
 exit
-INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:12:40 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 13:02:15 2026...
 === SIM DONE ===
 cache dir: Cache\sim
 === sim: tb_axi_read ===
@@ -455,7 +456,7 @@ Built simulation snapshot axi_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sun Oct 25 02:12:45 2026
+  **** Start of session at: Sun Oct 25 13:02:20 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -468,7 +469,7 @@ run -all
 [AXITB] ==================== PASS ====================
 $finish called at time : 2110 ns : File "./sim/tb_axi_read.v" Line 187
 exit
-INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:12:47 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 13:02:22 2026...
 === AXI TB DONE ===
 cache dir: Cache\axi_tb
 === sim: tb_runstart_race ===
@@ -501,7 +502,7 @@ Built simulation snapshot race_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sun Oct 25 02:12:53 2026
+  **** Start of session at: Sun Oct 25 13:02:27 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -516,7 +517,7 @@ run -all
 [RACE] ==================== PASS ====================
 $finish called at time : 810 ns : File "./sim/tb_runstart_race.v" Line 269
 exit
-INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:12:55 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 13:02:29 2026...
 === RACE TB DONE ===
 cache dir: Cache\race_tb
 === sim: tb_cmdfifo_flush ===
@@ -546,7 +547,7 @@ Built simulation snapshot cmdfifo_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sun Oct 25 02:13:01 2026
+  **** Start of session at: Sun Oct 25 13:02:34 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -561,7 +562,7 @@ run -all
 [CMDFIFO] ==================== PASS ====================
 $finish called at time : 850 ns : File "./sim/tb_cmdfifo_flush.v" Line 199
 exit
-INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:13:03 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 13:02:36 2026...
 === CMDFIFO TB DONE ===
 cache dir: Cache\cmdfifo_tb
 === sim: tb_regs_aww ===
@@ -578,6 +579,7 @@ Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_regs
 INFO: [XSIM 43-3493] Using 8 slave threads.
 Starting static elaboration
 Pass Through NonSizing Optimizer
+WARNING: [VRFC 10-3645] port 'root_rd_idx' remains unconnected for this instance [./sim/tb_regs_aww.v:82]
 Completed static elaboration
 Starting simulation data flow analysis
 Completed simulation data flow analysis
@@ -591,7 +593,7 @@ Built simulation snapshot regs_aww_tb
   **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
   **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
   **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
-  **** Start of session at: Sun Oct 25 02:13:08 2026
+  **** Start of session at: Sun Oct 25 13:02:41 2026
     ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
     ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 
@@ -612,7 +614,7 @@ run -all
 [AW-W] ==================== PASS ====================
 $finish called at time : 510 ns : File "./sim/tb_regs_aww.v" Line 301
 exit
-INFO: [Common 17-206] Exiting xsim at Sun Oct 25 02:13:10 2026...
+INFO: [Common 17-206] Exiting xsim at Sun Oct 25 13:02:43 2026...
 === REGS AWW TB DONE ===
 cache dir: Cache\regs_aww_tb
 === sim: hand-over TBs ===

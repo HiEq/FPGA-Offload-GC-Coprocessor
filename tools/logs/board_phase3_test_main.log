@@ -1,6 +1,6 @@
 # command: tools/debug/run_phase3_board.ps1 -> test_main
-# bitstream: AF4BAA4644A0589F0954413AE17ECE88   boot.bin: sha256 c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e
-# commit: 84a9de3   VERSION=0x00040300
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: PENDING   VERSION=0x00040301
 # date: 2026-10-25
 
 cd /run/media/USERDATA-mmcblk0p2 && chmmod +x bin/test_main && ./bin/test_main; printf 'T''M=%s\n' $?
@@ -11,7 +11,7 @@ cd /run/media/USERDATA-mmcblk0p2 && chmmod +x bin/test_main && ./bin/test_main;
 [FOGCCC] Initialized:
   AXI-Lite regs @ 0x43C00000
   Graph DDR     @ 0x1E000000 (1MB)
-  MAGIC/VERSION : 0x47434343 / 0x00040300
+  MAGIC/VERSION : 0x47434343 / 0x00040301
 
 =============================================================
   Test 1: correctness (FPGA vs C)
@@ -44,10 +44,10 @@ Objects    FPGA       C          verdict
 --- Hardware Statistics ---
   Marked objects : 183
   STATUS         : 0x0
-  HW cycles      : 6888
-  HW time        : 68.88 us (@100MHz)
+  HW cycles      : 6895
+  HW time        : 68.95 us (@100MHz)
   Queue head/tail: 183 / 183 (depth=0)
-  Throughput     : 2.66 M objects/sec
+  Throughput     : 2.65 M objects/sec
 
 =============================================
   SUMMARY

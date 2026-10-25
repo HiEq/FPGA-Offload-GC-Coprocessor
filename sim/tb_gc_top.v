@@ -434,6 +434,15 @@ module tb_gc_top;
         axil_wr(R_BASE,  BASE);
         axil_wr(R_COUNT, N);
         axil_wr(R_ROOTS, 1);
+        // v4.5: the root list is readable; a write is verified by reading it back.
+        axil_wr(R_RLIST + 8'h00, 32'd7);
+        axil_rd(R_RLIST + 8'h00, rd_val);
+        if (rd_val !== 32'd7) begin
+            $display("[TB][FAIL] root readback=%0d (wrote 7) -- root read path", rd_val);
+            errors = errors + 1;
+        end else begin
+            $display("[TB] root readback OK (7)");
+        end
         axil_wr(R_RLIST + 8'h00, 32'd0);          // root[0] = 0
         $display("[TB] registers configured");
 
@@ -1358,7 +1367,7 @@ module tb_gc_top;
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
         $display("[TB] T-ID version=%h (expect 00040300)", rd_val);
-        if (rd_val !== 32'h0004_0300) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        if (rd_val !== 32'h0004_0301) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.

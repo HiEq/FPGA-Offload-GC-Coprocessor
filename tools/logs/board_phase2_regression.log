@@ -1,10 +1,10 @@
---- date: 2026-10-25 01:58:55 ---
+--- date: 2026-10-25 12:50:05 ---
 --- push tests ---
 opened COM3 @ 115200
 --- side table positive ---
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/side_table_test.py --hw --n 512 --seed 12345; printf 'R''C=%s\n' $$?
 SIDE_TABLE_HW graph n=512 live=384 edges=874 root=0 reachable=384 garbage=128 seed=12345
-SIDE_TABLE_HW PASS marked=384 free=128 cycles=9213 qtail=384
+SIDE_TABLE_HW PASS marked=384 free=128 cycles=9204 qtail=384
 RC=0
 --- side table negative control ---
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/side_table_test.py --hw --neg --n 512 --seed 12345; printf 'N''EGRRC=%s\n' $?

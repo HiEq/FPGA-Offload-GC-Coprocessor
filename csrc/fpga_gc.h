@@ -33,7 +33,7 @@
 #define REG_BM_ADDR      0x24   // bitmap probe address (0..4095)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
 #define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
-#define REG_VERSION      0x34   // fixed 0x0004_0300 (v4.3: command-write address markers)
+#define REG_VERSION      0x34   // fixed 0x0004_0301 (v4.5: root read-back + command markers)
 #define REG_FREE_COUNT   0x38   // Phase 2: number of free ids in the PL list
 #define REG_FREE_DATA    0x3C   // Phase 2: read pops one free id
 #define REG_DIRTY_PUSH   0x440  // write 0xA5400000 | (tag<<12) | id (marker = WDATA[31:20])
@@ -43,7 +43,7 @@
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00040300u
+#define FOGCCC_VERSION   0x00040301u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped

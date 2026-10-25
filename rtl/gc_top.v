@@ -148,6 +148,8 @@ module gc_top (
     wire        root_we;
     wire [7:0]  root_rd_addr;
     reg  [31:0] root_rd_data;
+    wire [7:0]  w_root_rd_idx;
+    wire [31:0] w_root_axi_data = root_mem[w_root_rd_idx];
 
     always @(posedge S_AXI_ACLK) begin
         if (root_we)
@@ -260,6 +262,8 @@ module gc_top (
         .root_wr_addr      (root_wr_addr),
         .root_wr_data      (root_wr_data),
         .root_we           (root_we),
+        .root_rd_idx       (w_root_rd_idx),
+        .root_rd_data      (w_root_axi_data),
         .reg_bm_addr       (w_regs_bm_addr),
         .reg_bm_data       (w_bm_probe_r),
         .reg_free_count    (w_free_count),

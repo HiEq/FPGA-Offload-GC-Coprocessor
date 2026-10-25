@@ -146,11 +146,11 @@ def read_marks(n):
 
 
 def main():
-    if rr(R_MAGIC) != 0x47434343 or rr(R_VERSION) != 0x00040300:
+    if rr(R_MAGIC) != 0x47434343 or rr(R_VERSION) != 0x00040301:
         print('FAIL magic/version 0x%08X/0x%08X (need the v4.2 bitstream)'
               % (rr(R_MAGIC), rr(R_VERSION)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040300' % rr(R_MAGIC))
+    print('magic/version OK: 0x%08X / 0x00040301' % rr(R_MAGIC))
 
     n = 64
     wr(R_BASE, BASE)                    # 0x04: reset value is 0, never inherit it

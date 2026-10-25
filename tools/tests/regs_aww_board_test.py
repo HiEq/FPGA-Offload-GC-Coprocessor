@@ -199,7 +199,7 @@ def round_verify(ids):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040301:
         print('FAIL magic/version 0x%08X/0x%08X (need the v4.2 bitstream)'
               % (rr(0x30), rr(0x34)))
         return 1

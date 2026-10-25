@@ -192,16 +192,35 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
 // ============================================================
 // 设置根集
 // ============================================================
+/* A mispaired AXI-Lite W beat (platform AW/W reorder) can put a wrong value in
+ * a data register.  These registers are readable, so every config write is
+ * verified and retried; the root list gained a read path in this version. */
+static int reg_wr_verified(fpga_gc_t *dev, uint32_t off, uint32_t val) {
+    int i;
+    for (i = 0; i < 4; i++) {
+        dev->regs[off / 4] = val;
+        if (dev->regs[off / 4] == val)
+            return 0;
+    }
+    return -1;
+}
+
 void fpga_gc_set_roots(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
     // 寄存器地址已扩到 12 位: 0x40..0x43F 共 256 项
+    int i;
     if (n_roots > 256) {
         printf("WARNING: root count %d > 256, truncated\n", n_roots);
         n_roots = 256;
     }
-    for (int i = 0; i < n_roots; i++) {
-        dev->regs[(REG_ROOT_LIST + i * 4) / 4] = roots[i];
+    for (i = 0; i < n_roots; i++) {
+        uint32_t off = REG_ROOT_LIST + i * 4;
+        if (reg_wr_verified(dev, off, roots[i]) != 0)
+            printf("ERROR: root[%d] write did not stick (wrote %u, read %u)\n",
+                   i, roots[i], dev->regs[off / 4]);
     }
-    dev->regs[REG_ROOT_COUNT / 4] = (uint32_t)n_roots;
+    if (reg_wr_verified(dev, REG_ROOT_COUNT, (uint32_t)n_roots) != 0)
+        printf("ERROR: root_count write did not stick (read %u)\n",
+               dev->regs[REG_ROOT_COUNT / 4]);
 }
 
 // ============================================================
@@ -209,9 +228,11 @@ void fpga_gc_set_roots(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 // ============================================================
 // keep=0: 全标记周期 (清位图 + 清脏集); keep=1: 增量 epoch (保留位图, **不清**脏集)
 static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
-    // 写入对象图参数
-    dev->regs[REG_OBJ_BASE  / 4] = dev->graph_paddr;
-    dev->regs[REG_OBJ_COUNT / 4] = (uint32_t)dev->obj_count;
+    // 写入对象图参数（写后回读：W/AW 错配会写成错误的值）
+    if (reg_wr_verified(dev, REG_OBJ_BASE, dev->graph_paddr) != 0)
+        printf("ERROR: OBJ_BASE write did not stick (read 0x%08X)\n", dev->regs[REG_OBJ_BASE / 4]);
+    if (reg_wr_verified(dev, REG_OBJ_COUNT, (uint32_t)dev->obj_count) != 0)
+        printf("ERROR: OBJ_COUNT write did not stick (read %u)\n", dev->regs[REG_OBJ_COUNT / 4]);
 
     // 清零队列 (位图由引擎在每轮 S_CLR_BM 自动清, CTRL[1] 已废弃无效)。
     // 全标记必须与 DIRTY_FLUSH 同发: 阶段 3 的脏集 FIFO 跨进程存活, 残留的

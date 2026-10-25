@@ -68,7 +68,12 @@ module gc_regs (
 
     output reg  [7:0]  root_wr_addr = 8'd0,
     output reg  [31:0] root_wr_data = 32'd0,
-    output reg         root_we = 1'b0
+    output reg         root_we = 1'b0,
+
+    // Read path for the root list (write-only before v4.5): the driver writes
+    // a root and reads it back, so a mispaired W beat is detected and retried.
+    output wire [7:0]  root_rd_idx,
+    input  wire [31:0] root_rd_data
 );
 
     reg [11:0] dirty_last_id = 12'h0;  // 最后被接受的 DIRTY_PUSH id (AGENTS #20 回执)
@@ -77,6 +82,12 @@ module gc_regs (
                                    // tag 0 is accepted; NOT cleared by flush)
     reg [11:0] awaddr_r = 12'd0;
     reg [11:0] araddr_r = 12'd0;
+
+    localparam [11:0] ROOT_AREA_LO = 12'h040;
+    localparam [11:0] ROOT_AREA_HI = 12'h440;
+
+    assign root_rd_idx = ((araddr_r >= ROOT_AREA_LO) && (araddr_r < ROOT_AREA_HI))
+                      ? (araddr_r[9:2] - 8'h10) : 8'h0;
     reg        aw_pending = 1'b0;      // 地址已锁存, 等数据
     reg        w_pending  = 1'b0;      // 数据已锁存, 等发响应
 
@@ -153,7 +164,7 @@ module gc_regs (
                     12'h00C: reg_root_count <= (reg_root_count & ~wmask) | (WDATA & wmask);
                     12'h024: reg_bm_addr    <= (reg_bm_addr & ~wmask[11:0]) | (WDATA[11:0] & wmask[11:0]);
                     default: begin
-                        if ((awaddr_r >= 12'h040) && (awaddr_r < 12'h440)) begin
+                        if ((awaddr_r >= ROOT_AREA_LO) && (awaddr_r < ROOT_AREA_HI)) begin
                             root_wr_addr <= awaddr_r[9:2] - 8'h10;   // (addr>>2) - 16
                             root_wr_data <= WDATA;
                             root_we      <= 1'b1;
@@ -204,7 +215,7 @@ module gc_regs (
                     12'h024: RDATA <= {20'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
                     12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic
-                    12'h034: RDATA <= 32'h0004_0300;  // version 4.3: address-marker on the two command writes
+                    12'h034: RDATA <= 32'h0004_0301;  // v4.5: root-list read-back + command-write markers
                     12'h038: RDATA <= reg_free_count;
                     12'h03C: begin
                         RDATA        <= {20'h0, reg_free_data};
@@ -215,7 +226,10 @@ module gc_regs (
                     12'h448: RDATA <= dirty_drained;                            // consumed this epoch
                     12'h44C: RDATA <= {16'h0, dirty_pushed};                    // accepted since flush
                     12'h450: RDATA <= {16'h0, dirty_popped};                    // consumed since flush
-                    default: begin RDATA <= 32'hDEADBEEF; RRESP <= 2'b10; end   // SLVERR
+                    default: begin
+                        if ((araddr_r >= ROOT_AREA_LO) && (araddr_r < ROOT_AREA_HI)) RDATA <= root_rd_data;
+                        else begin RDATA <= 32'hDEADBEEF; RRESP <= 2'b10; end   // SLVERR
+                    end
                 endcase
                 RVALID  <= 1'b1;
                 // (RRESP already set above)

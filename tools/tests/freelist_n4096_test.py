@@ -35,10 +35,10 @@ wr = lambda o, v: struct.pack_into('<I', regs, o, v & 0xFFFFFFFF)
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040300:
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040301:
         print('FAIL magic/version 0x%08X/0x%08X (need v4.2)' % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040300' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00040301' % rr(0x30))
 
     # headers only: id, ref_count 0, ref_addr irrelevant
     hdr = bytearray(N * 16)

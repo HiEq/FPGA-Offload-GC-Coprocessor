@@ -74,9 +74,9 @@ def main():
     _magic = rr(0x30)
     _ver   = rr(0x34)
     print("   MAGIC = 0x%08X   VERSION = 0x%08X" % (_magic, _ver))
-    if _magic != 0x47434343 or _ver != 0x00040300:
+    if _magic != 0x47434343 or _ver != 0x00040301:
         print("   ERROR: bitstream/software mismatch: MAGIC=0x%08X VERSION=0x%08X"
-              " (expected 0x47434343/0x00040300)" % (_magic, _ver))
+              " (expected 0x47434343/0x00040301)" % (_magic, _ver))
         return 1
     print("=" * 84)
 

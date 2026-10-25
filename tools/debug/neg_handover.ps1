@@ -34,7 +34,7 @@ try {
     $lines = @(
         '# command: pre-fix rtl (gc_top.v/gc_axi_read.v from dd79355^) + the three hand-over TBs',
         '# bitstream: n/a (simulation negative control)',
-        "# commit: $sha   VERSION=0x00040300",
+        "# commit: $sha   VERSION=0x00040301",
         '# date: 2026-10-24',
         '# expectation: every TB reports [FAIL] -- a guard that cannot fail is not a guard',
         ''

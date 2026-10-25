@@ -1,6 +1,6 @@
 # command: tools/debug/cold_cycle.ps1 -> regs_aww (first run after a reboot)
 # bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
-# commit: 3cdc254   VERSION=0x00040300
+# commit: 97ebb97   VERSION=0x00040301
 # date: 2026-10-25
 cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py --plain; printf 'D''IAG_DONE\n'
 mode: plain push

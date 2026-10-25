@@ -135,6 +135,12 @@ class RegisterMapTest(unittest.TestCase):
 
     def test_root_list_window_matches_root_mem(self):
         regs = read("rtl/gc_regs.v")
+        # The window bounds may be named (localparam) instead of literal hex;
+        # resolve them before matching so the invariant is checked either way.
+        for name, val in re.findall(
+            r"localparam\s*\[11:0\]\s*(ROOT_AREA_\w+)\s*=\s*12'h([0-9A-Fa-f]{3})", regs
+        ):
+            regs = regs.replace(name, "12'h" + val)
         match = re.search(
             r"awaddr_r\s*>=\s*12'h([0-9A-Fa-f]{3})\)\s*&&\s*\(awaddr_r\s*<\s*12'h([0-9A-Fa-f]{3})",
             regs,

@@ -1,17 +1,17 @@
 # command: tools/debug/run_phase3_board.ps1 -> tests/dirty_concurrent_test.py
-# bitstream: AF4BAA4644A0589F0954413AE17ECE88   boot.bin: sha256 c6c71cbe4466aa67ad03da8b1bea651887463e22a4da8dffff9ebda63fa9417e
-# commit: 84a9de3   VERSION=0x00040300
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: PENDING   VERSION=0x00040301
 # date: 2026-10-25
 
 cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_concurrent_test.py
-magic/version OK: 0x47434343 / 0x00040300
+magic/version OK: 0x47434343 / 0x00040301
 graph: n=1024 live=768 garbage=256 heavy=767 heavy_refs=1024 seed=12345
-round: e1=768 pushed=250 drained=179(conc)+71(remark) popped=250 | marked=910 oracle=910 | busy_seen=True live_pushes=29/100
-timing: epoch2_window_us=5335 mutator_wake_us=145 first_push_us=255 mutator_total_us=13555 ctrl_at_first_push=0x00000010
-stress 1: pushed=250 drained=180/70 popped=250 marked=910 oracle=910 busy=True live_pushes=30 -> OK
+round: e1=768 pushed=250 drained=178(conc)+72(remark) popped=250 | marked=910 oracle=910 | busy_seen=True live_pushes=29/100
+timing: epoch2_window_us=5350 mutator_wake_us=149 first_push_us=264 mutator_total_us=13766 ctrl_at_first_push=0x00000010
+stress 1: pushed=250 drained=179/71 popped=250 marked=910 oracle=910 busy=True live_pushes=29 -> OK
 stress 2: pushed=250 drained=180/70 popped=250 marked=910 oracle=910 busy=True live_pushes=30 -> OK
 stress 3: pushed=250 drained=180/70 popped=250 marked=910 oracle=910 busy=True live_pushes=30 -> OK
-stress 4: pushed=250 drained=180/70 popped=250 marked=910 oracle=910 busy=True live_pushes=30 -> OK
+stress 4: pushed=250 drained=179/71 popped=250 marked=910 oracle=910 busy=True live_pushes=30 -> OK
 neg no-barrier: e1=768 pushed=0 drained=0/0 marked=768 missed=142 (pushed must be 0, missed > 0)
 mode: acked push | ack retries=0 giveups=0
 DIRTY_CONCURRENT_RESULT OK
