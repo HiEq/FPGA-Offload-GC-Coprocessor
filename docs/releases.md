@@ -23,8 +23,10 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 **验证结果**
 
-- 板上（v4.5 镜像）：`test_main` 3/3、`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退）、`dirty_api_test` `DIRTY_API_RESULT OK`（含 `acked push`）。
-- 位流与 BOOT 未变，冷启动证据沿用 v4.5（`board_coldboot_verify_20261025_v45.log`）。
+- 断电上电（整机断电，非 reboot）：串口完整记录 U-Boot → Linux 6.18.10 → `login:`（`tools/logs/board_coldboot_20261025_v46.raw.log`）。登录后 `D1..D6=0`，卡上 `BOOT.BIN` sha256 `26fb8621…` 与发布资产一致，`PL_GRAPH_NOMAP_OK`、`fpga_manager=operating`、`VERSION=0x00040301`，`test_main` 3/3 `ALL PASS`（`tools/logs/board_coldboot_verify_20261025_v46.log`）。
+- 同一次上电后的第一条 `DIRTY_PUSH` 序列：`regs_aww` 冷轮 `loss=[] forged=[]`，暖轮 `loss 0/14`、多标 `0/14`，`REGS_AWW_RESULT OK`（`tools/logs/board_regs_aww_cold_20261025_v46.log`）。
+- 同一会话：`dirty_api_test` `DIRTY_API_RESULT OK`（`acked push: [True, True]`）；`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退），该路径即 v4.6 改写后的探针写（`tools/logs/board_dirty_api_probe_20261025_v46.log`）。
+- 位流与 `BOOT.BIN` 与 v4.5 相同（md5 `6D479244…` / sha256 `26fb8621…`），本次上电同时闭合了“发布 USERDATA + 发布 PL”未共同经历断电上电的缺口。
 
 **已知限制**
 

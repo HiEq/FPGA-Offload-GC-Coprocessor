@@ -1,0 +1,28 @@
+# command: python3 -u tests/regs_aww_board_test.py   (first push sequence after a real power cycle)
+# bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 1e3a588   VERSION=0x00040301   card binaries: v4.6 (test_main md5 d9e5b85f033a6144ddd31624173d1116)
+# date: 2026-10-25
+# note: run immediately after the power-on captured in board_coldboot_20261025_v46.raw.log
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/regs_aww_board_test.py; printf 'D''IAG_DONE\n'
+mode: plain push
+round 0  k=3  gap=True  occ=3 pushed=3 tag=2 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 1  k=3  gap=False occ=3 pushed=3 tag=5 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 2  k=3  gap=False occ=3 pushed=3 tag=8 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 3  k=3  gap=False occ=3 pushed=3 tag=B | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 4  k=3  gap=False occ=3 pushed=3 tag=E | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 5  k=3  gap=False occ=3 pushed=3 tag=1 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 6  k=3  gap=False occ=3 pushed=3 tag=4 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 7  k=3  gap=False occ=3 pushed=3 tag=7 | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 8  k=3  gap=False occ=3 pushed=3 tag=A | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 9  k=3  gap=False occ=3 pushed=3 tag=D | marked=3 drained=3 popped=3 | loss=[] forged=[]
+round 10 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 11 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 12 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 13 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+round 14 k=16 gap=False occ=16 pushed=16 tag=D | marked=16 drained=16 popped=16 | loss=[] forged=[]
+cold round (first push sequence after the boot): loss=[] forged=[]
+warm rounds: loss in 0/14, extra marks in 0/14 (the safe direction)
+REGS_AWW_RESULT OK
+DIAG_DONE
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

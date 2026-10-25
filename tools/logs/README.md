@@ -54,6 +54,10 @@
 | `board_coldboot_20261024.raw.log` | v4.3 那次上电的整段串口（只读探活；上电落在 archlinux）| U-Boot 2026.01 → Linux → `login:`；启动窗口内未写入任何字节 | 上一版对照 |
 | `board_coldboot_reboot_20261024.raw.log` | 切到 fogccclinux 后的 reboot 整段串口 | PetaLinux 启动 → `linux login:`；之后全部板级日志都在这个环境里跑 | README 冷启动 / AGENTS #22 |
 | `board_coldboot_20261025_v45.raw.log` | v4.5 镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → `PetaLinux 2026.1` → `login:`；随后复验读回 `BOOT.BIN` = `26fb8621…`、`VERSION=0x0004_0301` | README 冷启动 / AGENTS #24 |
+| `board_coldboot_20261025_v46.raw.log` | v4.6 二进制 + v4.5 镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → `PetaLinux 2026.1` → `login:`；上电为整机断电，非 reboot | README 冷启动 / AGENTS #25 |
+| `board_coldboot_verify_20261025_v46.log` | `serial_coldboot_verify.ps1`，该次上电后首跑 | `D1..D6=0`；卡上 `BOOT.BIN` sha256 `26fb8621…`；`fpga_manager=operating`；`VERSION=0x0004_0301`；`test_main` 3/3 `ALL PASS` | README 冷启动 / AGENTS #25 |
+| `board_regs_aww_cold_20261025_v46.log` | `regs_aww_board_test.py`，该次上电后第一条 `DIRTY_PUSH` 序列 | 冷轮 `loss=[] forged=[]`；暖轮 `loss 0/14`、多标 0/14 ⇒ `REGS_AWW_RESULT OK` | AGENTS #20/#25 |
+| `board_dirty_api_probe_20261025_v46.log` | `dirty_api_test.py` + `regs_aww --verify-effect`（同一会话）| `DIRTY_API_RESULT OK`（`acked push: [True, True]`）；`VERIFY_EFFECT_RESULT OK`（0/14 需回退）⇒ v4.6 校验后的探针写可用 | AGENTS #25 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 六组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
