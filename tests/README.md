@@ -66,7 +66,7 @@ python3 tests/hardcoded.py --write-baseline   # 3) 确认要保留，就更新 b
 
 ## Gate status
 
-The strict `Protect main` ruleset (`.github/rulesets/main.json`) is applied: `main`
-runs the four gate checks on every pull request and declines a direct push to `main`
+The strict `Protect main` ruleset (`.github/rulesets/main.json`) is applied: main
+runs the four gate checks on every pull request and declines a direct push to main
 unless the pushed commit is the head of an open pull request whose checks are green;
 the enforced behaviour was observed in both directions.
