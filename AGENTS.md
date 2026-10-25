@@ -585,7 +585,9 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
   the current main head, then `git read-tree --reset -u <tag>` and squash-merged.
   Pick the tag explicitly — never "whatever is newest" — and name it in the subject
   (`chore(release): sync main to v4.7`); syncing an older tag is allowed, say so in
-  the message. After the first sync the two branches share no history, so a tag is
+  the message. A later documentation/test-only commit may ride along on `main`, but
+  the shipped artefacts (`BOOT.BIN`, `image.ub`, the two card zips) must stay the ones
+  that tag published. After the first sync the two branches share no history, so a tag is
   not an ancestor of main: `git describe` does not work there, use the Release
   page or `git tag --contains`. main is only as current as the last sync.
 
