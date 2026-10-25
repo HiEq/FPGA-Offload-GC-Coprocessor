@@ -258,7 +258,7 @@ rdata  <= hi_sel ? RDATA[63:32] : RDATA[31:0];
 ### F13. 交叉编译（cmark）的正确姿势
 - **现象**：① `stdio.h: No such file or directory`；② `invalid -march= option: 'armv7-a+simd'`
 - **根因**：① `sysroots-components/` 是**按 recipe 拆散**的，合并好的 `recipe-sysroot` 已被 `do_rm_work` 删掉；② gcc 13 会发新的 `+simd/+fp` 汇编语法，系统里的老 `as` 不认
-- **修法**：用构建树里**存活的一对** `recipe-sysroot` + `recipe-sysroot-native`（后者带**配套的** gcc/as），并用 `COMPILER_PATH` 指过去。见 `csrc/build_cmark.sh`
+- **修法**：用构建树里**存活的一对** `recipe-sysroot` + `recipe-sysroot-native`（后者带**配套的** gcc/as），并用 `COMPILER_PATH` 指过去。见 `csrc/build_c_bins.sh`（SDK 版）
 
 ### F14. `/tmp` 会被 WSL 重启清空
 - **现象**：上一轮建好的 sysroot，下一轮不见了

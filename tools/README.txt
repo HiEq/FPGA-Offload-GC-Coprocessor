@@ -8,8 +8,8 @@ FOGCCC 串口控制台 —— 使用说明
                   - 键盘输入直通板子，可登录并执行命令
   log.bat       打开 logs\serial.log，串口原始输出，追加写入
   serial_push_chunked.ps1
-                大文件推送: stty -echo + 按提示符同步 + 128KB 分块 + 每块 md5 + 失败重试
-                (18MB 的 BOOT.BIN gzip 后只有 1.05MB，约 3 分钟)
+                小文件推送: stty -echo + 按提示符同步 + 128KB 分块 + 每块 md5 + 失败重试
+                （逐行走 shell，约 2 KB/s，只适合脚本/小文件）
 
 串口独占：同一时刻只能有一个窗口占用 COM 口。
 
@@ -22,7 +22,7 @@ FOGCCC 串口控制台 —— 使用说明
         BOOT.BIN / image.ub / boot.scr / mount_data.sh
 
   USERDATA 分区
-        run_gc.sh / run_cmark.sh / run_repeat.sh / gc_test.py / cmark
+        run_gc.sh / run_repeat.sh / gc_test.py
         bin/test_main
         tests/  py/  ko/
         logs/gc_run_*.log
@@ -71,7 +71,6 @@ FOGCCC 串口控制台 —— 使用说明
     test-serial-session.ps1  串口公共件的单元测试（不需要板子，含"旧 buffer 里的提示符"负控）
     gc_test.py          板级测试，与卡上 run_gc.sh 同一份
     irq_drv_test.sh     中断端到端验证，验收级
-    run_cmark_sweep.ps1 72 次参数扫描，C 基线数据来源
   debug\
     hw_program.tcl      JTAG 烧比特流
     hw_probe.tcl        JTAG 器件探测

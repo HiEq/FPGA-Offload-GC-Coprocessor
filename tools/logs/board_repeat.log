@@ -1,0 +1,28 @@
+# command: tools/debug/run_board_suite.ps1 -> repeat
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 97ebb97   VERSION=0x00040301
+# date: 2026-10-24
+cd /run/media/USERDATA-mmcblk0p2 && sh  run_repeat.sh 10; printf 'D''IAG_DONE\n'
+################################################################
+#  REPEAT TEST   N=10   dir=/run/media/USERDATA-mmcblk0p2
+################################################################
+=== GROUP1: gc_test, different seeds (vs Python BFS ??????) ===
+  [ 1/ 1] N=  2920 exp=  2190 | HW      376.12 us (  37612 cyc) | free   730 | SW     102.08 ms |   271.4x | build   231.5 ms | OK
+  [ 1/ 1] N=   653 exp=   489 | HW      113.43 us (  11343 cyc) | free   164 | SW      22.62 ms |   199.4x | build    50.8 ms | OK
+  [ 1/ 1] N=   870 exp=   652 | HW      136.74 us (  13674 cyc) | free   218 | SW      30.70 ms |   224.5x | build    68.4 ms | OK
+  [ 1/ 1] N=  1711 exp=  1283 | HW      237.87 us (  23787 cyc) | free   428 | SW      58.87 ms |   247.5x | build   135.4 ms | OK
+  [ 1/ 1] N=  4044 exp=  3033 | HW      511.88 us (  51188 cyc) | free  1011 | SW     138.54 ms |   270.6x | build   313.1 ms | OK
+  [ 1/ 1] N=  1027 exp=   770 | HW      153.72 us (  15372 cyc) | free   257 | SW      35.86 ms |   233.3x | build    81.0 ms | OK
+  [ 1/ 1] N=  2775 exp=  2081 | HW      358.37 us (  35837 cyc) | free   694 | SW     100.69 ms |   281.0x | build   221.7 ms | OK
+  [ 1/ 1] N=  1689 exp=  1266 | HW      234.12 us (  23412 cyc) | free   423 | SW      59.39 ms |   253.7x | build   133.8 ms | OK
+  [ 1/ 1] N=  1154 exp=   865 | HW      169.31 us (  16931 cyc) | free   289 | SW      40.07 ms |   236.6x | build    91.1 ms | OK
+  [ 1/ 1] N=  1841 exp=  1380 | HW      256.67 us (  25667 cyc) | free   461 | SW      64.94 ms |   253.0x | build   145.8 ms | OK
+=== GROUP2: same seed x5 (DDR jitter only) ===
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.51 us (  33751 cyc) | free   645 | SW      90.06 ms |   266.8x | build   205.4 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.22 us (  33722 cyc) | free   645 | SW      88.98 ms |   263.9x | build   202.9 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      338.12 us (  33812 cyc) | free   645 | SW      88.83 ms |   262.7x | build   201.7 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.27 us (  33727 cyc) | free   645 | SW      89.15 ms |   264.3x | build   202.4 ms | OK
+  [ 1/ 1] N=  2578 exp=  1933 | HW      337.16 us (  33716 cyc) | free   645 | SW      88.63 ms |   262.9x | build   201.8 ms | OK
+=== REPEAT_DONE ===
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

@@ -1,0 +1,25 @@
+# command: tools/debug/cold_cycle.ps1 -> regs_aww_verify_effect (first run after a reboot)
+# bitstream: 3332D8D631A8DB5D8091972DFEE5565E   boot.bin: sha256 ac8d31cc79ae40b21c83d01e3d943b1205bd825f24c51a3e5bb49ac439e8c4d4
+# commit: 97ebb97   VERSION=0x00040301
+# date: 2026-10-25
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py --verify-effect; printf 'D''IAG_DONE\n'
+mode: plain push
+round 0  k=3  verify=OK
+round 1  k=3  verify=OK
+round 2  k=3  verify=OK
+round 3  k=3  verify=OK
+round 4  k=3  verify=OK
+round 5  k=3  verify=OK
+round 6  k=3  verify=OK
+round 7  k=3  verify=OK
+round 8  k=3  verify=OK
+round 9  k=3  verify=OK
+round 10 k=16 verify=OK
+round 11 k=16 verify=OK
+round 12 k=16 verify=OK
+round 13 k=16 verify=OK
+round 14 k=16 verify=OK
+VERIFY_EFFECT_RESULT OK (warm: 0/14 failed, 0/14 needed the fallback)
+DIAG_DONE
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

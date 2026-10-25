@@ -1,3 +1,3 @@
 @echo off
-chcp 65001 >nul & rem allow-hardcoded: UTF-8 code page
+chcp 65001 >nul
 start "" notepad "%~dp0logs\serial.log"

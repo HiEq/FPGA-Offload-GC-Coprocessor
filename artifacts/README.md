@@ -17,30 +17,29 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 
 ## `userdata/` → USERDATA 分区
 
-FAT32，卷标 `USERDATA`。当前 rootfs 的 `/etc/fstab` 会自动挂载到 `/mnt/userdata`
-（`nofail,umask=000`）；旧 rootfs 可能由 udev 挂到 `/run/media/USERDATA-mmcblk0p2`。
-`mount_data.sh` 仍可用于临时手动挂载。两条路径是同一个分区，固定用一个即可。
-
-```fstab
-/dev/mmcblk0p2  /mnt/userdata  vfat  defaults,noatime,umask=000,nofail  0  0
-```
+FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcblk0p2`
+（stock `/etc/fstab` 里**没有** p2 条目）；`/mnt/userdata` 需要自己挂：
+`sh /mnt/boot/mount_data.sh`（主机脚本 `serial_run_gc.ps1` /
+`serial_push_resume.ps1` 也会自己 `mkdir` + `mount`）。两条路径是同一个分区，固定用一个即可。
 
 | 路径 | 说明 |
 |---|---|
 | `run_gc.sh` | GC 测试入口，需同级 `gc_test.py` |
-| `run_cmark.sh` | C 基线入口，需同级 `cmark` |
 | `run_repeat.sh` | 重复测量 |
 | `gc_test.py` | GC 测试主体，`--seed` 可复现 |
-| `cmark` | C 基线二进制，动态链接 |
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出；不入库，随 `card-userdata.zip` 发布（vermagic 与已发布的 `image.ub` 严格配对）|
-| `tests/gc_probe.py` | CPython `gc.collect()` 探针，`test_main` 的主对照 |
+| `tests/side_table_test.py` | 容器图（真解释器 `tp_traverse` 边界）→「对象头+引用数组」的板级对照 |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证 |
 | `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同图恢复/换图恢复） |
 | `tests/abort_sweep.py` | abort 相位扫描（0–480 µs），`--delays` 可重复单点 |
 | `tests/done_race_test.py` | `START` posted-write 的 stale-DONE 实验 + 连续换图回归 |
-| `tests/py_bfs.py` | Python BFS 参照（独立 oracle；**不是** `test_main` 调用的脚本）|
+| `tests/freelist_contract_test.py` / `tests/freelist_n4096_test.py` | free-list 软件契约负控（A–D）/ 4096 边界全覆盖 |
+| `tests/dirty_set_test.py` / `dirty_concurrent_test.py` / `dirty_overflow_test.py` / `dirty_leftover_test.py` / `dirty_state.py` | 阶段 3A/3B：脏集、并发增量标记、溢出、残留屏障、收尾查脏 FIFO |
+| `tests/ctrl_spill_test.py` | `CTRL` 写重投递的溢出防护验证 |
+| `tests/dirty_api_test.py` | 阶段 3A 的 C 驱动 + ctypes 绑定接口验收（含 `--neg` 反向验证） |
+| `tests/py_bfs.py` | Python BFS 参照（独立 oracle，`run_gc.sh` 用） |
 | `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定，含 STATUS 与位图探针 |
 
 日志不在本目录，`run_gc.sh` 写入卡上 `logs/`。
@@ -49,7 +48,6 @@ FAT32，卷标 `USERDATA`。当前 rootfs 的 `/etc/fstab` 会自动挂载到 `/
 
 | 文件 | 说明 |
 |---|---|
-| `csrc/cmark.c` | 板上无 gcc，无法编译 |
 | `tools/debug/gic_dump.py`、`tools/debug/gic_irq_test.py` | GIC 诊断，可用 JTAG 读取同样寄存器 |
 | `tools/debug/irq_loss_test.sh` | 诊断用途，非验收 |
 
@@ -58,7 +56,7 @@ FAT32，卷标 `USERDATA`。当前 rootfs 的 `/etc/fstab` 会自动挂载到 `/
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - `image.ub` 非位级可复现（gzip 时间戳），以功能验证为准。
 
-> 三个随卡二进制（`bin/test_main`、`py/libfogccc.so`、`cmark`）的 SHA256 记录在 `artifacts/SHA256SUMS`。
+> 两个随卡二进制（`bin/test_main`、`py/libfogccc.so`）的 SHA256 记录在 `artifacts/SHA256SUMS`。
 
 > 用 `tools/make_manifest.ps1` 重新生成；CI 跑 `-Check`，二进制改了但 manifest 没更新会直接红。
 

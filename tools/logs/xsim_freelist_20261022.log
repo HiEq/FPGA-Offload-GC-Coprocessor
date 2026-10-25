@@ -1,0 +1,367 @@
+# note: HISTORICAL -- measured on the pre-id-ack RTL (the arm-and-consume/critical-path revision).  The current RTL is covered by tools/logs/host_reproduce.log; this file is the negative-control record for its own revision.
+﻿# command: $env:VIVADO_BIN=<vivado bin>; cmd /c "cd sim && run_freelist_tb.bat"   (standalone tb_freelist; not part of run_sim.bat)
+# bitstream: (simulation; no bitstream)   boot.bin: n/a
+# commit: n/a (DEV working copy, not a git checkout)
+# date: 2026-10-22
+#
+# Raised, not fixed: n=4096 mode=1 reports 273 errors from id 3936 to 4064 (every 32).
+# Unreachable from the CTRL spill-protection change: tb_freelist instantiates only
+# gc_bitmap + gc_freelist and neither file was touched (gc_freelist.v is dated 14:00,
+# the Phase-2 fix).  The documented regression (run_sim.bat -> tb_gc_top, incl. the
+# T-FREE end-to-end section) passes, and every board free-list check uses n <= 1024.
+
+=== xvlog ===
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/rtl/gc_bitmap.v" into library work
+INFO: [VRFC 10-311] analyzing module gc_bitmap
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/rtl/gc_freelist.v" into library work
+INFO: [VRFC 10-311] analyzing module gc_freelist
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_freelist.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_freelist
+=== xelab ===
+Vivado Simulator v2026.1
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_freelist -s freelist_tb --mt 8 
+INFO: [XSIM 43-3493] Using 8 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module work.gc_bitmap
+Compiling module work.gc_freelist
+Compiling module work.tb_freelist
+Built simulation snapshot freelist_tb
+=== xsim (normal) ===
+
+****** xsim v2026.1 (64-bit)
+  **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+  **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+  **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+  **** Start of session at: Thu Oct 22 20:36:44 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/freelist_tb/xsim_script.tcl
+# xsim {freelist_tb} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+[FREELIST] ==================== PASS (9 cases)
+$finish called at time : 746205 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_freelist.v" Line 210
+exit
+INFO: [Common 17-206] Exiting xsim at Thu Oct 22 20:36:46 2026...
+=== xvlog/xelab/xsim (negative control) ===
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/rtl/gc_bitmap.v" into library work
+INFO: [VRFC 10-311] analyzing module gc_bitmap
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/rtl/gc_freelist.v" into library work
+INFO: [VRFC 10-311] analyzing module gc_freelist
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_freelist.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_freelist
+Vivado Simulator v2026.1
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_freelist -s freelist_neg --mt 8 
+INFO: [XSIM 43-3493] Using 8 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module work.gc_bitmap
+Compiling module work.gc_freelist
+Compiling module work.tb_freelist
+Built simulation snapshot freelist_neg
+
+****** xsim v2026.1 (64-bit)
+  **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+  **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+  **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+  **** Start of session at: Thu Oct 22 20:36:51 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/freelist_neg/xsim_script.tcl
+# xsim {freelist_neg} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+[FREELIST][FAIL] n=1 mode=0 count=1 expect=0
+[FREELIST][FAIL] n=1 mode=0 id=0 got=1 exp=0
+[FREELIST][FAIL] n=1 mode=1 count=0 expect=1
+[FREELIST][FAIL] n=1 mode=1 id=0 got=0 exp=1
+[FREELIST][FAIL] n=32 mode=1 count=31 expect=32
+[FREELIST][FAIL] n=32 mode=1 id=0 got=0 exp=1
+[FREELIST][FAIL] n=33 mode=1 count=31 expect=33
+[FREELIST][FAIL] n=33 mode=1 id=0 got=0 exp=1
+[FREELIST][FAIL] n=33 mode=1 id=32 got=0 exp=1
+[FREELIST][FAIL] n=64 mode=2 count=34 expect=32
+[FREELIST][FAIL] n=64 mode=2 id=0 got=1 exp=0
+[FREELIST][FAIL] n=64 mode=2 id=32 got=1 exp=0
+[FREELIST][FAIL] n=65 mode=2 count=35 expect=32
+[FREELIST][FAIL] n=65 mode=2 id=0 got=1 exp=0
+[FREELIST][FAIL] n=65 mode=2 id=32 got=1 exp=0
+[FREELIST][FAIL] n=65 mode=2 id=64 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=0 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=32 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=64 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=96 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=128 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=160 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=192 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=224 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=256 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=288 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=320 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=352 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=384 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=416 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=448 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=480 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=512 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=544 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=576 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=608 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=640 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=672 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=704 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=736 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=768 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=800 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=832 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=864 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=896 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=928 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=960 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=992 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1024 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1056 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1088 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1120 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1152 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1184 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1216 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1248 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1280 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1312 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1344 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1376 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1408 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1440 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1472 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1504 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1536 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1568 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1600 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1632 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1664 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1696 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1728 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1760 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1792 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1824 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1856 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1888 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1920 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1952 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=1984 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=2016 got=1 exp=0
+[FREELIST][FAIL] n=4096 mode=3 id=2048 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2080 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2112 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2144 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2176 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2208 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2240 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2272 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2304 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2336 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2368 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2400 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2432 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2464 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2496 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2528 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2560 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2592 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2624 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2656 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2688 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2720 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2752 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2784 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2816 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2848 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2880 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2912 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2944 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=2976 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3008 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3040 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3072 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3104 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3136 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3168 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3200 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3232 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3264 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3296 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3328 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3360 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3392 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3424 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3456 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3488 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3520 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3552 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3584 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3616 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3648 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3680 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3712 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3744 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3776 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3808 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3840 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3872 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3904 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3936 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=3968 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=4000 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=4032 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=3 id=4064 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 count=3968 expect=4096
+[FREELIST][FAIL] n=4096 mode=1 id=0 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=32 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=64 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=96 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=128 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=160 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=192 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=224 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=256 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=288 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=320 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=352 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=384 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=416 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=448 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=480 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=512 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=544 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=576 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=608 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=640 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=672 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=704 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=736 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=768 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=800 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=832 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=864 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=896 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=928 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=960 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=992 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1024 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1056 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1088 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1120 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1152 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1184 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1216 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1248 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1280 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1312 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1344 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1376 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1408 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1440 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1472 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1504 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1536 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1568 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1600 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1632 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1664 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1696 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1728 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1760 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1792 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1824 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1856 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1888 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1920 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1952 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=1984 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2016 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2048 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2080 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2112 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2144 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2176 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2208 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2240 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2272 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2304 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2336 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2368 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2400 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2432 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2464 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2496 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2528 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2560 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2592 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2624 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2656 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2688 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2720 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2752 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2784 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2816 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2848 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2880 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2912 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2944 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=2976 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3008 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3040 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3072 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3104 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3136 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3168 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3200 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3232 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3264 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3296 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3328 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3360 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3392 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3424 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3456 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3488 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3520 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3552 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3584 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3616 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3648 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3680 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3712 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3744 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3776 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3808 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3840 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3872 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3904 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3936 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=3968 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=4000 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=4032 got=0 exp=1
+[FREELIST][FAIL] n=4096 mode=1 id=4064 got=0 exp=1
+[FREELIST][NEG] injected corruption detected (273 errors)
+$finish called at time : 743685 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_freelist.v" Line 210
+exit
+INFO: [Common 17-206] Exiting xsim at Thu Oct 22 20:36:53 2026...
+=== FREELIST TB DONE ===
+cache dir: C:\Users\wwwmt\Desktop\DEV-FPGA Offload GC Coprocessor\sim\..\..\Cache\freelist_tb

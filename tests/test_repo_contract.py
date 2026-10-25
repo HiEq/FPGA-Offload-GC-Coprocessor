@@ -16,7 +16,6 @@ REPO = Path(__file__).resolve().parents[1]
 BINARY_ALLOWED = {
     "artifacts/boot.scr",
     "artifacts/userdata/bin/test_main",
-    "artifacts/userdata/cmark",
     "artifacts/userdata/py/libfogccc.so",
 }
 MAX_TRACKED_BYTES = 1 << 20
@@ -27,6 +26,7 @@ STATUS_SIGNAL = {
     "REFDESYNC": "err_ref",
     "HDR": "err_hdr",
     "IDLE": "reg_idle",
+    "FREEBUSY": "reg_free_busy",
 }
 
 
@@ -55,7 +55,7 @@ def parse_readme_regs(text):
     return {
         int(offset, 16): name
         for offset, name in re.findall(
-            r"(?m)^\|\s*0x([0-9A-Fa-f]{2})\+?\s*\|\s*([A-Z][A-Z0-9_]*)\s*\|", text
+            r"(?m)^\|\s*0x([0-9A-Fa-f]{2,3})\+?\s*\|\s*([A-Z][A-Z0-9_]*)\s*\|", text
         )
     }
 
@@ -126,6 +126,7 @@ class RegisterMapTest(unittest.TestCase):
             self.header_index("OBJ_COUNT"),
             self.header_index("ROOT_COUNT"),
             self.header_index("BM_ADDR"),
+            self.header_index("DIRTY_PUSH"),
         }
         self.assertEqual(self.writes, expected)
 
@@ -134,6 +135,12 @@ class RegisterMapTest(unittest.TestCase):
 
     def test_root_list_window_matches_root_mem(self):
         regs = read("rtl/gc_regs.v")
+        # The window bounds may be named (localparam) instead of literal hex;
+        # resolve them before matching so the invariant is checked either way.
+        for name, val in re.findall(
+            r"localparam\s*\[11:0\]\s*(ROOT_AREA_\w+)\s*=\s*12'h([0-9A-Fa-f]{3})", regs
+        ):
+            regs = regs.replace(name, "12'h" + val)
         match = re.search(
             r"awaddr_r\s*>=\s*12'h([0-9A-Fa-f]{3})\)\s*&&\s*\(awaddr_r\s*<\s*12'h([0-9A-Fa-f]{3})",
             regs,
@@ -168,8 +175,8 @@ class StatusBitsTest(unittest.TestCase):
 
     def test_negative_control_reordered_concat_is_detected(self):
         regs = read("rtl/gc_regs.v")
-        mutated = re.sub(r"\{27'h0, reg_idle, err_hdr, err_ref, err_rd, err_ovf\}",
-                         "{27'h0, err_hdr, reg_idle, err_ref, err_rd, err_ovf}", regs)
+        mutated = re.sub(r"\{26'h0, reg_free_busy, reg_idle, err_hdr, err_ref, err_rd, err_ovf\}",
+                         "{26'h0, reg_free_busy, err_hdr, reg_idle, err_ref, err_rd, err_ovf}", regs)
         masks = parse_status_header(read("csrc/fpga_gc.h"))
         expected = [STATUS_SIGNAL[name] for _, name in sorted(masks.items())][::-1]
         self.assertNotEqual(parse_status_rtl(mutated), expected)
@@ -197,7 +204,8 @@ class MagicVersionTest(unittest.TestCase):
         regs = read("rtl/gc_regs.v")
         header = read("csrc/fpga_gc.h")
         expected = parse_hex(re.search(r"#define\s+FOGCCC_VERSION\s+(0x[0-9A-Fa-f]+)", header).group(1))
-        mutated = regs.replace("32'h0004_0000", "32'h0005_0000")
+        literal = "32'h%04x_%04x" % (expected >> 16, expected & 0xffff)
+        mutated = regs.replace(literal, "32'h0005_0000")
         self.assertNotEqual(
             parse_hex(re.search(r"12'h034:\s*RDATA\s*<=\s*32'h([0-9A-Fa-f_]+)", mutated).group(1)),
             expected,
@@ -307,7 +315,7 @@ class EvidenceTest(unittest.TestCase):
         readme = read("README.md")
         self.assertEqual(self.unquoted(readme), [],
                          "README does not quote a release-asset hash; the table drifted")
-        self.assertIn("sha256sum -c artifacts/SHA256SUMS.release", readme,
+        self.assertIn("sha256sum -c SHA256SUMS.release", readme,
                       "README must document how to verify the release assets")
 
     def test_negative_control_stale_hash_is_detected(self):

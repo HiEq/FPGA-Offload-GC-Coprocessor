@@ -49,7 +49,7 @@ findstr /C:"[AXITB] ==================== PASS" axi_tb.log >nul
 if errorlevel 1 goto :nobanner
 
 echo === AXI TB DONE ===
-echo cache dir: %CACHE%
+for %%I in ("%CACHE%") do echo cache dir: Cache\%%~nxI
 exit /b 0
 
 :nobanner

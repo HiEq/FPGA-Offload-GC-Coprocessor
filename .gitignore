@@ -37,34 +37,43 @@ Thumbs.db
 # 本地排错笔记（不推送）
 # AGENT_NOTES_pitfalls.md  (2026-10-19: now published -- the absolute paths were removed)
 
-# xsim 仿真运行产物（只保留 tb_gc_top.v / run_sim.bat 这两个源文件）
+# xsim 仿真运行产物（只保留 tb_*.v / run_*_tb.* / run_sim.* 等源文件）
 sim/xsim.dir/
 sim/*.log
 sim/*.jou
 sim/*.pb
 sim/*.wdb
+sim/out_*.txt
 sim/xsim_*.backup.*
 
 # board / serial transcripts
 tools/*.log
 
-# 工具日志（统一放 tools/logs/）；只让 README 引用的证据日志入库
+# 工具日志（统一放 tools/logs/）；只让文档引用的证据日志入库（固定名，重跑覆盖）
 tools/logs/*
 !tools/logs/.gitkeep
 !tools/logs/README.md
-!tools/logs/board_verify_*.log
-!tools/logs/cmark_sweep*.log
-!tools/logs/board_benchmark_*.txt
-!tools/logs/board_test_main_*.txt
-!tools/logs/board_gc_test_*.txt
-!tools/logs/board_irq_*.txt
-!tools/logs/xsim_*.log
+!tools/logs/host_*.log
+!tools/logs/board_freelist_n4096.log
+!tools/logs/board_repeat.log
+!tools/logs/board_test_main.log
+!tools/logs/board_gc_test.log
+!tools/logs/board_abort_test.log
+!tools/logs/board_abort_sweep.log
+!tools/logs/board_done_race.log
+!tools/logs/board_irq*.log
 !tools/logs/board_coldboot_*.log
-!tools/logs/board_coldboot_*.txt
-!tools/logs/board_abort_test_*.txt
-!tools/logs/board_abort_sweep_*.txt
-!tools/logs/board_done_race_*.txt
-!tools/logs/board_run_gc_*.txt
+!tools/logs/board_phase2_regression.log
+!tools/logs/board_phase2_regression.raw.log
+!tools/logs/board_phase3_*.log
+!tools/logs/board_regs_aww*.log
+!tools/logs/board_run_gc.log
+!tools/logs/board_dirty_*.log
+!tools/logs/board_three_way.log
+!tools/logs/board_barrier_verify*.log
+!tools/logs/board_v4*.log
+!tools/logs/tag_leak_probe_*.log
+!tools/logs/xsim_*.log
 tools/__pycache__/
 
 # 本地存档：改造前的 XSA/bitstream（17 MB，不入库）
@@ -100,3 +109,9 @@ driver/**/Module.symvers
 driver/**/modules.order
 driver/**/*.mod
 driver/**/*.mod.c
+
+# DEV-only process logs and boot-image backups (see tools/logs/README.md)
+tools/out/
+
+# 过程日志（时间戳 pair、一次性探针输出等）一律不入库：保留在本地；
+# 已退役的旧证据可从 git 历史回溯（`git log -- tools/logs/`）。

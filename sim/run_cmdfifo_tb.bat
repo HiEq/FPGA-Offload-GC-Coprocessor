@@ -52,7 +52,7 @@ findstr /C:"[CMDFIFO] ==================== PASS" cmdfifo_tb.log >nul
 if errorlevel 1 goto :nobanner
 
 echo === CMDFIFO TB DONE ===
-echo cache dir: %CACHE%
+for %%I in ("%CACHE%") do echo cache dir: Cache\%%~nxI
 exit /b 0
 
 :nobanner

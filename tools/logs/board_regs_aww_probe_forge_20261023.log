@@ -1,0 +1,30 @@
+# command: cd <datadir> && python3 -u tests/regs_aww_board_test.py
+# test: tools/tests/regs_aww_board_test.py md5 c111f51a7e92f5414f523e0cc174b235   (earlier revision)
+# bitstream: 81F2C277D1CF9F7DB4CC296A28D2303E   boot.bin: 39fe1040feaac1bf9ab00d45d8e0e6e699662df2031b64cc7d7370dacf11e321
+# commit: e4c1cde   VERSION=0x00040200
+# date: 2026-10-23
+# note: The observation that made the verdict loss-only: every round marks id 0 although it was
+# note: never pushed.  Its WDATA (0) is the first bitmap probe write, i.e. a register write whose
+# note: W beat was paired with a DIRTY_PUSH address.  Kept as the warm-side mismatch evidence.
+
+cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/regs_aww_boardd_test.py
+round 0  k=3  gap=True  occ=3 pushed=3 tag=2 | marked=3 drained=3 popped=3 | loss=[8] forged=[0]
+round 1  k=3  gap=False occ=4 pushed=4 tag=5 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 2  k=3  gap=False occ=4 pushed=4 tag=8 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 3  k=3  gap=False occ=4 pushed=4 tag=B | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 4  k=3  gap=False occ=4 pushed=4 tag=E | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 5  k=3  gap=False occ=4 pushed=4 tag=1 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 6  k=3  gap=False occ=4 pushed=4 tag=4 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 7  k=3  gap=False occ=4 pushed=4 tag=7 | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 8  k=3  gap=False occ=4 pushed=4 tag=A | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 9  k=3  gap=False occ=4 pushed=4 tag=D | marked=4 drained=4 popped=4 | loss=[] forged=[0]
+round 10 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 11 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 12 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 13 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+round 14 k=16 gap=False occ=17 pushed=17 tag=D | marked=17 drained=17 popped=17 | loss=[] forged=[0]
+cold round (first push sequence after the boot): loss=[8] forged=[0]
+warm rounds: loss in 0/14, forged in 14/14
+REGS_AWW_RESULT FAIL:warm
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

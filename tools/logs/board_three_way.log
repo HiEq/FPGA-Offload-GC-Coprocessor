@@ -1,0 +1,26 @@
+# command: cd /run/media/USERDATA-mmcblk0p2 && python3 -u tests/three_way.py
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 7c0f89c   VERSION=0x00040301
+# date: 2026-10-25
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/three_way.py; printf 'D''IAG_DONE\n'
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+  objects   mkd     HW us    C-u us    C-c us    Py ms  Cu/HW  Cc/HW  Py/HW  verdict
+ ----------------------------------------------------------------------------------------
+       10     9      44.3       7.0       3.3    0.859    0.2x    0.1x     19x  OK
+       50    47      48.7      27.2       7.6    2.326    0.6x    0.2x     48x  OK
+      100    96      57.1      56.7      16.2    4.441    1.0x    0.3x     78x  OK
+      500   474     113.7     262.9      69.7   21.419    2.3x    0.6x    188x  OK
+     1000   945     184.5     523.6     144.8   43.398    2.8x    0.8x    235x  OK
+     2000  1882     338.8    1062.6     321.8   84.906    3.1x    0.9x    251x  OK
+     4000  3766     647.1    2173.7     738.3  172.951    3.4x    1.1x    267x  OK
+
+ FPGA us = engine cycles only; C-u us = in-process C BFS on the same uncached DDR graph;
+ C-c us  = same BFS on a heap copy (cache-resident bound, copy not timed); Py ms = interpreter BFS.
+THREE_WAY_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

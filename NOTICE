@@ -45,6 +45,6 @@
 
 | 产物 | 建议 |
 | --- | --- |
-| `system_wrapper.bit`、`test_main`、`libfogccc.so`、`cmark` | 可以（本仓源码的产物，MIT）|
+| `system_wrapper.bit`、`test_main`、`libfogccc.so` | 可以（本仓源码的产物，MIT）|
 | `fogccc-irq.ko` | 可以，但必须**同时**提供对应源码（本仓已有 `driver/fogccc_irq.c`）|
 | `BOOT.BIN` / `image.ub` / `zynq_fsbl.elf` | 不要以 MIT 名义发布；如确需提供，单独说明上游许可证 |

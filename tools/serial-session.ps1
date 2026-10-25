@@ -5,6 +5,11 @@
 # print the tail. Used by serial_cmd.ps1 and serial_run_gc.ps1.
 # Waits take a $From offset so a stale prompt in the buffer cannot satisfy a new wait.
 #
+# BOOT-WINDOW RULE (2026-10-24): never write to the console while the board may be
+# booting -- any byte inside U-Boot's bootdelay aborts autoboot and drops the board
+# into `Zynq>`.  Probe by READING (Read-BoardSerial / Read-BoardSerialUntil) and only
+# write after `root@` or `login:` has been seen; if `Zynq>` shows up, send `boot`.
+#
 # NOT used by serial-monitor.ps1, on purpose: that file is a byte-identical
 # shared artifact with LINUX-FPGA\scripts\serial-monitor.ps1 (see its header) and
 # has a different job (interactive console, key forwarding, clock injection).

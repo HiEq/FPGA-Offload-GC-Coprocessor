@@ -1,0 +1,18 @@
+# command: python3 -u tests/barrier_verify_test.py   (card: v4.7 binaries, v4.5 PL)
+# bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 78a431a   VERSION=0x00040301   card: fogccc.py md5 6988cc1719e47686e7b4d314750057f3
+# date: 2026-10-25
+# note: marked ids verify True; an unmarked id and a mixed set verify False
+cd /run/media/USERDATA-mmcblk0p22 && python3 -u tests/barrier_verify_test.py; printf 'D''IAG_DONE\n'
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+full mark : marked=240 oracle=240 live=240 unmarked=16
+marked    : 16 ids -> True (expect True)
+unmarked  : id 3 -> False (expect False)
+mixed     : False (expect False)
+BARRIER_VERIFY_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

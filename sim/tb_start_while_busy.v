@@ -3,15 +3,12 @@
 // tb_start_while_busy.v — a second START while the engine is running must be
 // ignored, not flush the read engine under the running BFS.
 //
-// The mark engine only accepts START in S_IDLE.  The read engine used to
-// flush on every START, so a duplicate START dropped the current object's
-// in-flight reads and the engine waited forever for ref_got == ref_count.
+// The mark engine accepts START only in S_IDLE; a second START must not flush
+// the read engine under the running epoch.
 //
-// Graph: 64 objects.  Object 0 is the root with 32 references (1..32);
-// objects 1..32 have no refs; 33..63 are unreachable.  Expected MARKED = 33.
-// The long S_REFS_LOOP gives the AXI-Lite START write time to land inside it.
-//
-// Negative control: pre-fix RTL times out; fixed RTL reports DONE + 33.
+// Graph: 64 objects, root 0 has 32 references (1..32); 33..63 unreachable.
+// Expected MARKED = 33.  The long S_REFS_LOOP lets START land mid-run.
+// Negative control: the pre-fix RTL times out.
 // ============================================================
 module tb_start_while_busy;
 
@@ -246,8 +243,8 @@ module tb_start_while_busy;
         axil_write(12'h008, N);
         axil_write(12'h00C, 32'd1);
         axil_write(12'h040, 32'd0);
-        axil_write(12'h000, 32'd4);     // CLEAR_Q
-        axil_write(12'h000, 32'd1);     // START
+        axil_write(12'h000, 32'hA500_0004);  // CLEAR_Q (0xA50 marker)
+        axil_write(12'h000, 32'hA500_0001);  // START (0xA50 marker)
 
         // Wait until the engine is inside the long reference loop.
         wait_cnt = 0;
@@ -261,7 +258,7 @@ module tb_start_while_busy;
         end else begin
             // Duplicate START while busy: the engine must ignore it and the
             // read engine must not flush the current object's reads.
-            axil_write(12'h000, 32'd1);
+            axil_write(12'h000, 32'hA500_0001);
 
             wait_cnt = 0;
             while (!dut.w_done && wait_cnt < 400000) begin

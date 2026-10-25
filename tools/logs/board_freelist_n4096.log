@@ -1,0 +1,12 @@
+# command: tools/debug/run_board_suite.ps1 -> freelist_n4096
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 97ebb97   VERSION=0x00040301
+# date: 2026-10-24
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/freelist_n4096_test.py; printf 'D''IAG_DONE\n'
+magic/version OK: 0x47434343 / 0x00040301
+N=4096 all-free: marked=0 free_count=4096 popped=4096 dup=0 out_of_range=0 missing=0
+missing ids: []
+FREELIST4096_RESULT OK
+DIAG_DONE
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

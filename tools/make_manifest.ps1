@@ -15,8 +15,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $out  = Join-Path $root 'artifacts/SHA256SUMS'
 $files = @(
     'artifacts/userdata/bin/test_main',
-    'artifacts/userdata/py/libfogccc.so',
-    'artifacts/userdata/cmark'
+    'artifacts/userdata/py/libfogccc.so'
 )
 
 $lines = @()

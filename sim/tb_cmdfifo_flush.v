@@ -10,6 +10,12 @@
 // cycle (c0r <= c0w is overwritten by c0r <= c0r+1); the stale command
 // reaches ARADDR. The fixed RTL drops the queued commands and only the
 // pre-flush AR completes.
+//
+// Phase 2 repeats the pulse with cmd_valid asserted on both streams in the
+// pulse cycle itself. The flush must own the queue pointers that cycle:
+// c0r <= c0w and c0w <= c0w (no enqueue), so the same-cycle command is
+// dropped. Without that gate c0w advances past c0r and the next run issues
+// the aborted run's command.
 // ============================================================
 module tb_cmdfifo_flush;
 
@@ -91,10 +97,13 @@ module tb_cmdfifo_flush;
 
     // After the pulse, these addresses are queued old commands. The first
     // address (0x30000000) is the pre-flush AR that is allowed to complete.
+    // 0x30000020 / 0x30000120 are enqueued in the pulse cycle itself and must
+    // be dropped by the flush.
     always @(posedge clk) begin
         if (check && arvalid && arready) begin
             if (araddr == 32'h30000008 || araddr == 32'h30000010
-                || araddr == 32'h30000018) begin
+                || araddr == 32'h30000018 || araddr == 32'h30000020
+                || araddr == 32'h30000120) begin
                 $display("[CMDFIFO][FAIL] stale ARADDR=0x%08x at %0t", araddr, $time);
                 errors = errors + 1;
             end
@@ -138,14 +147,36 @@ module tb_cmdfifo_flush;
             @(negedge clk);
             arready = 1'b1;
             if (use_abort) abort = 1'b1; else run_start = 1'b1;
+            // Same-cycle enqueue: both streams present a command in the pulse
+            // cycle. The flush must drop them together with the queued ones.
+            c0a = 32'h30000020;
+            c1a = 32'h30000120;
+            c0v = 1'b1;
+            c1v = 1'b1;
             check = 1'b1;
             @(posedge clk);
+            if (!(c0v && c0r) || !(c1v && c1r)) begin
+                $display("[CMDFIFO][FAIL] same-cycle command was not handshaken (c0=%0b/%0b c1=%0b/%0b)",
+                         c0v, c0r, c1v, c1r);
+                errors = errors + 1;
+            end
             @(negedge clk);
+            c0v = 1'b0;
+            c1v = 1'b0;
             if (use_abort) abort = 1'b0; else run_start = 1'b0;
             repeat (4) @(negedge clk);
             check = 1'b0;
-            $display("[CMDFIFO] after pulse (%s): c0r=%0d c0w=%0d",
-                     use_abort ? "abort" : "run_start", dut.c0r, dut.c0w);
+            $display("[CMDFIFO] after pulse (%s): c0r=%0d c0w=%0d c1r=%0d c1w=%0d",
+                     use_abort ? "abort" : "run_start",
+                     dut.c0r, dut.c0w, dut.c1r, dut.c1w);
+            if (dut.c0w != dut.c0r) begin
+                $display("[CMDFIFO][FAIL] same-cycle c0 enqueue survived the flush");
+                errors = errors + 1;
+            end
+            if (dut.c1w != dut.c1r) begin
+                $display("[CMDFIFO][FAIL] same-cycle c1 enqueue survived the flush");
+                errors = errors + 1;
+            end
             repeat (4) @(negedge clk);
         end
     endtask
