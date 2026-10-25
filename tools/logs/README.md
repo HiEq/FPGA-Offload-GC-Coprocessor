@@ -12,7 +12,7 @@
 # date: <YYYY-MM-DD>
 ```
 
-若生成日志的**测试脚本本身晚于 `commit`**（例如刚改完测试再上板），在头里补一行把脚本钉死：
+若生成日志的**测试脚本本身晚于 commit**（例如刚改完测试再上板），在头里补一行把脚本钉死：
 
 ```
 # test: tools/tests/<name>.py md5 <md5>
@@ -25,6 +25,7 @@
 > 2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
 > `board_phase3_dirty_api.log` 与 `board_dirty_api.log` 记录的是同一脚本、同一镜像，已删除前者。
 > 2026-10-25：v4.5 镜像（根集可读回 + 写后校验）通过真实断电上电完成全链复验，启动文本见 `board_coldboot_20261025_v45.raw.log`；`board_coldboot_20261025.raw.log`（v4.4）与 10-24 的两份（v4.3）保留作对照。
+> 2026-10-25：v4.7 USERDATA（`barrier_verify` 哨兵修复）与 v4.6 发布镜像一起完成真实断电上电，启动文本见 `board_coldboot_20261025_v47.raw.log`。
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
@@ -63,8 +64,12 @@
 | `board_barrier_verify_neg.log` | 同一张卡上的修复前模块，正常 `0/1` 读回 | 普通路径两者一致（都在 0/1 上判断正确）；说明分歧只出现在哨兵 | AGENTS #26 |
 | `board_v47_main_dirty.log` | `test_main` + `dirty_api_test.py`（v4.7 回归）| `test_main` 3/3 `ALL PASS`；`DIRTY_API_RESULT OK` | AGENTS #26 |
 | `board_v47_regression.log` | `regs_aww --verify-effect`（v4.7 回归）| `VERIFY_EFFECT_RESULT OK`（暖轮 0/14 失败、0/14 需回退）⇒ 修复后的探针路径可用 | AGENTS #26 |
+| `board_coldboot_20261025_v47.raw.log` | v4.7 USERDATA 的真实断电上电，整段串口（只读）| U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:`；整机断电，非 reboot | README 冷启动 / AGENTS #28 |
+| `board_coldboot_verify_20261025_v47.log` | `serial_coldboot_verify.ps1`，该次上电后首跑 | `D1..D6=0`；卡上 `BOOT.BIN` sha256 `26fb8621…`；`VERSION=0x00040301`；`test_main` 3/3 `ALL PASS` | README 冷启动 / AGENTS #28 |
+| `board_v47_cold_barrier_verify.log` | `barrier_verify_test.py`，冷启动后 | `BARRIER_VERIFY_RESULT OK`；`py/fogccc.py` md5 `6988cc…`、`tests/regs_aww_board_test.py` md5 `7c36c6…` | AGENTS #26/#28 |
 | `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
 | `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 六组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
+| `host_read_mark.log` | `csrc/test_read_mark_host.c`（真实驱动 + 数组冒充寄存器块）| 忙引擎 → `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲 → 按位 `0/1` ⇒ `READ_MARK_RESULT OK`。负控（哨兵改成 0）→ `FAIL` | AGENTS #26（哨兵来源）|
 | `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
 | `xsim_dirtyflush_ungated_20261023.log` | `sim\run_sim.bat` | T-DIRTY-FLUSHSPILL：**无任何防护**的 RTL → `drained=0`/`marked=0`（2 errors）| AGENTS #19 负控 1 |
 | `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|

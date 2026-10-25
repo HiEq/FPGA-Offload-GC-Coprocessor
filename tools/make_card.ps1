@@ -18,4 +18,11 @@ Copy-Item (Join-Path $root 'python\fogccc.py') (Join-Path $dst 'py\fogccc.py') -
 Get-ChildItem $dst -Recurse -Directory -Filter '__pycache__' |
     Remove-Item -Recurse -Force
 
+# The card's BusyBox sh and python3 choke on CRLF; refuse to publish a copy with one.
+foreach ($f in Get-ChildItem $dst -Recurse -File -Include *.py,*.sh,*.txt) {
+    if ([Array]::IndexOf([IO.File]::ReadAllBytes($f.FullName), [byte]13) -ge 0) {
+        throw "CRLF in card copy: $($f.FullName)"
+    }
+}
+
 Write-Host 'card copies refreshed under artifacts/userdata'

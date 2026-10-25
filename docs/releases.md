@@ -1,11 +1,12 @@
 # 发布记录：变更内容、验证结果与已知限制
 
 Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容、验证结果与已知限制见下文。
+本页在 dev-hieq（开发线，含逐提交历史与证据）与 main（发布分支）上都可读；main 承载最近一次同步的 tag 树，之后可叠加仅文档/仓库卫生的提交，每次同步一个 squash 提交。
 证据日志位于 [`tools/logs/`](../tools/logs/README.md)，每份文件头记录命令、位流、BOOT 哈希、提交与日期。
 
-| 版本 | 日期 | 摘要 | tag |
+| 版本 | 日期 | 摘要 | 发布提交 |
 |---|---|---|---|
-| v4.7 | 2026-10-25 | `barrier_verify()` 把探针哨兵当作未验证（仅 USERDATA） | `78a431a` |
+| v4.7 | 2026-10-25 | `barrier_verify()` 把探针哨兵当作未验证（仅 USERDATA） | `30cfffc2` |
 | v4.6 | 2026-10-25 | 位图探针地址写后校验（仅 USERDATA） | `933d04bc` |
 | v4.5 | 2026-10-25 | 数据寄存器写后校验（根集可读回） | `a02f7ada` |
 | v4.4 | 2026-10-25 | 命令写携带目的地址标记 | `3a902b20` |
@@ -13,9 +14,9 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 | v4.2 | 2026-10-24 | 硬件 GC 标记（Phase 3A/3B） | `cc2f02b` |
 | v4.1 | 2026-10-20 | PL flush 修复（`run_start`/`abort` + 命令 FIFO） | `f9a6b5b` |
 
-`tag` 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
+发布提交列记录产生该版本资产的提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。v4.7 的 tag 已移到后续的 docs/test 提交（移除本地笔记 + 本轮审计修正）；表中的 `30cfffc2` 是产生发布资产的提交。
 
-GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.1` 仍是正式版，但不再是最新。
+GitHub Latest 指向 v4.7。v4.6 为上一个正式版；v4.2–v4.5 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
 
 ---
 
@@ -30,15 +31,19 @@ GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.
 
 **验证结果**
 
-- 宿主单测 6/6 `OK`；负控：对修复前的模块（`FOGCCC_PATH` 指向 `git show v4.6:python/fogccc.py`）同一套用例 2/6 失败（哨兵用例与“全哨兵”用例）。
+- 宿主单测 6/6 `OK`（`python3 tests/test_fogccc_binding.py -v`）；负控：对修复前的模块（`FOGCCC_PATH` 指向 `git show 933d04bc:python/fogccc.py`，v4.6 发布提交）同一套用例 2/6 失败（哨兵用例与“全哨兵”用例）。
 - 板级 `barrier_verify_test.py`：`BARRIER_VERIFY_RESULT OK`（`marked 16 -> True`、`unmarked id 3 -> False`、`mixed -> False`）。
 - 板上哨兵对照（同一张卡上同时加载修复前/后的 `fogccc.py`，`read_mark` 固定返回 `0xFFFFFFFF`）：修复前 `True`，修复后 `False`。
+- 哨兵来源由 `csrc/test_read_mark_host.c` 直接验证：用数组冒充寄存器块，`STATUS` 不带 `IDLE` 时真实的 `fpga_gc_read_mark()` 返回 `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲时按位返回 `0/1`。负控（把两处 `return 0xFFFFFFFF` 改成 0）同一用例 `FAIL`。该步已加入 `gate` 工作流。
 - 回归：`test_main` 3/3 `ALL PASS`、`dirty_api_test.py` `DIRTY_API_RESULT OK`、`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退）。
+- 真实断电上电（整机断电，非 reboot）：串口完整记录 U-Boot 2026.01 → Linux 6.18.10 → PetaLinux 2026.1 → `login:`（`tools/logs/board_coldboot_20261025_v47.raw.log`）。登录后 `D1..D6=0`，卡上 `BOOT.BIN` sha256 `26fb8621…` 与发布资产一致，`PL_GRAPH_NOMAP_OK`、`fpga_manager=operating`、`VERSION=0x00040301`，`test_main` 3/3 `ALL PASS`；卡上 `py/fogccc.py` md5 `6988cc…`、`tests/regs_aww_board_test.py` md5 `7c36c6…`，`barrier_verify_test.py` `BARRIER_VERIFY_RESULT OK`（`tools/logs/board_coldboot_verify_20261025_v47.log`、`board_v47_cold_barrier_verify.log`）。
+- 两个卡 zip 重打为 LF 并重传到 v4.7：`card-boot.zip` 5,951 B `f098dd1c…`、`card-userdata.zip` 94,305 B `7a5ba950…`；`SHA256SUMS.release` 同步。
 
 **已知限制**
 
 - `barrier_verify()` 仍是“必要但不充分”：epoch 之前就已标记的目标无法证明该容器被重扫，调用方应按本轮新可达的目标检查，或用全量计数/判据兜底。
-- 哨兵路径在板上没有确定性触发方式（需要引擎不空闲或读地址写不生效），板级证据用“固定返回哨兵的假 `read_mark`”构造；真实的“引擎忙”返回路径只由代码阅读与单测覆盖。
+- 哨兵路径在板上没有确定性触发方式（需要引擎不空闲或探针地址写不生效）：板级用“固定返回哨兵的假 `read_mark`”构造 Python 决策这一侧；哨兵本身由 `csrc/test_read_mark_host.c` 用真实驱动代码覆盖（`gate` 工作流执行）。
+- v4.7 的 tag 已移到后续的 docs/test 提交（移除本地笔记 `AGENT_NOTES_pitfalls.md` + 本轮审计修正）；`30cfffc2` 是产生发布资产的提交，main 的 #45（`0120f29`）也删除了该笔记。
 
 ---
 
@@ -81,7 +86,7 @@ GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.
 
 **已知限制**
 
-- 时序裕量较小：WNS/WHS 均为 `+0.049 ns`（根集读通道增加了一条路径），满足约束但接近临界。
+- 时序裕量较小：WNS/WHS 均为 +0.049 ns（根集读通道增加了一条路径），满足约束但接近临界。
 - `DIRTY_PUSH` 的 28 位巧合（外部 store 恰好携带 `0xA54` 标记且 `(tag,id)` 相同）仍无法从设备侧区分；当前寄存器集合中不存在可产生该模式的写操作，因此不可达。
 - 根集读回仅在引擎空闲时使用（驱动在写入根集之后、启动之前读取）；若在运行中并发读取，将与引擎争用同一读端口。
 

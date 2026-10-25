@@ -5,11 +5,11 @@ imported here with ``ctypes.CDLL`` stubbed out and ``barrier_verify`` is bound
 to a fake object that supplies ``read_mark``.  Set ``FOGCCC_PATH`` to test a
 different copy of the module (used for the negative control).
 
-    python3 -m unittest tests.test_fogccc_binding -v
+    python3 tests/test_fogccc_binding.py -v
 
     # negative control: the pre-fix reading of the sentinel
-    git show 4c0e0d5^:python/fogccc.py > /tmp/fogccc_old.py
-    FOGCCC_PATH=/tmp/fogccc_old.py python3 -m unittest tests.test_fogccc_binding -v
+    git show 933d04bc:python/fogccc.py > /tmp/fogccc_old.py
+    FOGCCC_PATH=/tmp/fogccc_old.py python3 tests/test_fogccc_binding.py -v
 """
 import importlib.util
 import os

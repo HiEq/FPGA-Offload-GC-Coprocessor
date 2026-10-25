@@ -42,7 +42,7 @@
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
 
 > 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
-> T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 `2` 会报 1588 条 `[AXI][FAIL]`
+> T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 2 会报 1588 条 `[AXI][FAIL]`
 > （而功能用例**照样通过**，因为存储模型不检查 ARSIZE）。
 > T6/T7/T8 的反向验证：把 `0x28` 读回改成常量 → T6 报 2 处 FAIL；把 `err_ovf`
 > 赋 0 → T7 `STATUS[0]=0`；把读主控的 `err` 去掉 → T8 `STATUS[1]=0`。
@@ -51,4 +51,4 @@
 > T-DIRTY 的反向验证：A0（去掉屏障 → `marked=0`）、B（按根路径去重 → obj10 漏标）、
 > RACE2（remark 前 flush → obj60 漏标）——三段都在同一 TB 内断言"必须发生的后果"。
 > 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
-> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
+> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS（当时的四测试二进制；卡上当前 `test_main` 为 3/3）。
