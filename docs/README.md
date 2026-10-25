@@ -10,5 +10,6 @@
 | [`simulation.md`](simulation.md) | 仿真用例矩阵与负控 |
 | [`board-usage.md`](board-usage.md) | 烧录、卡布局、串口工具、板上测试 |
 | [`performance-history.md`](performance-history.md) | 历史版本与优化手段（`historical/unverified`）|
+| [`releases.md`](releases.md) | 每个版本的变更、验证与已知边界（Release 页面只链到这里）|
 
 每个数字的出处（命令、位流/BOOT 哈希、提交、日期）写在 `tools/logs/` 对应日志的头里。

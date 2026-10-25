@@ -165,6 +165,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | `card-userdata.zip` | 解压到 USERDATA 根目录 | 88,184 B | `0bbe3465b27ae15f2f410aecb7c16c1adfa11c23ae535eace0a148b4012fca9b` |
 
 校验：四个二进制资产与 `SHA256SUMS.release` 置于同一目录，执行 `sha256sum -c SHA256SUMS.release`。
+每个版本的变更、验证与已知边界见 [`docs/releases.md`](docs/releases.md)。
 卡布局、烧录与上电步骤见 [`docs/board-usage.md`](docs/board-usage.md)。
 `card-userdata.zip` 的 `ko/fogccc-irq.ko` 与发布镜像的内核严格配对
 （`vermagic=6.18.10-xilinx-g4f7afe14f724`）。
