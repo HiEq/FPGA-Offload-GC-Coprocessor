@@ -408,10 +408,6 @@ CONFIG_mtd-utils=y
 # CONFIG_shadow-securetty-dbg is not set
 
 #
-# benchmark 
-#
-
-#
 # tests 
 #
 
