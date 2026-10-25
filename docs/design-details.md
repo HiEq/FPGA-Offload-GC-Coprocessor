@@ -9,12 +9,12 @@ Zynq-7000 XC7Z100
 PS（ARM A9）                          PL（100 MHz）
   host app / SW GC                     gc_top
   fpga_gc.c  ──── AXI-Lite ──────────►  ├── gc_regs        寄存器
-  fogccc.py                            ├── gc_mark_engine BFS FSM
+  fogccc.py                             ├── gc_mark_engine BFS FSM
   /dev/mem mmap ─ AXI HP (64-bit) ───►  ├── gc_bitmap      4096×32
-                                       ├── gc_queue       4096×12
-                                       ├── gc_freelist    free 扫描
-                                       ├── gc_dirty_fifo  脏边工作源
-                                       └── gc_axi_read    双流读主控
+                                        ├── gc_queue       4096×12
+                                        ├── gc_freelist    free 扫描
+                                        ├── gc_dirty_fifo  脏边工作源
+                                        └── gc_axi_read    双流读主控
 DDR3 @ 0x1E000000：对象图
 ```
 
