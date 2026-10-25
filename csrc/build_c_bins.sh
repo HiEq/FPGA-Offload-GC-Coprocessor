@@ -9,7 +9,7 @@
 # Why not the gcc inside the PetaLinux build tree: that cross-canadian gcc has a
 # broken relocated prefix (`-print-sysroot` returns /not/exist, and crtbeginS.o
 # only resolves to a bare name), so linking fails. The standalone SDK ships a
-# working compiler with its own --sysroot (see AGENT_NOTES_pitfalls.md F13).
+# working compiler with its own --sysroot (see docs/build.md).
 # After a successful build run tools/make_manifest.ps1 to refresh
 # artifacts/SHA256SUMS (it pins these three hashes).
 set -u
