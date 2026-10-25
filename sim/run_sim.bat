@@ -34,6 +34,8 @@ call "%XV%\xvlog.bat" ^
     "%SRC%\rtl\gc_axi_read.v" ^
     "%SRC%\rtl\gc_bitmap.v" ^
     "%SRC%\rtl\gc_queue.v" ^
+    "%SRC%\rtl\gc_freelist.v" ^
+    "%SRC%\rtl\gc_dirty_fifo.v" ^
     "%SRC%\rtl\gc_regs.v" ^
     "%SRC%\sim\axi_proto_check.v" ^
     "%SRC%\sim\tb_gc_top.v"
@@ -59,7 +61,7 @@ findstr /C:"[TB] ==================== PASS" xsim_tb.log >nul
 if errorlevel 1 goto :nopass
 
 echo === SIM DONE ===
-echo cache dir: %CACHE%
+for %%I in ("%CACHE%") do echo cache dir: Cache\%%~nxI
 exit /b 0
 
 :nopass

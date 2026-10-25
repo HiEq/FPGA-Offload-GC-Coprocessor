@@ -23,8 +23,10 @@ GRAPH_SIZE = 0x100000          # 1 MiB
 R_CTRL, R_OBJ_BASE, R_OBJ_COUNT, R_ROOT_COUNT = 0x00, 0x04, 0x08, 0x0C
 R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18, 0x1C, 0x40, 0x20
 R_BM_ADDR, R_BM_DATA = 0x24, 0x28
+R_FREE_COUNT, R_FREE_DATA = 0x38, 0x3C
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
+CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 HDR_BASE  = 0x0000
 N_MAX_HW  = 4096               # 12-bit object ids + 4096x32 bitmap
 MIN_CYCLES = 4096              # engine must at least clear the 4096-word bitmap
@@ -72,9 +74,9 @@ def main():
     _magic = rr(0x30)
     _ver   = rr(0x34)
     print("   MAGIC = 0x%08X   VERSION = 0x%08X" % (_magic, _ver))
-    if _magic != 0x47434343 or _ver != 0x00040000:
+    if _magic != 0x47434343 or _ver != 0x00040301:
         print("   ERROR: bitstream/software mismatch: MAGIC=0x%08X VERSION=0x%08X"
-              " (expected 0x47434343/0x00040000)" % (_magic, _ver))
+              " (expected 0x47434343/0x00040301)" % (_magic, _ver))
         return 1
     print("=" * 84)
 
@@ -134,11 +136,11 @@ def main():
         wr(R_ROOT_COUNT, len(roots))
         wr(R_OBJ_BASE,   GRAPH_BASE)
         wr(R_OBJ_COUNT,  n)
-        wr(R_CTRL, CTRL_CLEAR_Q)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_CLEAR_Q)
         time.sleep(0.002)
 
         t0 = time.time()
-        wr(R_CTRL, CTRL_START)
+        wr(R_CTRL, CTRL_WR_MARK | CTRL_START)
         # START is a posted write: read CTRL once to flush it, then poll DONE.
         # (Polling CYCLES alone mis-reported NO-RUN when two runs happened to
         # produce the same cycle count.)
@@ -150,8 +152,18 @@ def main():
             if rr(R_CTRL) & CTRL_DONE:
                 ran = True; break
             time.sleep(0.0002)
+        # Phase 2: the free-list scanner borrows the bitmap read port after
+        # DONE; wait for STATUS[5] to clear before any bitmap probe.
+        free_deadline = t0 + 3.0
+        while time.time() < free_deadline:
+            if (rr(R_STATUS) & 0x20) == 0:
+                break
+            time.sleep(0.0002)
+        free_count = rr(R_FREE_COUNT)
+        free_ids = [rr(R_FREE_DATA) & 0xFFF for _ in range(free_count)]
+
         ctrl    = rr(R_CTRL)
-        st_raw  = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr [4]=idle
+        st_raw  = rr(R_STATUS)          # [0]=overflow [1]=AXI err [2]=desync [3]=bad hdr [4]=idle [5]=free busy
         st      = st_raw & 0xF
         idle    = (st_raw >> 4) & 1
         q_tail  = rr(R_Q_TAIL)
@@ -205,6 +217,9 @@ def main():
         if sw_mkd != L:          fails.append("SW!=(%d vs %d)" % (sw_mkd, L))
         if sw_garb != 0:         fails.append("GARBAGE=%d" % sw_garb)
         if bm_bad != 0:          fails.append("BITMAP=%d" % bm_bad)
+        if free_count != (n - hw_mkd): fails.append("FREE=%d!=%d" % (free_count, n - hw_mkd))
+        if len(set(free_ids)) != len(free_ids): fails.append("FREE-DUP")
+        if any((x < L) or (x >= n) for x in free_ids): fails.append("FREE-RANGE")
         ok = (len(fails) == 0)
         verdict = "OK" if ok else "FAIL:" + ",".join(fails)
 
@@ -212,8 +227,8 @@ def main():
         rows.append(dict(t=t, n=n, live=L, garb=n - L, cyc=hw_cyc, hw_us=hw_us, build=t_build,
                          sw_ms=sw_s * 1000, speed=speed, hw=hw_mkd, sw=sw_mkd,
                          g=sw_garb, exp=L, ok=ok, verdict=verdict))
-        print("  [%2d/%2d] N=%4d exp=%4d | HW %9.2f us (%d cyc) | SW %8.2f ms | %6.1fx | build %6.1f ms | %s"
-              % (t, trials, n, L, hw_us, hw_cyc, sw_s * 1000, speed, t_build * 1000, verdict))
+        print("  [%2d/%2d] N=%6d exp=%6d | HW %11.2f us (%7d cyc) | free %5d | SW %10.2f ms | %7.1fx | build %7.1f ms | %s"
+              % (t, trials, n, L, hw_us, hw_cyc, free_count, sw_s * 1000, speed, t_build * 1000, verdict))
 
     task(96, "summarising")
 
@@ -224,13 +239,13 @@ def main():
     print("=" * 84)
     if not rows:
         print("  no trials completed"); return 1
-    hdr = " %5s %6s %6s %6s %12s %10s %9s %8s %6s %6s  %s" % (
+    hdr = " %5s %7s %7s %7s %12s %11s %10s %8s %6s %6s  %s" % (
           "trial", "N", "exp", "garb", "HW cycles", "HW us", "SW ms",
           "speedup", "HWmk", "SWmk", "verdict")
     print(hdr)
     print(" " + "-" * (len(hdr) - 1))
     for r in rows:
-        print(" %5d %6d %6d %6d %12d %10.2f %9.2f %7.1fx %6d %6d  %s"
+        print(" %5d %7d %7d %7d %12d %11.2f %10.2f %7.1fx %6d %6d  %s"
               % (r['t'], r['n'], r['exp'], r['garb'], r['cyc'], r['hw_us'],
                  r['sw_ms'], r['speed'], r['hw'], r['sw'], r['verdict']))
     print(" " + "-" * (len(hdr) - 1))

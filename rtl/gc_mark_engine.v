@@ -29,6 +29,13 @@ module gc_mark_engine (
     input  wire        q_empty,
     input  wire        q_full,
 
+    // ---- Phase 3A: 屏障脏集 (gc_dirty_fifo) ----
+    input  wire        dirty_empty,
+    input  wire [11:0] dirty_id,
+    input  wire        bm_keep,        // 1 = 保留位图 (增量 epoch)
+    output reg         dirty_pop = 1'b0,       // 1-cycle: 消费一个脏 id
+    output reg  [31:0] dirty_drained = 32'd0,  // 本 epoch 已消费条数 (start 清零)
+
     output wire [11:0] bm_raddr,            // 读地址 (组合, 1拍后 bm_rdata 有效)
     input  wire [31:0] bm_rdata,
     output reg  [11:0] bm_waddr = 12'd0,    // 写地址
@@ -62,7 +69,13 @@ module gc_mark_engine (
     output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 4096
 
 
-    output wire        engine_idle
+    output wire        engine_idle,
+
+    // The engine clears the object queue itself when the FSM accepts a start.
+    // A spilled CLEAR_Q (this board redelivers stores, not always adjacently)
+    // must not touch a running epoch; clearing the queue at the start instead
+    // keeps q_tail == marked even when a spilled START re-runs the graph.
+    output reg         q_clear = 1'b0
 );
 
     localparam [4:0]
@@ -90,7 +103,9 @@ module gc_mark_engine (
         S_PF_G1      = 5'd21,  // 预取: 取 ref_count
         S_PF_G2      = 5'd22,  // 预取: 取 ref_addr → 成为当前对象
         S_DONE       = 5'd23,
-        S_ROOT_CHK   = 5'd24;   // #5: 根节点查位图去重
+        S_ROOT_CHK   = 5'd24,   // #5: 根节点查位图去重
+        S_DIRTY_RD   = 5'd25,   // Phase 3A: 脏 id 查位图
+        S_DIRTY_PUSH = 5'd26;   // Phase 3A: 脏 id 置位(如未标) + 强制入队重扫
 
     // 25 个编码里 12 个在用, 13 个保留 (S_POP_WAIT / S_HDR_P1..P3 / S_HDR_G1..G2 /
     // S_REFS_PUSHW / S_PF_WAIT / S_PF_H1..H3 / S_PF_G1..G2). 这些分支不可达,
@@ -109,6 +124,7 @@ module gc_mark_engine (
     reg        ref_stop = 1'b0;
     reg [31:0] root_idx = 32'd0;
     reg [11:0] pending_obj = 12'd0;
+    reg [11:0] dirty_obj = 12'd0;       // Phase 3A: 正在处理的脏 id
     reg [31:0] cycles_r;
     reg [31:0] marked_r;
     reg [11:0] clr_ptr;
@@ -118,7 +134,8 @@ module gc_mark_engine (
 
     // 位图读地址: 组合输出, 和"取到引用值"同拍发出
     assign bm_raddr = (state == S_REFS_LOOP) ? rd_data[11:0] :
-                      (state == S_ROOT_CHK)  ? pending_obj  : 12'd0;
+                      (state == S_ROOT_CHK)  ? pending_obj  :
+                      (state == S_DIRTY_RD)  ? dirty_id     : 12'd0;
 
     // 引用阶段结束: 本对象 ref_count 笔数据全部取回
     // 命令由 issuer 独立发射, 与消费解耦
@@ -328,6 +345,7 @@ module gc_mark_engine (
         if (!rst_n) begin
             state        <= S_IDLE;
             done         <= 1'b0;      // #4: 复位值
+            q_clear      <= 1'b0;
             marked_count <= 32'h0;
             cycles       <= 32'h0;
             cycles_r     <= 32'h0;
@@ -357,6 +375,8 @@ module gc_mark_engine (
             q_push   <= 1'b0;
             bm_we    <= 1'b0;
             pf_take  <= 1'b0;
+            dirty_pop<= 1'b0;
+            q_clear  <= 1'b0;
 
             if (state != S_IDLE && state != S_DONE)
                 cycles_r <= cycles_r + 32'd1;
@@ -372,12 +392,15 @@ module gc_mark_engine (
                     if (start) begin
                         done     <= 1'b0;
                         root_idx <= 32'h0;
+                        q_clear  <= 1'b1;      // the run clears the object queue itself
                         clr_ptr  <= 12'h0;
                         err_ovf  <= 1'b0;
                         err_ref  <= 1'b0;
                         con_cnt  <= 32'd0;
+                        dirty_drained <= 32'd0;     // Phase 3A
                         prev_ref <= 32'hFFFFFFFF;   // #1: 每次 start 清空
-                        state    <= S_CLR_BM;
+                        // Phase 3A: bm_keep=1 保留上一轮标记 (增量 epoch)
+                        state    <= bm_keep ? S_RD_ROOT : S_CLR_BM;
                     end
                 end
 
@@ -459,7 +482,11 @@ module gc_mark_engine (
                         ref_stop     <= 1'b0;
                         pf_take      <= 1'b1;
                         state        <= S_REFS_LOOP;
-                    end else if (q_empty && (pf_iss == 3'd0) && (sc_state == SC_IDLE) && (dq_cnt == 4'd0)) begin
+                    end else if (!dirty_empty) begin
+                        // Phase 3A: 脏集也是工作来源 (队列满时由上面的 pf_cnt 分支自然让路)
+                        dirty_obj <= dirty_id;
+                        state     <= S_DIRTY_RD;
+                    end else if (q_empty && (pf_iss == 3'd0) && (sc_state == SC_IDLE) && (dq_cnt == 4'd0) && dirty_empty) begin
                         state <= S_DONE;
                     end
                 end
@@ -517,6 +544,43 @@ module gc_mark_engine (
 
                 S_PF_WAIT, S_PF_H1, S_PF_H2, S_PF_H3, S_PF_G1, S_PF_G2: begin
                     state <= S_POP;      // 不应到达 (保留编码以免改动状态表)
+                end
+
+                // ---- Phase 3A: 脏集消费 (强制重扫) ----
+                S_DIRTY_RD: begin
+                    // bm_raddr 组合输出 = dirty_obj (见 assign), 下一拍 bm_rdata 有效
+                    state <= S_DIRTY_PUSH;
+                end
+
+                S_DIRTY_PUSH: begin
+                    // 用 FIFO 的实时队头 (dirty_id): 判决、置位、入队、pop 同拍, 不会错位.
+                    dirty_obj <= dirty_id;          // 仅供观测/调试
+                    if (dirty_empty) begin
+                        // 队头已消失 (被消费/flush, B 并发下会真的发生): 不计不推
+                        state <= S_POP;
+                    end else if (q_full) begin
+                        state <= S_DIRTY_PUSH;      // 停等: 屏障记录不允许静默丢
+                    end else if (dirty_id >= obj_count) begin
+                        // 越界脏 id: 丢弃 (软件契约: 只推合法 id)
+                        dirty_pop     <= 1'b1;
+                        dirty_drained <= dirty_drained + 32'd1;
+                        state         <= S_POP;
+                    end else begin
+                        if (!bm_rdata[dirty_id[4:0]]) begin
+                            // 未标记: 置位并计数 (与根路径一致)
+                            bm_waddr <= dirty_id;
+                            bm_wdata <= 32'h1 << dirty_id[4:0];
+                            bm_we    <= 1'b1;
+                            marked_r <= marked_r + 32'd1;
+                        end
+                        // 已标记: 强制重扫 (不重复计数)
+                        q_push_data   <= dirty_id;
+                        q_push_addr   <= q_tail;
+                        q_push        <= 1'b1;
+                        dirty_pop     <= 1'b1;
+                        dirty_drained <= dirty_drained + 32'd1;
+                        state         <= S_POP;
+                    end
                 end
 
                 S_DONE: begin

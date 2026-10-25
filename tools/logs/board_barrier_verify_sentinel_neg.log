@@ -1,0 +1,12 @@
+# command: python3 -u sentinel_check.py   (loads py/fogccc.py and py_old/fogccc.py, both on the card)
+# bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 78a431a   VERSION=0x00040301   card: fogccc.py md5 6988cc1719e47686e7b4d314750057f3
+# date: 2026-10-25
+# note: fake read_mark returns 0xFFFFFFFF; pre-fix reports True, fixed reports False -- the regression this guards
+cd /run/media/USERDATA-mmcblk0p2/py_oldd && python3 -u sentinel_check.py; printf 'D''IAG_DONE\n'
+module  : /run/media/USERDATA-mmcblk0p2/py/fogccc.py (new) vs /run/media/USERDATA-mmcblk0p2/py_old/fogccc.py (pre-fix)
+marked 1         -> pre-fix True   fixed True 
+probe 0xFFFFFFFF -> pre-fix True   fixed False
+SENTINEL_CHECK_DONE
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2/py_old# 

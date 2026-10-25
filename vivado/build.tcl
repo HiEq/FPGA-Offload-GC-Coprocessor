@@ -15,6 +15,11 @@
 # ============================================================
 
 # ============ 配置 ============
+# 注: 构建日志里偶发的 "ERROR: [Common 17-354] Could not open 'C' for writing."
+# 来自 Vivado 自身的 webtalk 写入器 (路径被截断成裸 'C'; 每次构建 0~4 条, 与设计
+# 流程无关, 所有产物照常生成). 2026.1 已没有 set_param general.webtalk /
+# config_webtalk 命令, 因此在脚本里无法关闭; 详见 tools/out/*.log 记录.
+
 set PART      "xc7z100ffg900-2"
 set PROJ_NAME "fogccc_z7100"
 set SCRIPT_DIR [file dirname [file normalize [info script]]]

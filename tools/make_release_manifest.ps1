@@ -16,6 +16,9 @@ foreach ($n in $names) {
     $lines += "$h  $n"
 }
 if ($lines.Count -eq 0) { throw 'no release assets found in artifacts/' }
-[IO.File]::WriteAllLines($out, $lines, (New-Object System.Text.UTF8Encoding($false)))
+# LF, not Environment.NewLine: `sha256sum -c` on Linux treats a trailing CR as
+# part of the filename.
+[IO.File]::WriteAllText($out, (($lines -join "`n") + "`n"),
+    (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "wrote $out"
 $lines | ForEach-Object { Write-Host "  $_" }

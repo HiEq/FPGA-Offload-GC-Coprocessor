@@ -1,0 +1,62 @@
+# command: tools/debug/run_phase3_board.ps1 -> test_main
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 7c0f89c   VERSION=0x00040301
+# date: 2026-10-25
+
+cd /run/media/USERDATA-mmcblk0p2 && chmmod +x bin/test_main && ./bin/test_main; printf 'T''M=%s\n' $?
++--------------------------------------------+
+|  FOGCCC GC Coprocessor Test Suite          |
+|  Platform: Xilinx Zynq-7000 XC7Z100        |
++--------------------------------------------+
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+
+=============================================================
+  Test 1: correctness (FPGA vs C)
+=============================================================
+Objects    FPGA       C          verdict 
+---------- ---------- ---------- --------
+10         9          9          OK      
+50         47         47         OK      
+100        96         96         OK      
+500        474        474        OK      
+1000       945        945        OK      
+2000       1882       1882       OK      
+4000       3766       3766       OK      
+  Result: ALL PASS
+
+=============================================
+  Test 2: Cycle Graph
+=============================================
+  Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
+  Roots: {0, 3}
+  Expected: 4  SW: 4  FPGA: 4  => PASS
+
+=============================================
+  Test 3: duplicate roots
+=============================================
+  roots={0}      -> marked=183  STATUS=0x0
+  roots={0,0,0}  -> marked=183  STATUS=0x0
+  PASS (duplicate roots must not double count, expect 183 == 183)
+
+--- Hardware Statistics ---
+  Marked objects : 183
+  STATUS         : 0x0
+  HW cycles      : 6895
+  HW time        : 68.95 us (@100MHz)
+  Queue head/tail: 183 / 183 (depth=0)
+  Throughput     : 2.65 M objects/sec
+
+=============================================
+  SUMMARY
+=============================================
+  Test 1 (Correctness) : PASS
+  Test 2 (Cycle)       : PASS
+  Test 3 (Dup roots)   : PASS
+  -------------------------------------------
+  Overall: *** ALL PASS ***
+=============================================
+TM=0
+root@linux:/run/media/USERDATA-mmcblk0p2# 

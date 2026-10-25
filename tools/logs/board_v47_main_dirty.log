@@ -1,0 +1,26 @@
+# command: ./bin/test_main | tail -6; python3 -u tests/dirty_api_test.py
+# bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 78a431a   VERSION=0x00040301   card: fogccc.py md5 6988cc1719e47686e7b4d314750057f3
+# date: 2026-10-25
+# note: regression after the barrier_verify fix; binaries unchanged from v4.6
+cd /run/media/USERDATA-mmcblk0p2 && ./bbin/test_main | tail -6; python3 -u tests/dirty_api_test.py; printf 'D''IAG_DONE\\n'
+  Test 1 (Correctness) : PASS
+  Test 2 (Cycle)       : PASS
+  Test 3 (Dup roots)   : PASS
+  -------------------------------------------
+  Overall: *** ALL PASS ***
+=============================================
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+full mark : marked=494 oracle=494 live=494 STATUS=0x0
+verified push: [True, True] (expect True/True)
+acked push   : [True, True] (expect True/True)
+incremental: epoch_marked=6 (expect 6) cumulative=500 oracle=500 | pushed=6 popped=6 drained=6 | occ=0
+overflow  : occ=256 overflow=1 pushed=256 (expect 256 / 1 / 256)
+DIRTY_API_RESULT OK
+DIAG_DONE
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

@@ -1,0 +1,58 @@
+# command: sim\run_regs_aww_tb.bat
+# bitstream: n/a (simulation)
+# commit: 84a9de3   VERSION=0x00040200
+# date: 2026-10-24
+
+=== xvlog ===
+INFO: [VRFC 10-2263] Analyzing Verilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/rtl/gc_regs.v" into library work
+INFO: [VRFC 10-311] analyzing module gc_regs
+INFO: [VRFC 10-2263] Analyzing Verilog file "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_regs_aww.v" into library work
+INFO: [VRFC 10-311] analyzing module tb_regs_aww
+=== xelab ===
+Vivado Simulator v2026.1
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+Running: D:/AMDDesignTools/2026.1/Vivado/bin/unwrapped/win64.o/xelab.exe tb_regs_aww -s regs_aww_tb --mt 8 
+INFO: [XSIM 43-3493] Using 8 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module work.gc_regs
+Compiling module work.tb_regs_aww
+Built simulation snapshot regs_aww_tb
+=== xsim ===
+
+****** xsim v2026.1 (64-bit)
+  **** SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+  **** IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+  **** SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+  **** Start of session at: Sat Oct 24 16:50:49 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/regs_aww_tb/xsim_script.tcl
+# xsim {regs_aww_tb} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+[AW-W] tb_regs_aww: AW/W pairing contract of gc_regs
+[AW-W][INFO] push #1: id=40
+[AW-W] P1 matched pairs: pushes=1 last_id=40 obj_count=64 (expect 1/40/64)
+[AW-W][INFO] push #2: id=41
+[AW-W] P2 duplicated store: pushes=1 last_id=41 (expect 1/41)
+[AW-W] P3 W held with no pending AW: WREADY stayed low, obj_count=64 (expect 64)
+[AW-W][INFO] push #3: id=64
+[AW-W][INFO] foreign WDATA on 0x440 -> push #3 id=64 (a forged record)
+[AW-W][INFO] held W attributed to the next AW -> obj_count=0x0000beef (a mismatched write)
+[AW-W][INFO] push #4: id=42
+[AW-W] P5 ack: tag=3 id=42 (expect 3/42)
+[AW-W][INFO] push #5: id=64
+[AW-W] P6 forged push visible in the ack: tag=0 id=64 (expect 0/64)
+[AW-W] ==================== PASS ====================
+$finish called at time : 500 ns : File "C:/Users/wwwmt/Desktop/DEV-FPGA Offload GC Coprocessor/sim/tb_regs_aww.v" Line 300
+exit
+INFO: [Common 17-206] Exiting xsim at Sat Oct 24 16:50:51 2026...
+=== REGS AWW TB DONE ===
+cache dir: Cache\regs_aww_tb

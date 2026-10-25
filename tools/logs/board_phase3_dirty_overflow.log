@@ -1,0 +1,16 @@
+# command: tools/debug/run_phase3_board.ps1 -> tests/dirty_overflow_test.py
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 7c0f89c   VERSION=0x00040301
+# date: 2026-10-25
+
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_overflow_test.py
+magic/version OK: 0x47434343 / 0x00040301
+graph: n=1024 live=768 garbage=256 heavy=767 burst=400
+epoch 1 full mark: marked=768 (expect 768)
+epoch 2 burst: done=True live_samples=4 | occ=256 ovf=1 | pushed=342 popped=86 drained=86
+               logical pushes=430 (seed 30 + burst 400) -> accepted 342, dropped 88
+control (flag ignored, incremental): marked=824 oracle=912 missed=88
+fallback full mark: marked=912 oracle=912 | free=112 expect=112 | STATUS=0x10 ovf=0
+DIRTY_OVERFLOW_RESULT OK
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2# 

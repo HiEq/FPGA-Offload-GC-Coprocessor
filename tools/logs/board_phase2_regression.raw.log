@@ -1,0 +1,77 @@
+
+===== RAW: side table positive =====
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/side_table_test.py --hw --n 512 --seed 12345; printf 'R''C=%s\n' $$?
+SIDE_TABLE_HW graph n=512 live=384 edges=874 root=0 reachable=384 garbage=128 seed=12345
+SIDE_TABLE_HW PASS marked=384 free=128 cycles=9204 qtail=384
+RC=0
+root@linux:/run/media/USERDATA-mmcblk0p2# 
+
+===== RAW: side table negative control =====
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/side_table_test.py --hw --neg --n 512 --seed 12345; printf 'N''EGRRC=%s\n' $?
+SIDE_TABLE_HW graph n=512 live=384 edges=874 root=0 reachable=384 garbage=128 seed=12345
+SIDE_TABLE_HW negative control: victim=0 ref_count forced to 0
+SIDE_TABLE_HW neg marked=1 oracle=384 free=511/128 bitmap_bad=383 status=0x0 cycles=4135
+SIDE_TABLE_HW NEG-OK
+NEGRC=0
+root@linux:/run/media/USERDATA-mmcblk0p2# 
+
+===== RAW: gc_test sweep =====
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u gc_test.py 4096 8 2 --seed 12345; printf 'G''CRC=%s\n' $?
+====================================================================================
+ FOGCCC  FPGA mark  --  strict reliability + performance sweep
+   maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+   seed=12345   (replay exactly: --seed 12345)
+   expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+   regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x80000000
+   MAGIC = 0x47434343   VERSION = 0x00040301
+====================================================================================
+@@TASK 5 trial 1/8  N=2218  (expect 1663)
+  [ 1/ 8] N=  2218 exp=  1663 | HW      295.52 us (  29552 cyc) | free   555 | SW      76.82 ms |   260.0x | build   174.3 ms | OK
+@@TASK 15 trial 2/8  N=1997  (expect 1497)
+  [ 2/ 8] N=  1997 exp=  1497 | HW      274.87 us (  27487 cyc) | free   500 | SW      68.85 ms |   250.5x | build   170.0 ms | OK
+@@TASK 26 trial 3/8  N=1601  (expect 1200)
+  [ 3/ 8] N=  1601 exp=  1200 | HW      223.63 us (  22363 cyc) | free   401 | SW      54.60 ms |   244.1x | build   125.9 ms | OK
+@@TASK 36 trial 4/8  N=2811  (expect 2108)
+  [ 4/ 8] N=  2811 exp=  2108 | HW      364.48 us (  36448 cyc) | free   703 | SW      96.74 ms |   265.4x | build   221.7 ms | OK
+@@TASK 47 trial 5/8  N=1276  (expect 957)
+  [ 5/ 8] N=  1276 exp=   957 | HW      182.71 us (  18271 cyc) | free   319 | SW      44.34 ms |   242.7x | build   104.4 ms | OK
+@@TASK 58 trial 6/8  N=3960  (expect 2970)
+  [ 6/ 8] N=  3960 exp=  2970 | HW      504.38 us (  50438 cyc) | free   990 | SW     137.84 ms |   273.3x | build   307.7 ms | OK
+@@TASK 68 trial 7/8  N=1136  (expect 852)
+  [ 7/ 8] N=  1136 exp=   852 | HW      165.95 us (  16595 cyc) | free   284 | SW      39.01 ms |   235.1x | build    98.2 ms | OK
+@@TASK 79 trial 8/8  N=3303  (expect 2477)
+  [ 8/ 8] N=  3303 exp=  2477 | HW      421.33 us (  42133 cyc) | free   826 | SW     113.51 ms |   269.4x | build   256.9 ms | OK
+@@TASK 96 summarising
+
+====================================================================================
+ SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+ trial       N     exp    garb    HW cycles       HW us      SW ms  speedup   HWmk   SWmk  verdict
+ -------------------------------------------------------------------------------------------------
+     1    2218    1663     555        29552      295.52      76.82   260.0x   1663   1663  OK
+     2    1997    1497     500        27487      274.87      68.85   250.5x   1497   1497  OK
+     3    1601    1200     401        22363      223.63      54.60   244.1x   1200   1200  OK
+     4    2811    2108     703        36448      364.48      96.74   265.4x   2108   2108  OK
+     5    1276     957     319        18271      182.71      44.34   242.7x    957    957  OK
+     6    3960    2970     990        50438      504.38     137.84   273.3x   2970   2970  OK
+     7    1136     852     284        16595      165.95      39.01   235.1x    852    852  OK
+     8    3303    2477     826        42133      421.33     113.51   269.4x   2477   2477  OK
+ -------------------------------------------------------------------------------------------------
+  trials                : 8
+  skipped (graph too big): 0
+  seed                  : 12345   (replay: --seed 12345)
+  PASSED (all invariants): 8/8
+  total HW cycles        : 243287  (= 2432.87 us @100MHz)
+  end-to-end note        : graph build+write (Python) 182.4 ms avg vs HW 0.304 ms avg
+  total SW (Python)      : 631.71 ms
+  speedup min/avg/max    : 235.1x / 255.1x / 273.3x
+  N range                : 1136 .. 3960
+
+  NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+        correctness oracle + rough CPU cost bound, NOT an optimised
+        C implementation.  The rigorous hardware metric is the
+        deterministic HW cycle count @100MHz.
+====================================================================================
+@@TASK 100 done
+GCRC=0
+root@linux:/run/media/USERDATA-mmcblk0p2# 

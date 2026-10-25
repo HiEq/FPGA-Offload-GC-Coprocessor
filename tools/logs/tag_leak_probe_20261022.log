@@ -1,0 +1,83 @@
+# command: python3 -u /tmp/tag_leak_probe.py ; python3 -u /tmp/tag_leak_probe2.py   (board, root, /dev/mem)
+# bitstream: 529594D7B365317D07339B5EDB202A3F   boot.bin: 06f264a7… (Phase-2 image; this bitstream is JTAG-loaded)
+# commit: n/a (DEV working copy, not a git checkout)
+# date: 2026-10-22
+#
+# Probe of the DIRTY_PUSH tag rule (no epoch needed: only the dirty FIFO is used).
+# Probe 1: K=3 pushes per trial, flush between trials, tight vs. with a read-back
+#          (a bus barrier) after every push.
+# Probe 2: K=1/2/3, and K=3 with a real 10 ms gap between pushes; state read
+#          immediately and again 50 ms later.
+# Result: the write path redelivers a store twice and the copies are NOT always
+# adjacent, so one logical push can enqueue two records of the same id --
+# independent of pacing.  See README (Phase 3A/3B) and AGENTS.md #18.
+
+--- tag_leak_probe.py ---
+python3 -u /tmp/tag_leak_probe.py
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  tight: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+  paced: occ=4 pushed=4 (expected 3)
+TAG_LEAK_PROBE K=3 trials=20 tight_leaks=18 paced_leaks=17
+DIAG_DONE
+
+--- tag_leak_probe2.py ---
+python3 -u /tmp/tag_leak_probe2.py
+--- K=1 (a delayed redelivery cannot leak: nothing intervenes) ---
+K=1 gap=0ms tags=[12] | now occ=2 ovf=0 hwtag=C pushed=2 popped=0 | after50ms occ=2 pushed=2
+K=1 gap=0ms tags=[13] | now occ=2 ovf=0 hwtag=D pushed=2 popped=0 | after50ms occ=2 pushed=2
+K=1 gap=0ms tags=[14] | now occ=2 ovf=0 hwtag=E pushed=2 popped=0 | after50ms occ=2 pushed=2
+K=1 gap=0ms tags=[15] | now occ=2 ovf=0 hwtag=F pushed=2 popped=0 | after50ms occ=2 pushed=2
+K=1 gap=0ms tags=[0] | now occ=1 ovf=0 hwtag=0 pushed=1 popped=0 | after50ms occ=1 pushed=1
+K=1 gap=0ms tags=[1] | now occ=1 ovf=0 hwtag=1 pushed=1 popped=0 | after50ms occ=1 pushed=1
+--- K=2 tight ---
+K=2 gap=0ms tags=[2, 3] | now occ=3 ovf=0 hwtag=3 pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=2 gap=0ms tags=[4, 5] | now occ=3 ovf=0 hwtag=5 pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=2 gap=0ms tags=[6, 7] | now occ=3 ovf=0 hwtag=7 pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=2 gap=0ms tags=[8, 9] | now occ=3 ovf=0 hwtag=9 pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=2 gap=0ms tags=[10, 11] | now occ=3 ovf=0 hwtag=B pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=2 gap=0ms tags=[12, 13] | now occ=3 ovf=0 hwtag=D pushed=3 popped=0 | after50ms occ=3 pushed=3
+--- K=3 tight ---
+K=3 gap=0ms tags=[14, 15, 0] | now occ=4 ovf=0 hwtag=0 pushed=4 popped=0 | after50ms occ=4 pushed=4
+K=3 gap=0ms tags=[1, 2, 3] | now occ=3 ovf=0 hwtag=3 pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=3 gap=0ms tags=[4, 5, 6] | now occ=4 ovf=0 hwtag=6 pushed=4 popped=0 | after50ms occ=4 pushed=4
+K=3 gap=0ms tags=[7, 8, 9] | now occ=4 ovf=0 hwtag=9 pushed=4 popped=0 | after50ms occ=4 pushed=4
+--- K=3 with a real 10 ms gap ---
+K=3 gap=10ms tags=[10, 11, 12] | now occ=5 ovf=0 hwtag=C pushed=5 popped=0 | after50ms occ=5 pushed=5
+K=3 gap=10ms tags=[13, 14, 15] | now occ=5 ovf=0 hwtag=F pushed=5 popped=0 | after50ms occ=5 pushed=5
+K=3 gap=10ms tags=[0, 1, 2] | now occ=3 ovf=0 hwtag=2 pushed=3 popped=0 | after50ms occ=3 pushed=3
+K=3 gap=10ms tags=[3, 4, 5] | now occ=5 ovf=0 hwtag=5 pushed=5 popped=0 | after50ms occ=5 pushed=5
+SUMMARY K=1 occ=[2, 2, 2, 2, 1, 1] | K=2 occ=[3, 3, 3, 3, 3, 3] | K=3 occ=[4, 3, 4, 4] | K=3(10ms) occ=[5, 5, 3, 5]
+DIAG_DONE

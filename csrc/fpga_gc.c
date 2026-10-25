@@ -11,11 +11,6 @@
 #include <string.h>
 #include <time.h>
 
-/* Sentinel shared with the hardware: an errored/invalid reference is
- * 0xFFFFFFFF, and the object limit is the same 4096 the engine enforces. */
-#define GC_SW_MARK_ERR  0xFFFFFFFFu
-#define GC_MAX_OBJECTS  4096
-
 // ============================================================
 // 初始化
 // ============================================================
@@ -54,6 +49,8 @@ int fpga_gc_init(fpga_gc_t *dev) {
 
     dev->graph_paddr = (uint32_t)GRAPH_DDR_ADDR;
     dev->obj_count   = 0;
+    dev->dirty_tag       = 0;
+    dev->dirty_tag_valid = 0;   /* seeded from 0x444 on the first dirty push */
 
     /* Bitstream/software pairing: a wrong .bit must fail here, not inside a test. */
     {
@@ -189,42 +186,64 @@ int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
     free(ref_offs);
 
     dev->obj_count = n;
-    printf("[FOGCCC] Graph: %d objects, %u bytes, avg_refs=%d\n",
-           n, cur_off, avg_refs);
     return n;
 }
 
 // ============================================================
 // 设置根集
 // ============================================================
+/* A mispaired AXI-Lite W beat (platform AW/W reorder) can put a wrong value in
+ * a data register.  These registers are readable, so every config write is
+ * verified and retried; the root list gained a read path in this version. */
+static int reg_wr_verified(fpga_gc_t *dev, uint32_t off, uint32_t val) {
+    int i;
+    for (i = 0; i < 4; i++) {
+        dev->regs[off / 4] = val;
+        if (dev->regs[off / 4] == val)
+            return 0;
+    }
+    return -1;
+}
+
 void fpga_gc_set_roots(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
-    if (n_roots < 0)
-        n_roots = 0;
     // 寄存器地址已扩到 12 位: 0x40..0x43F 共 256 项
+    int i;
     if (n_roots > 256) {
         printf("WARNING: root count %d > 256, truncated\n", n_roots);
         n_roots = 256;
     }
-    for (int i = 0; i < n_roots; i++) {
-        dev->regs[(REG_ROOT_LIST + i * 4) / 4] = roots[i];
+    for (i = 0; i < n_roots; i++) {
+        uint32_t off = REG_ROOT_LIST + i * 4;
+        if (reg_wr_verified(dev, off, roots[i]) != 0)
+            printf("ERROR: root[%d] write did not stick (wrote %u, read %u)\n",
+                   i, roots[i], dev->regs[off / 4]);
     }
-    dev->regs[REG_ROOT_COUNT / 4] = (uint32_t)n_roots;
+    if (reg_wr_verified(dev, REG_ROOT_COUNT, (uint32_t)n_roots) != 0)
+        printf("ERROR: root_count write did not stick (read %u)\n",
+               dev->regs[REG_ROOT_COUNT / 4]);
 }
 
 // ============================================================
 // 启动FPGA标记, 等待完成
 // ============================================================
-uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
-    // 写入对象图参数
-    dev->regs[REG_OBJ_BASE  / 4] = dev->graph_paddr;
-    dev->regs[REG_OBJ_COUNT / 4] = (uint32_t)dev->obj_count;
+// keep=0: 全标记周期 (清位图 + 清脏集); keep=1: 增量 epoch (保留位图, **不清**脏集)
+static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
+    // 写入对象图参数（写后回读：W/AW 错配会写成错误的值）
+    if (reg_wr_verified(dev, REG_OBJ_BASE, dev->graph_paddr) != 0)
+        printf("ERROR: OBJ_BASE write did not stick (read 0x%08X)\n", dev->regs[REG_OBJ_BASE / 4]);
+    if (reg_wr_verified(dev, REG_OBJ_COUNT, (uint32_t)dev->obj_count) != 0)
+        printf("ERROR: OBJ_COUNT write did not stick (read %u)\n", dev->regs[REG_OBJ_COUNT / 4]);
 
-    // 清零队列 (位图由引擎在每轮 S_CLR_BM 自动清, CTRL[1] 已废弃无效)
-    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q;
+    // 清零队列 (位图由引擎在每轮 S_CLR_BM 自动清, CTRL[1] 已废弃无效)。
+    // 全标记必须与 DIRTY_FLUSH 同发: 阶段 3 的脏集 FIFO 跨进程存活, 残留的
+    // 屏障记录会让引擎强制重扫位图刚被清掉的位 -> 多标 + q_tail != marked。
+    // 板上复现与修复验证见 tools/tests/dirty_leftover_test.py / AGENTS #18。
+    // 增量 epoch 正相反: 保留位图与计数 (remark 收口前**绝不** flush)。
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_CLEAR_Q | (keep ? 0u : CTRL_DIRTY_FLUSH);
     usleep(200);  // 等200μs确保清零完成
 
-    // 启动
-    dev->regs[REG_CTRL / 4] = CTRL_START;
+    // 启动 (BM_KEEP 必须与 START 同一次写: 0x11)
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_START | (keep ? CTRL_BM_KEEP : 0u);
 
     // 关键: START 是 AXI-Lite posted write, 紧接着的读可能先于写生效,
     // 从而读到【上一轮遗留的 DONE=1】并直接返回旧结果.
@@ -238,7 +257,7 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
         if (--timeout == 0) {
             printf("ERROR: FPGA mark timeout after 10M polls; aborting the engine\n");
             /* abort 后等待 STATUS[4]=1（engine idle）再返回。 */
-            dev->regs[REG_CTRL / 4] = CTRL_ABORT;
+            dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_ABORT;
             if (fpga_gc_wait_idle(dev, 10000) != 0)
                 printf("ERROR: engine did not return to idle after abort\n");
             if (cycles_out) *cycles_out = 0;
@@ -246,11 +265,71 @@ uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
         }
     }
 
+    /* Phase 2: the free-list scanner borrows the bitmap read port after DONE.
+     * Wait for it before any bitmap probe / status snapshot. */
+    (void)fpga_gc_wait_freeidle(dev, 10000);
+
     uint32_t marked = dev->regs[REG_MARKED / 4];
     uint32_t cycles = dev->regs[REG_CYCLES / 4];
     if (cycles_out) *cycles_out = cycles;
     return marked;
 }
+
+uint32_t fpga_gc_mark(fpga_gc_t *dev, uint32_t *cycles_out) {
+    return mark_run(dev, 0u, cycles_out);
+}
+
+uint32_t fpga_gc_mark_incremental(fpga_gc_t *dev, uint32_t *cycles_out) {
+    return mark_run(dev, CTRL_BM_KEEP, cycles_out);
+}
+
+// ============================================================
+// Phase 3A: 屏障脏集
+// ============================================================
+void fpga_gc_dirty_push(fpga_gc_t *dev, uint32_t obj_id) {
+    /* 本板 AXI-Lite 写路径把每次 store 投递两遍, 且两遍不一定相邻, 所以每条逻辑
+     * 推送都必须换 tag; 硬件只忽略"与上一条相同"的投递 (README 屏障契约)。
+     * 首次推送从 0x444 回读最后被接受的 tag 起序号。 */
+    if (!dev->dirty_tag_valid) {
+        dev->dirty_tag       = (dev->regs[REG_DIRTY_STAT / 4] >> 16) & 0xFu;
+        dev->dirty_tag_valid = 1u;
+    }
+    dev->dirty_tag = (dev->dirty_tag + 1u) & 0xFu;
+    dev->regs[REG_DIRTY_PUSH / 4] = GC_PUSH_MARK | (dev->dirty_tag << 12) | (obj_id & 0xFFFu);
+}
+
+int fpga_gc_dirty_push_acked(fpga_gc_t *dev, uint32_t obj_id, int retries) {
+    /* AGENTS #20: the platform can pair a W beat with another store's address, so
+     * a pushed record can be forged (safe) or lost (unsafe).  0x444[31:20] carries
+     * the id the FIFO accepted and [19:16] its tag: only when both match the push
+     * we just issued did this id land.  A mismatch retries with a fresh tag (a
+     * repeated id is just a forced re-scan); a sticky overflow bit means the FIFO
+     * dropped it and the caller must full-mark. */
+    int i, j;
+    if (retries < 0)
+        retries = 0;
+    for (i = 0; i <= retries; i++) {
+        fpga_gc_dirty_push(dev, obj_id);
+        for (j = 0; j < 8; j++) {
+            uint32_t st = fpga_gc_dirty_status(dev);
+            if (st & (1u << 9))
+                return 0;
+            if ((((st >> 16) & 0xFu) == (dev->dirty_tag & 0xFu)) &&
+                (((st >> 20) & 0xFFFu) == (obj_id & 0xFFFu)))
+                return 1;
+        }
+    }
+    return 0;
+}
+
+void fpga_gc_dirty_flush(fpga_gc_t *dev) {
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_DIRTY_FLUSH;
+}
+
+uint32_t fpga_gc_dirty_status(fpga_gc_t *dev)  { return dev->regs[REG_DIRTY_STAT  / 4]; }
+uint32_t fpga_gc_dirty_drained(fpga_gc_t *dev) { return dev->regs[REG_DIRTY_DRAINED / 4]; }
+uint32_t fpga_gc_dirty_pushed(fpga_gc_t *dev)  { return dev->regs[REG_DIRTY_PUSHED / 4] & 0xFFFFu; }
+uint32_t fpga_gc_dirty_popped(fpga_gc_t *dev)  { return dev->regs[REG_DIRTY_POPPED / 4] & 0xFFFFu; }
 
 // ============================================================
 // 软件BFS标记 (对照组)
@@ -259,22 +338,13 @@ uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint
     uint8_t *base        = (uint8_t *)dev->graph_vaddr;
     uint32_t graph_paddr = dev->graph_paddr;
     int      n           = dev->obj_count;
-    uint32_t result      = GC_SW_MARK_ERR;
 
-    if (n == 0)
-        return 0;
-    if (n < 0 || n > GC_MAX_OBJECTS) {
-        printf("ERROR: software BFS object count %d is outside 0..%d\n",
-               n, GC_MAX_OBJECTS);
-        return GC_SW_MARK_ERR;
-    }
-
-    uint8_t  *marked = (uint8_t *)calloc((size_t)n, 1);
-    uint32_t *queue  = (uint32_t *)malloc((size_t)n * 4);
+    uint8_t  *marked = (uint8_t *)calloc(n, 1);
+    uint32_t *queue  = (uint32_t *)malloc(n * 4);
     if (!marked || !queue) {                 /* OOM must not segfault below */
         free(marked); free(queue);
         printf("ERROR: out of memory for the software BFS (n=%d)\n", n);
-        return GC_SW_MARK_ERR;
+        return 0xFFFFFFFF;
     }
     uint32_t  head = 0, tail = 0, count = 0;
 
@@ -296,53 +366,194 @@ uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint
         uint32_t hdr_off    = cur * 16;
         uint32_t ref_count  = *(uint32_t *)(base + hdr_off + 4);
         uint32_t ref_phys   = *(uint32_t *)(base + hdr_off + 8);
+        uint32_t ref_offset = ref_phys - graph_paddr;
 
-        // 与硬件 err_hdr 对齐: ref_count > 4096 是坏头, 不再继续读.
-        if (ref_count > (uint32_t)GC_MAX_OBJECTS) {
-            printf("ERROR: object %u ref_count %u exceeds %d (bad header)\n",
-                   cur, ref_count, GC_MAX_OBJECTS);
-            goto done;
-        }
-
-        if (ref_count > 0) {
-            if (ref_phys < graph_paddr) {
-                printf("ERROR: object %u ref_addr 0x%08X is below the graph\n",
-                       cur, ref_phys);
-                goto done;
-            }
-            uint32_t ref_offset = ref_phys - graph_paddr;
-            if (ref_offset > (uint32_t)GRAPH_MAP_SIZE ||
-                ref_count > ((uint32_t)GRAPH_MAP_SIZE - ref_offset) / 4u) {
-                printf("ERROR: object %u ref array 0x%08X+%u is outside the graph\n",
-                       cur, ref_phys, ref_count);
-                goto done;
-            }
-
-            // 遍历引用
-            for (uint32_t j = 0; j < ref_count; j++) {
-                uint32_t target = *(uint32_t *)(base + ref_offset + j * 4);
-                if (target == 0xFFFFFFFF) break;
-                if (target < (uint32_t)n && !marked[target]) {
-                    marked[target] = 1;
-                    queue[tail++] = target;
-                    count++;
-                }
+        // 遍历引用
+        for (uint32_t j = 0; j < ref_count; j++) {
+            uint32_t target = *(uint32_t *)(base + ref_offset + j * 4);
+            if (target == 0xFFFFFFFF) break;
+            if (target < (uint32_t)n && !marked[target]) {
+                marked[target] = 1;
+                queue[tail++] = target;
+                count++;
             }
         }
     }
 
-    result = count;
-
-done:
-    if (out && result != GC_SW_MARK_ERR)
-        memcpy(out, marked, (size_t)n);
+    if (out) memcpy(out, marked, (size_t)n);
     free(marked);
     free(queue);
-    return result;
+    return count;
 }
 
 uint32_t fpga_gc_sw_mark(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
     return fpga_gc_sw_mark_bits(dev, roots, n_roots, NULL);
+}
+
+// ============================================================
+// 同一张图、cache 驻留口径：拷到堆上并改写引用指针，只计 BFS。
+// 与 three_way.py 的 C-c 列同义（拷贝与指针修正不计时）。
+// ============================================================
+
+// ============================================================
+// 计时版：cached=0 走 DDR，cached=1 走堆副本（拷贝不计时）。
+// 返回标记数，*us_out 是 BFS 本体的微秒数（C 内 clock_gettime）。
+// ============================================================
+static uint32_t bfs_ddr(uint8_t *base, uint32_t gp, uint32_t n,
+                        uint32_t *roots, int n_roots,
+                        uint8_t *marked, uint32_t *queue) {
+    uint32_t head = 0, tail = 0, count = 0;
+    for (int i = 0; i < n_roots; i++) {
+        uint32_t r = roots[i];
+        if (r < n && !marked[r]) { marked[r] = 1; queue[tail++] = r; count++; }
+    }
+    while (head < tail) {
+        uint32_t cur = queue[head++];
+        uint32_t *h = (uint32_t *)(base + cur * 16u);
+        uint32_t rc = h[1];
+        uint32_t off = h[2] - gp;
+        for (uint32_t j = 0; j < rc; j++) {
+            uint32_t t = *(uint32_t *)(base + off + j * 4u);
+            if (t == 0xFFFFFFFFu) break;
+            if (t < n && !marked[t]) { marked[t] = 1; queue[tail++] = t; count++; }
+        }
+    }
+    return count;
+}
+
+static uint32_t bfs_heap(uint8_t *buf, uint32_t n,
+                         uint32_t *roots, int n_roots,
+                         uint8_t *marked, uint32_t *queue) {
+    uint32_t head = 0, tail = 0, count = 0;
+    for (int i = 0; i < n_roots; i++) {
+        uint32_t r = roots[i];
+        if (r < n && !marked[r]) { marked[r] = 1; queue[tail++] = r; count++; }
+    }
+    while (head < tail) {
+        uint32_t cur = queue[head++];
+        uint32_t *h = (uint32_t *)(buf + cur * 16u);
+        uint32_t rc = h[1];
+        uint32_t *refs = (uint32_t *)(uintptr_t)h[2];
+        for (uint32_t j = 0; j < rc; j++) {
+            uint32_t t = refs[j];
+            if (t == 0xFFFFFFFFu) break;
+            if (t < n && !marked[t]) { marked[t] = 1; queue[tail++] = t; count++; }
+        }
+    }
+    return count;
+}
+
+uint32_t fpga_gc_sw_mark_us(fpga_gc_t *dev, uint32_t *roots, int n_roots,
+                            int cached, double *us_out) {
+    uint8_t  *base = (uint8_t *)dev->graph_vaddr;
+    uint32_t  gp   = dev->graph_paddr;
+    uint32_t  n    = (uint32_t)dev->obj_count;
+    if (us_out) *us_out = 0.0;
+    if (n == 0) return 0;
+
+    uint8_t  *marked = (uint8_t *)calloc(n, 1);
+    uint32_t *queue  = (uint32_t *)malloc(n * 4u);
+    if (!marked || !queue) {
+        free(marked); free(queue);
+        printf("ERROR: out of memory for the software BFS (n=%u)\n", n);
+        return 0xFFFFFFFF;
+    }
+
+    uint8_t *buf = NULL;
+    if (cached) {
+        uint32_t used = n * 16u;
+        for (uint32_t i = 0; i < n; i++) {
+            uint32_t *h = (uint32_t *)(base + i * 16u);
+            uint32_t end = (h[2] - gp) + h[1] * 4u + 4u;
+            if (end > used) used = end;
+        }
+        if (used > GRAPH_MAP_SIZE) used = GRAPH_MAP_SIZE;
+        buf = (uint8_t *)malloc(used);
+        if (!buf) {
+            free(marked); free(queue);
+            printf("ERROR: out of memory for the cached copy\n");
+            return 0xFFFFFFFF;
+        }
+        memcpy(buf, base, used);
+        for (uint32_t i = 0; i < n; i++) {
+            uint32_t *h = (uint32_t *)(buf + i * 16u);
+            h[2] = (uint32_t)(uintptr_t)(buf + (h[2] - gp));
+        }
+    }
+
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    uint32_t count = cached
+        ? bfs_heap(buf, n, roots, n_roots, marked, queue)
+        : bfs_ddr(base, gp, n, roots, n_roots, marked, queue);
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    if (us_out)
+        *us_out = (t1.tv_sec - t0.tv_sec) * 1e6
+                + (t1.tv_nsec - t0.tv_nsec) / 1e3;
+
+    free(marked); free(queue); free(buf);
+    return count;
+}
+
+uint32_t fpga_gc_sw_mark_cached(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
+    uint8_t  *base = (uint8_t *)dev->graph_vaddr;
+    uint32_t  gp   = dev->graph_paddr;
+    uint32_t  n    = (uint32_t)dev->obj_count;
+    if (n == 0) return 0;
+
+    uint32_t used = n * 16u;
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t *h = (uint32_t *)(base + i * 16u);
+        uint32_t end = (h[2] - gp) + h[1] * 4u + 4u;
+        if (end > used) used = end;
+    }
+    if (used > GRAPH_MAP_SIZE) used = GRAPH_MAP_SIZE;
+
+    uint8_t *buf = (uint8_t *)malloc(used);
+    if (!buf) {
+        printf("ERROR: out of memory for the cached copy\n");
+        return 0xFFFFFFFF;
+    }
+    memcpy(buf, base, used);
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t *h = (uint32_t *)(buf + i * 16u);
+        h[2] = (uint32_t)(uintptr_t)(buf + (h[2] - gp));
+    }
+
+    uint8_t  *marked = (uint8_t *)calloc(n, 1);
+    uint32_t *queue  = (uint32_t *)malloc(n * 4u);
+    if (!marked || !queue) {
+        free(marked); free(queue); free(buf);
+        printf("ERROR: out of memory for the software BFS (n=%u)\n", n);
+        return 0xFFFFFFFF;
+    }
+
+    uint32_t head = 0, tail = 0, count = 0;
+    for (int i = 0; i < n_roots; i++) {
+        uint32_t r = roots[i];
+        if (r < n && !marked[r]) {
+            marked[r] = 1;
+            queue[tail++] = r;
+            count++;
+        }
+    }
+    while (head < tail) {
+        uint32_t cur  = queue[head++];
+        uint32_t *h   = (uint32_t *)(buf + cur * 16u);
+        uint32_t  rc  = h[1];
+        uint32_t *refs = (uint32_t *)(uintptr_t)h[2];
+        for (uint32_t j = 0; j < rc; j++) {
+            uint32_t t = refs[j];
+            if (t == 0xFFFFFFFFu) break;
+            if (t < n && !marked[t]) {
+                marked[t] = 1;
+                queue[tail++] = t;
+                count++;
+            }
+        }
+    }
+    free(marked); free(queue); free(buf);
+    return count;
 }
 
 // ============================================================
@@ -353,10 +564,14 @@ uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
     // The probe port is muxed to the register while the engine is idle.
     if (obj_id >= 4096)
         return 0;
+    (void)fpga_gc_wait_freeidle(dev, 10000);
     if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
         return 0xFFFFFFFF;
-    dev->regs[REG_BM_ADDR / 4] = obj_id;
-    (void)dev->regs[REG_BM_ADDR / 4];      // flush the posted write
+    /* Verify the probe address: a mispaired W beat here would probe the wrong
+     * object, and barrier_verify() would then miss a container that was never
+     * re-scanned.  reg_wr_verified() also flushes the posted write. */
+    if (reg_wr_verified(dev, REG_BM_ADDR, obj_id) != 0)
+        return 0xFFFFFFFF;
     uint32_t word = dev->regs[REG_BM_DATA / 4];
     return (word >> (obj_id & 31)) & 1U;
 }
@@ -374,6 +589,24 @@ int fpga_gc_wait_idle(fpga_gc_t *dev, int timeout_us) {
     return -1;
 }
 
+int fpga_gc_wait_freeidle(fpga_gc_t *dev, int timeout_us) {
+    for (int i = 0; i < timeout_us; i++) {
+        if (!(dev->regs[REG_STATUS / 4] & STATUS_FREEBUSY))
+            return 0;
+        usleep(1);
+    }
+    return -1;
+}
+
+uint32_t fpga_gc_free_count(fpga_gc_t *dev) {
+    return dev->regs[REG_FREE_COUNT / 4];
+}
+
+uint32_t fpga_gc_free_pop(fpga_gc_t *dev) {
+    /* Reading FREE_DATA pops one id from the PL free-list. */
+    return dev->regs[REG_FREE_DATA / 4] & 0xFFFU;
+}
+
 // ============================================================
 // Dump the bitmap (probe loop, one register round trip per object)
 // ============================================================
@@ -388,8 +621,9 @@ void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
     if (n % 64) printf("\n");
 }
 void fpga_gc_clear(fpga_gc_t *dev) {
-    // 位图由引擎在每轮 S_CLR_BM 自动清, 这里只需要清队列
-    dev->regs[REG_CTRL / 4] = CTRL_CLEAR_Q;
+    // 位图由引擎在每轮 S_CLR_BM 自动清; 队列和脏集都要清 (残留的屏障记录会
+    // 扰动下一次全标记, 见 fpga_gc_mark 的注释)
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_CLEAR_Q | CTRL_DIRTY_FLUSH;
 }
 // ============================================================
 // STATUS register: sticky error flags (cleared by the next start)

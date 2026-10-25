@@ -2,15 +2,10 @@
 // ============================================================
 // tb_stale_ar_flush.v — a pending AR must not survive run_start/abort.
 //
-// Covered hole: a command is already on ARVALID, but ARREADY is low when
-// START/ABORT pulses.  The old RTL cleared `flushing` as soon as no AR had
-// handshaken, then let the pending AR complete; its response was stored as
-// data for the new run.  The existing tb_cmdfifo_flush releases ARREADY in
-// the pulse cycle, so it misses this window.
-//
-// Pass: after the pulse, the stale response produces no data0_valid; a fresh
-// command still returns its own data.  Negative control: run this TB against
-// the pre-fix RTL and it reports "stale beat visible".
+// Condition: ARVALID is high with ARREADY low when START/ABORT pulses.
+// Pass: the stale response produces no data0_valid; a fresh command still
+// returns its own data.
+// Negative control: the pre-fix RTL reports "stale beat visible".
 // ============================================================
 module tb_stale_ar_flush;
 

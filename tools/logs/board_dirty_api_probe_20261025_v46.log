@@ -1,0 +1,36 @@
+# command: python3 -u tests/dirty_api_test.py; python3 -u tests/regs_aww_board_test.py --verify-effect
+# bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: f7d2433 (remote hash of the tree that ran)   VERSION=0x00040301   card binaries: v4.6
+# date: 2026-10-25
+# note: same session as board_regs_aww_cold_20261025_v46.log; exercises the verified bitmap probe (v4.6)
+cd /run/media/USERDATA-mmcblk0p2 && pytthon3 -u tests/dirty_api_test.py; python3 -u tests/regs_aww_board_test.py --veriffy-effect --warm-rounds 2; printf 'D''IAG_DONE\n'
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+full mark : marked=494 oracle=494 live=494 STATUS=0x0
+verified push: [True, True] (expect True/True)
+acked push   : [True, True] (expect True/True)
+incremental: epoch_marked=6 (expect 6) cumulative=500 oracle=500 | pushed=6 popped=6 drained=6 | occ=0
+overflow  : occ=256 overflow=1 pushed=256 (expect 256 / 1 / 256)
+DIRTY_API_RESULT OK
+DIAG_DONE
+mode: plain push
+round 0  k=3  verify=OK
+round 1  k=3  verify=OK
+round 2  k=3  verify=OK
+round 3  k=3  verify=OK
+round 4  k=3  verify=OK
+round 5  k=3  verify=OK
+round 6  k=3  verify=OK
+round 7  k=3  verify=OK
+round 8  k=3  verify=OK
+round 9  k=3  verify=OK
+round 10 k=16 verify=OK
+round 11 k=16 verify=OK
+round 12 k=16 verify=OK
+round 13 k=16 verify=OK
+round 14 k=16 verify=OK
+VERIFY_EFFECT_RESULT OK (warm: 0/14 failed, 0/14 needed the fallback)
+DIAG_DONE
