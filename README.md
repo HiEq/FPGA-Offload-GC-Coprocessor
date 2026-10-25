@@ -153,7 +153,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：`v4.6`（prerelease）。`v4.5` 保留为位图探针未校验的镜像。
+当前发布：`v4.6`（GitHub Latest）。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.1` 仍是正式版，但不再是最新。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 

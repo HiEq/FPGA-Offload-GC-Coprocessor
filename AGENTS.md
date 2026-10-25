@@ -66,7 +66,7 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
 
 25. **2026-10-25 — v4.6: the bitmap probe address is verified too.** `fpga_gc_read_mark()` wrote `BM_ADDR` (0x024) directly and only "flushed" it with a read; a mispaired W beat there would probe the wrong object, and `barrier_verify()` — the software backstop for #20 — could then miss a container that was never re-scanned. The probe address now goes through `reg_wr_verified()` and returns `0xFFFFFFFF` on failure (callers treat that as unknown: `barrier_verify` falls back to a full mark, `dump_marks` prints it). Card binaries rebuilt and pushed with `sync`; `BOOT.BIN`, bitstream and `VERSION=0x00040301` are unchanged.
     *Board (2026-10-25, real power-on).* The published `BOOT.BIN`/`image.ub` and the published `card-userdata.zip` were booted together, closing the gap #24 left (its v4.5 evidence started from a power-on that still had v4.4 binaries on the card until they were re-pushed mid-boot). Console `board_coldboot_20261025_v46.raw.log` (U-Boot -> Linux -> `login:`), then `board_coldboot_verify_20261025_v46.log`: `D1..D6=0`, card `BOOT.BIN` `26fb8621…` = the release asset, `PL_GRAPH_NOMAP_OK`, `fpga_manager=operating`, `VERSION=0x00040301`, `test_main` 3/3. The first `DIRTY_PUSH` sequence after that boot: `board_regs_aww_cold_20261025_v46.log`, cold round `loss=[] forged=[]`, warm `loss 0/14` / extra marks `0/14`, `REGS_AWW_RESULT OK`. Same session: `dirty_api_test` `DIRTY_API_RESULT OK` (`acked push: [True, True]`) and `regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK` (0/14 needed the fallback) — that path is the v4.6 probe write.
-    *Release.* `v4.6` (prerelease); only `card-userdata.zip` and `SHA256SUMS.release` change against v4.5.
+    *Release.* `v4.6` first shipped as a prerelease; promoted to the GitHub Latest release on 2026-10-25 (assets, tag and body unchanged). `v4.2`–`v4.5` stay prereleases as historical hardening snapshots; only `card-userdata.zip` and `SHA256SUMS.release` differ from v4.5.
 
 ---
 
@@ -559,6 +559,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
   artefacts (old RTL archives, old boot images, one-off test scripts) stay on the
   local machine; the numbers they produced live in the README's tables.
 - A Release body is a link to `docs/releases.md#vX.Y` plus the asset SHA256 table (and the checksum line). The change list, the verification summary and the known boundaries live in `docs/releases.md`, one section per version.
+- GitHub *Latest* points at the newest release that has the full evidence set (board chain plus a real power-on plus green CI), not at the newest date. Older releases are marked `prerelease` as historical snapshots, so the default download a visitor gets is the best-verified image.
 - Release assets are limited to what a stranger needs to boot and self-test:
   the boot-image pair, the two card zips, and the kernel module that matches the
   published image. Nothing else is attached.
