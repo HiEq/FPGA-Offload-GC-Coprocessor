@@ -7,7 +7,7 @@
 1 magic driver/fogccc_irq.c
 1 magic driver/plnx/fogccc-irq/files/fogccc-irq.c
 1 hostpath petalinux/BUILD_GUIDE.md
-6 magic python/fogccc.py
+7 magic python/fogccc.py
 2 magic rtl/gc_axi_read.v
 1 magic rtl/gc_bitmap.v
 1 magic rtl/gc_freelist.v

@@ -1,0 +1,17 @@
+# command: python3 -u neg_check.py   (in /run/media/USERDATA-mmcblk0p2/py_old, the pre-fix fogccc.py md5 10172827800ef4b6050a0c15e4299d4d)
+# bitstream: md5 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: sha256 26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea
+# commit: 78a431a   VERSION=0x00040301   card: fogccc.py md5 6988cc1719e47686e7b4d314750057f3
+# date: 2026-10-25
+# note: on ordinary 0/1 read_mark() results the pre-fix module agrees; the divergence needs the sentinel, see board_barrier_verify_sentinel_neg.log
+cd /run/media/USERDATA-mmcblk0p22/py_old && python3 -u neg_check.py; printf 'D''IAG_DONE\n'
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+live=240 unmarked=16
+marked   -> True (expect True)
+unmarked -> False (expect False)
+NEG_CHECK_DONE
+DIAG_DONE
+root@linux:/run/media/USERDATA-mmcblk0p2/py_old# 

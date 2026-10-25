@@ -5,6 +5,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.7 | 2026-10-25 | `barrier_verify()` 把探针哨兵当作未验证（仅 USERDATA） | `78a431a` |
 | v4.6 | 2026-10-25 | 位图探针地址写后校验（仅 USERDATA） | `933d04bc` |
 | v4.5 | 2026-10-25 | 数据寄存器写后校验（根集可读回） | `a02f7ada` |
 | v4.4 | 2026-10-25 | 命令写携带目的地址标记 | `3a902b20` |
@@ -15,6 +16,29 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 `tag` 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
 GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.1` 仍是正式版，但不再是最新。
+
+---
+
+## v4.7
+
+**变更内容**
+
+- `python/fogccc.py`：`barrier_verify()` 由 `all(read_mark(i) ...)` 改为 `read_mark(i) == 1`。v4.6 的探针在同一对象上可能返回 `0xFFFFFFFF`（引擎不空闲、等待超时、探针地址写未生效），旧判断把该哨兵当成真值，探针失败反而报告“全部已标记”，`barrier_verify()` 因此永远不会触发全标记回退。
+- 新增 `tests/test_fogccc_binding.py`（宿主单测，stub `ctypes.CDLL` + 假 `read_mark`）与 `tools/tests/barrier_verify_test.py`（板级：已标记 → `True`，未标记与混合集合 → `False`）。
+- `tools/make_card.ps1` 把 `regs_aww_board_test.py` 与 `barrier_verify_test.py` 一并放进卡上目录；`tools/make_release_zips.ps1` 在重打 zip 后自行刷新 `SHA256SUMS.release`，避免 zip 与清单脱节。
+- 仅 USERDATA 侧变化；`BOOT.BIN`、位流与 `VERSION=0x00040301` 未变。
+
+**验证结果**
+
+- 宿主单测 6/6 `OK`；负控：对修复前的模块（`FOGCCC_PATH` 指向 `git show v4.6:python/fogccc.py`）同一套用例 2/6 失败（哨兵用例与“全哨兵”用例）。
+- 板级 `barrier_verify_test.py`：`BARRIER_VERIFY_RESULT OK`（`marked 16 -> True`、`unmarked id 3 -> False`、`mixed -> False`）。
+- 板上哨兵对照（同一张卡上同时加载修复前/后的 `fogccc.py`，`read_mark` 固定返回 `0xFFFFFFFF`）：修复前 `True`，修复后 `False`。
+- 回归：`test_main` 3/3 `ALL PASS`、`dirty_api_test.py` `DIRTY_API_RESULT OK`、`regs_aww --verify-effect` `VERIFY_EFFECT_RESULT OK`（0/14 需回退）。
+
+**已知限制**
+
+- `barrier_verify()` 仍是“必要但不充分”：epoch 之前就已标记的目标无法证明该容器被重扫，调用方应按本轮新可达的目标检查，或用全量计数/判据兜底。
+- 哨兵路径在板上没有确定性触发方式（需要引擎不空闲或读地址写不生效），板级证据用“固定返回哨兵的假 `read_mark`”构造；真实的“引擎忙”返回路径只由代码阅读与单测覆盖。
 
 ---
 
@@ -34,7 +58,7 @@ GitHub Latest 指向 `v4.6`。`v4.2`–`v4.5` 为 prerelease 历史快照；`v4.
 
 **已知限制**
 
-- 探针校验失败时返回 `0xFFFFFFFF`，由调用方按“未知”处理：`barrier_verify()` 会退回全标记（安全方向），`dump_marks()` 会打印异常值（可见）。不是硬错误。
+- 探针校验失败时返回 `0xFFFFFFFF`：C 侧调用者按“未知”处理，不把它当标记；但 Python 绑定的 `barrier_verify()` 当时用 `all(...)` 判断，把哨兵当成真值，因此不会触发全标记回退——该缺陷由 v4.7 修复。
 - 其余限制同 v4.5。
 
 ---
