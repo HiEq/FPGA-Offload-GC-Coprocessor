@@ -56,7 +56,8 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 
 - 串口 921600 8N1；CPU 800 MHz，由 `BOOT.BIN` 里的 FSBL 在 DDR 初始化前设定。
 - FOGCCC 镜像内置 `lf` r42（`/usr/bin/lf`）与 `~/.config/lf/lfrc`。
-- 登录时由 `/etc/profile.d/00-tty-size.sh` 调 `/usr/local/bin/tty-size` 探测终端尺寸；状态栏的 `load_average` 项显示实时 CPU%（`/usr/lib/byobu/load_average`）。
+- 登录时由 `/etc/profile.d/99-byobu.sh` 在启动 byobu 之前调 `/usr/local/bin/tty-size` 探测终端尺寸，这是唯一的 `ESC[18t` 查询者；`/etc/profile` 里 Yocto 自带的 `resize` 在串口 tty 上已停用。
+- 状态栏的 `load_average` 项显示实时 CPU%（`/usr/lib/byobu/load_average`），右侧各项之间带空格。
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - `image.ub` 非位级可复现（gzip 时间戳），以功能验证为准。
 

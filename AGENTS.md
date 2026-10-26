@@ -100,6 +100,13 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
 
 ---
 
+32. **2026-10-26 — v4.10: one terminal-size probe at login, spaced status items.** The image carried two `tty-size` callers (`00-tty-size.sh` -> `/usr/local/bin/tty-size` and `99-byobu.sh` -> `/usr/bin/tty-size`, the byobu package's older copy). Each sent CSI 18 t; when one process read both answers the other got none, fell back to `/etc/byobu-console` (35 120) and overwrote the correct size, so tmux drew a 120-column status line on a 179-column terminal, and the spare answer reached the shell as typed input (`[8;56;179t`). Only `99-byobu.sh` calls it now, against `/usr/local/bin/tty-size`; `/usr/bin/tty-size` and `00-tty-size.sh` are gone, and the Yocto `/etc/profile` resize call is disabled for serial ttys (`resize >/dev/null` -> `: >/dev/null`). `tty-size` drains for another 1.5 s after a complete answer and falls back to `/run/tty-size.last` before `/etc/byobu-console`. The right-hand status items separate now: `load_average` prints `%2d%% `, `memory` and `disk` insert a space before their percentage. The same three items were patched on Arch's root (p3), outside this repository's release scope.
+    *Verified.* Full boot at 921600 captured from U-Boot to `linux login:`: one CSI 18 t per login, zero `[8;r;ct` answers in the output, zero `sh: [8:` (`tools/logs/board_boot_20261026_v410.raw.log`). After login `stty -F /dev/ttyPS0 size` is `56 179`, `tmux ... '#{client_width}x#{client_height}'` is `179x56`, the status line renders `17s 27% 2x0.80GHz 972MB 14% 432.1MB 23%`, `lf -version` is `r42` (`tools/logs/board_v410_verify.log`).
+    *Not verified.* A window resize without logging in again (the serial line carries no resize signal); a terminal that answers neither query keeps the remembered size.
+    *Release.* v4.10 (Latest); `image.ub` `aba07816..`; `BOOT.BIN`, `card-boot.zip` and `card-userdata.zip` unchanged from v4.9; v4.9 becomes a prerelease.
+
+---
+
 ---
 
 ## 0. Operating summary
@@ -592,7 +599,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
   local machine; the numbers they produced live in the README's tables.
 - A Release body is a link to `docs/releases.md#vX.Y` plus the asset SHA256 table (and the checksum line). The change list, the verification summary and the known boundaries live in `docs/releases.md`, one section per version.
 - GitHub *Latest* points at the newest release that has the full evidence set (board chain plus a real power-on plus green CI), not at the newest date. Older releases are marked prerelease as historical snapshots, so the default download a visitor gets is the best-verified image.
-- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.9 (800 MHz, 921600 console, `lf`, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
+- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.10 (800 MHz, 921600 console, `lf`, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
 - Release assets are limited to what a stranger needs to boot and self-test:
   the boot-image pair, the two card zips, and the kernel module that matches the
   published image. Nothing else is attached.

@@ -1,0 +1,19 @@
+# command: root@linux, then:
+#   stty -F /dev/ttyPS0 size
+#   tmux display -p '#{client_width}x#{client_height}'
+#   byobu-status tmux_right
+#   uname -r ; cat /proc/cmdline ; grep -m1 BogoMIPS /proc/cpuinfo ; lf -version
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd   image.ub: aba0781690eb61183a1138af0019393f13ef86513e1f5136ca91789b7b31a496
+# date: 2026-10-26
+# terminal emulator answered CSI 18 t with 8;56;179t
+
+stty size              56 179
+tmux client            179x56
+status right           17s 27% 2x0.80GHz 972MB 14% 432.1MB 23%
+CSI 18 t per login     1
+ESC[8;r;ct in output   0
+sh: [8: errors         0
+kernel                 6.18.10
+cmdline                console=ttyPS0,921600 earlycon
+BogoMIPS               399.99
+lf                      r42
