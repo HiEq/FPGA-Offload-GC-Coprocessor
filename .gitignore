@@ -116,3 +116,7 @@ tools/out/
 
 # 过程日志（时间戳 pair、一次性探针输出等）一律不入库：保留在本地；
 # 已退役的旧证据可从 git 历史回溯（`git log -- tools/logs/`）。
+
+# lf 二进制 5.6 MB，超过单文件 1 MiB 的入库上限；构建前从上游 lf r42
+# （lf-linux-arm.tar.gz）取二进制放到该路径。
+petalinux/project-spec/meta-user/recipes-core/images/files/lf

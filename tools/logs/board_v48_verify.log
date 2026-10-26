@@ -1,0 +1,23 @@
+# command: root@linux (empty password), then:
+#   tty; stty -a | head -1; echo TERM=$TERM; cat /proc/cmdline
+#   grep -m2 -i bogomips /proc/cpuinfo; ls -l /usr/bin/lf /home/root/.config/lf/lfrc
+#   lf -version; lf /etc (then q)
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: e0be9bb
+# date: 2026-10-26
+
+===ID===
+/dev/pts/1
+speed 38400 baud; rows 34; columns 120; line = 0;
+TERM=screen
+console=ttyPS0,921600 earlycon
+BogoMIPS: 399.99
+BogoMIPS: 399.99
+-rw-r--r--    1 root     root            98 Mar  9 12:34 /home/root/.config/lf/lfrc
+-rwxr-xr-x    1 root     root       5570744 Mar  9 12:34 /usr/bin/lf
+BATCH1_DONE
+root@linux:~# lf -version 2>&1 | head -3; echo BATCH2_DONE
+r42
+BATCH2_DONE
+root@linux:~# lf /etc
+<lf TUI opened on /etc and exited with q>
