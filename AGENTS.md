@@ -93,6 +93,13 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
 
 ---
 
+31. **2026-10-26 — two supported release channels: v4.7 (667 MHz) and v4.9 (800 MHz).** v4.8 carries the 800 MHz PLL but ships the login garble that v4.9 fixes, and v4.1–v4.6 are intermediate hardening snapshots of the same 667 MHz image. The Releases page now marks v4.1–v4.6 and v4.8 as prereleases (assets untouched and still downloadable) and leaves only v4.7 and v4.9 as releases, so a visitor sees exactly the two supported board configurations; v4.9 stays *Latest*. The full change history and every evidence log stay on dev-hieq.
+    *Verified.* `gh release view <tag> --json isPrerelease,assets` for v4.1–v4.9: prerelease true for v4.1–v4.6 and v4.8, false for v4.7 and v4.9; all nine releases keep their five assets; `gh release view --json tagName` reports `v4.9`.
+    *Not verified.* That the flags survive a later `gh release edit` on the same tag.
+    *Release.* Metadata only: no new tag, no asset change.
+
+---
+
 ---
 
 ## 0. Operating summary
@@ -585,6 +592,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
   local machine; the numbers they produced live in the README's tables.
 - A Release body is a link to `docs/releases.md#vX.Y` plus the asset SHA256 table (and the checksum line). The change list, the verification summary and the known boundaries live in `docs/releases.md`, one section per version.
 - GitHub *Latest* points at the newest release that has the full evidence set (board chain plus a real power-on plus green CI), not at the newest date. Older releases are marked prerelease as historical snapshots, so the default download a visitor gets is the best-verified image.
+- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.9 (800 MHz, 921600 console, `lf`, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
 - Release assets are limited to what a stranger needs to boot and self-test:
   the boot-image pair, the two card zips, and the kernel module that matches the
   published image. Nothing else is attached.
