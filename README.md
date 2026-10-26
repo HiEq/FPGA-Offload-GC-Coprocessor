@@ -155,7 +155,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.9（GitHub Latest）。v4.8 保留为正式版；v4.2–v4.7 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
+当前发布：v4.9（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6 与 v4.8 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
 v4.9 只改 FOGCCC 的登录体验：登录时探测终端尺寸、状态栏显示实时 CPU%；位流与 `VERSION=0x0004_0301` 不变。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
