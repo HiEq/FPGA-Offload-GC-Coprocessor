@@ -19,7 +19,7 @@
       见到 shell 提示符且控制台空闲时，用宿主 UTC 时间发一次 date -s
 
   用法：
-    watch-serial.bat / fogccc.bat         默认端口自动识别 115200
+    watch-serial.bat / fogccc.bat         默认端口自动识别 921600
     ... COM5                              指定端口
     ... -Port COM5 -Baud 921600
     ... -TimeStamp                        每行加 [+秒] 时间戳（测启动耗时）
@@ -42,7 +42,7 @@ param(
   [Parameter(Position = 0)]
   [string]$Port = 'auto',
   [Parameter(Position = 1)]
-  [int]   $Baud = 115200,
+  [int]   $Baud = 921600,
   [string]$Log,
   [switch]$TimeStamp,
   [switch]$NoInput,

@@ -9,8 +9,9 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 | 文件 | 大小 | 说明 |
 |---|---|---|
 | `BOOT.BIN` | 18.6 MB | FSBL + 比特流 + U-Boot |
-| `image.ub` | 43.2 MB | 内核 + 设备树 + initramfs |
-| `boot.scr` / `uEnv.txt` | — | U-Boot 启动脚本与默认环境 |
+| `image.ub` | 46.9 MB | 内核 + 设备树 + initramfs（内置 lf 与 921600 的 getty） |
+| `boot.scr` | 384 B | 只启动 FOGCCC 的 U-Boot 脚本（`console=ttyPS0,921600`），源文本 `boot-fogccc.cmd` |
+| `uEnv.txt` | 40 B | 默认环境 bootargs（921600）；启动脚本不读取 |
 | `system.dtb` | 18 KB | 设备树，与 `image.ub` 内的一致 |
 | `zynq_fsbl.elf` | 347 KB | 厂商 FSBL 原始 ELF，`BOOT.BIN` 的**构建输入**；考虑到版权问题暂不入库、不随 Release 发布 |
 | `mount_data.sh` | 1.2 KB | 板上把两个分区挂到 `/mnt/boot`、`/mnt/userdata` |
@@ -53,6 +54,8 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 
 ## 注意
 
+- 串口 921600 8N1；CPU 800 MHz，由 `BOOT.BIN` 里的 FSBL 在 DDR 初始化前设定。
+- FOGCCC 镜像内置 `lf` r42（`/usr/bin/lf`）与 `/home/root/.config/lf/lfrc`。
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - `image.ub` 非位级可复现（gzip 时间戳），以功能验证为准。
 
