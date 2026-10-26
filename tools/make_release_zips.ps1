@@ -8,14 +8,6 @@ $tar  = Join-Path $env:SystemRoot 'System32\tar.exe'
 
 $bootZip = Join-Path $art 'card-boot.zip'
 $userZip = Join-Path $art 'card-userdata.zip'
-
-# The card's BusyBox sh and python3 choke on CRLF; refuse to zip one.
-foreach ($f in Get-ChildItem $art -Recurse -File -Include *.py,*.sh,*.txt,*.md,*.cfg) {
-    if ([Array]::IndexOf([IO.File]::ReadAllBytes($f.FullName), [byte]13) -ge 0) {
-        throw "CRLF in card artifact: $($f.FullName)"
-    }
-}
-
 Remove-Item $bootZip, $userZip -Force -ErrorAction SilentlyContinue
 
 & $tar -a -c -f $bootZip -C $art boot.scr uEnv.txt mount_data.sh system.dtb

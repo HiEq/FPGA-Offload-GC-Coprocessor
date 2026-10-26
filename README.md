@@ -11,7 +11,7 @@
 由 PS 侧软件负责——本仓库提供寄存器与驱动接口，未接入语言运行时。stop-the-world，
 上限 4096 对象 / 1 MB 图区，测量范围仅标记与空闲扫描。
 
-> 当前证据：位流 `6D479244…` / `BOOT.BIN` `26fb8621…`；2026-10-25 v4.7 USERDATA 真实断电上电复验通过（`D1..D6=0`、`test_main` 3/3、`barrier_verify_test` OK）。
+> 当前证据：位流 `6D479244…` / `BOOT.BIN` `26fb8621…`，2026-10-25 冷启动复验。
 > 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
 > 测量口径与证据边界见 [`docs/measurement.md`](docs/measurement.md)。
 > CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
@@ -146,7 +146,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | 冷启动 `D1..D6` / `test_main` | 0 / 3/3（同一次上电的日志；卡上当前二进制）|
 | 阶段 2 / 阶段 3 | `PHASE2_PASS`、`CONTRACT_RESULT OK`、dirty 全套 OK、收尾 `occ=0` |
 | `run_gc.sh 4096 8 2` | 8/8 |
-| `abort_test` / `abort_sweep` / `done_race` | T1–T5 / 11/11 / P3 20/20 |
+| `abort_test` / `abort_sweep` / `done_race` | T1–T5 / 11/11 / P3 0/20 |
 | `three_way.py`（同图四方）| `THREE_WAY_RESULT OK` |
 | `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy` | PASS（负控对修复前 RTL 全部 FAIL）|
 
@@ -155,16 +155,16 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.7（GitHub Latest）。v4.6 保留为正式版；v4.2–v4.5 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
-v4.7 只改 USERDATA 侧（`barrier_verify()` 的哨兵判断）；`BOOT.BIN` 与 `image.ub` 与 v4.6 字节相同。
+当前发布：v4.8（GitHub Latest）。v4.7 保留为正式版；v4.2–v4.6 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
+v4.8 改 PS 侧：CPU 800 MHz、串口 921600、FOGCCC initramfs 内置 `lf` r42；位流不变（`VERSION=0x0004_0301`）。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea` |
-| `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
-| `card-boot.zip` | 解压到 BOOT 根目录 | 5,951 B | `f098dd1ca48d24cc27722a64eb8eff9c79d883eacac5d68ebe6e3233907a67fb` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd` |
+| `image.ub` | BOOT 分区根目录 | 46,937,283 B | `7c8c29b5b31b6a4eecfac41411f4ac3bb0563a9aff7d604f5498fe6e8272f793` |
+| `card-boot.zip` | 解压到 BOOT 根目录 | 5,176 B | `89abacd21d062ed24507761200267cfe1d0cbdb2e07655863f0eddbae2f349b3` |
 | `card-userdata.zip` | 解压到 USERDATA 根目录 | 94,305 B | `7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c` |
 
 校验：四个二进制资产与 `SHA256SUMS.release` 置于同一目录，执行 `sha256sum -c SHA256SUMS.release`。

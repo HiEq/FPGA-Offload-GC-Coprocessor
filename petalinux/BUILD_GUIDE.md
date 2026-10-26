@@ -4,12 +4,16 @@
 - **板卡**: OpenSoc OS-ZYNQ7100 Lite (XC7Z100)
 - **处理器**: ARM Cortex-A9 (双核)
 - **DDR3**: MT41K256M16 RE-125 (1GB)
-- **串口**: UART0 (MIO 14-15), CH340 USB, COM口, 115200波特率
+- **串口**: UART0 (MIO 14-15), CH340 USB, COM口, 921600 波特率（8N1）
 
 ## 前置条件
 - WSL2 Ubuntu 22.04
 - PetaLinux 2026.1 安装在 `~/xilinx/petalinux`
 - Vivado 2026.1 已编译 bitstream
+
+## lf 二进制（不入库）
+
+project-spec/meta-user/recipes-core/images/files/lf 是 5.6 MB 的静态 ARM 二进制，超过仓库单文件 1 MiB 上限，因此**不入库**。构建前从上游 lf r42 的 lf-linux-arm.tar.gz 解出 lf 放到该路径（lfrc 很小，已入库）。缺这个文件时 rootfs 后处理会直接失败并提示路径。
 
 ## 一条命令构建
 

@@ -1,1 +1,1 @@
-bootargs=console=ttyPS0,115200 earlycon
+bootargs=console=ttyPS0,921600 earlycon

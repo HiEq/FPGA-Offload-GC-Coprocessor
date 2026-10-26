@@ -1,0 +1,5 @@
+# FOGCCC initramfs 内置 lf 配置
+set hidden true
+set drawbox true
+set scrolloff 5
+set period 1
