@@ -55,7 +55,7 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 ## 注意
 
 - 串口 921600 8N1；CPU 800 MHz，由 `BOOT.BIN` 里的 FSBL 在 DDR 初始化前设定。
-- FOGCCC 镜像内置 `lf` r42（`/usr/bin/lf`）与 `/home/root/.config/lf/lfrc`。
+- FOGCCC 镜像内置 `lf` r42（`/usr/bin/lf`）与 `~/.config/lf/lfrc`。
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - `image.ub` 非位级可复现（gzip 时间戳），以功能验证为准。
 

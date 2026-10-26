@@ -155,17 +155,17 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.7（GitHub Latest）。v4.6 保留为正式版；v4.2–v4.5 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
-v4.7 只改 USERDATA 侧（`barrier_verify()` 的哨兵判断）；`BOOT.BIN` 与 `image.ub` 与 v4.6 字节相同。
+当前发布：v4.8（GitHub Latest）。v4.7 保留为正式版；v4.2–v4.6 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
+v4.8 改 PS 侧：CPU 800 MHz、串口 921600、FOGCCC initramfs 内置 `lf` r42；位流不变（`VERSION=0x0004_0301`）。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
-| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `26fb862110f3a7ad43185dc85dfa909e8c7c4e538e983d460dcd0add45c9a5ea` |
-| `image.ub` | BOOT 分区根目录 | 43,295,771 B | `5b66851fdbfa44bca96f5ad7b7c881acbac2d993ca3e2211766a6cb05d887644` |
-| `card-boot.zip` | 解压到 BOOT 根目录 | 5,952 B | `9e555af07027789080487247247bc55d942febd4e324ce5b6ba44340edbba642` |
-| `card-userdata.zip` | 解压到 USERDATA 根目录 | 94,310 B | `94b3019d12c926eeec6aa46388da8b179d7c65517fabc3cf3db2cce3f43e168a` |
+| `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd` |
+| `image.ub` | BOOT 分区根目录 | 46,937,283 B | `7c8c29b5b31b6a4eecfac41411f4ac3bb0563a9aff7d604f5498fe6e8272f793` |
+| `card-boot.zip` | 解压到 BOOT 根目录 | 5,176 B | `89abacd21d062ed24507761200267cfe1d0cbdb2e07655863f0eddbae2f349b3` |
+| `card-userdata.zip` | 解压到 USERDATA 根目录 | 94,305 B | `7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c` |
 
 校验：四个二进制资产与 `SHA256SUMS.release` 置于同一目录，执行 `sha256sum -c SHA256SUMS.release`。
 每个版本的变更内容、验证结果与已知限制见 [`docs/releases.md`](docs/releases.md)。

@@ -8,6 +8,8 @@ FOGCCC_FILES := "${THISDIR}/files"
 ROOTFS_POSTPROCESS_COMMAND += "fogccc_postprocess; "
 
 fogccc_postprocess() {
+    # files/lf 不入库（5.6 MB，超过单文件 1 MiB 的上限）
+    test -f /lf || bbfatal "lf missing: put lf r42 (lf-linux-arm) at \/lf"
     sed -i 's/start_getty 115200 ttyPS0/start_getty 921600 ttyPS0/' ${IMAGE_ROOTFS}/etc/inittab
     install -d ${IMAGE_ROOTFS}/usr/bin
     install -m 0755 ${FOGCCC_FILES}/lf ${IMAGE_ROOTFS}/usr/bin/lf

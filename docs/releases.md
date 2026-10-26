@@ -27,7 +27,7 @@ GitHub Latest 指向 v4.8。v4.7 为上一个正式版；v4.2–v4.6 为 prerele
 
 - `BOOT.BIN`：FSBL 的 `ps7_init` 把 `ARM_PLL_CTRL(0xF8000100)[18:12]` 从 40（33.333 MHz x 40 / 2 = 666.67 MHz）改为 48（800 MHz），并把 U-Boot 默认环境的 `baudrate` 从 115200 改为 921600。位流未变（`VERSION=0x0004_0301`），与原镜像逐字节比较只有 10 字节不同。
 - `image.ub`：用 `petalinux/` 重建。`CONFIG_SUBSYSTEM_SERIAL_PS7_UART_0_BAUDRATE_921600=y`、`CONFIG_SUBSYSTEM_USER_CMDLINE="console=ttyPS0,921600 earlycon"`。Petalinux 的这个选项只喂 U-Boot 与设备树，不驱动 `sysvinit-inittab` 生成的 `/etc/inittab`，所以另加 `ROOTFS_POSTPROCESS_COMMAND` 把 `start_getty 115200 ttyPS0` 改成 921600——不改这一行，getty 启动时会把 tty 改回 115200。
-- FOGCCC 是 initramfs，根文件系统不可持久化：`lf` r42（静态 arm EABI5，5,570,744 B）和 `/home/root/.config/lf/lfrc` 由 `project-spec/meta-user/recipes-core/images/files/` 加 image bbappend 打进 initramfs。
+- FOGCCC 是 initramfs，根文件系统不可持久化：`lf` r42（静态 arm EABI5，5,570,744 B）和 root 家目录下的 `.config/lf/lfrc` 由 `project-spec/meta-user/recipes-core/images/files/` 加 image bbappend 打进 initramfs。
 - `artifacts/boot.scr` 换成只启动 FOGCCC 的脚本（`console=ttyPS0,921600`，源文本 `artifacts/boot-fogccc.cmd`）；`uEnv.txt` 同步 921600。`card-userdata.zip` 与 v4.7 逐字节相同。
 - `tools/serial-monitor.ps1` / `tools/watch-serial.bat` 默认波特率改为 921600。
 
