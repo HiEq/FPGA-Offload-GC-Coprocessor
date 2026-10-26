@@ -155,16 +155,16 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.8（GitHub Latest）。v4.7 保留为正式版；v4.2–v4.6 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
-v4.8 改 PS 侧：CPU 800 MHz、串口 921600、FOGCCC initramfs 内置 `lf` r42；位流不变（`VERSION=0x0004_0301`）。
+当前发布：v4.9（GitHub Latest）。v4.8 保留为正式版；v4.2–v4.7 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
+v4.9 只改 FOGCCC 的登录体验：登录时探测终端尺寸、状态栏显示实时 CPU%；位流与 `VERSION=0x0004_0301` 不变。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd` |
-| `image.ub` | BOOT 分区根目录 | 46,937,283 B | `7c8c29b5b31b6a4eecfac41411f4ac3bb0563a9aff7d604f5498fe6e8272f793` |
-| `card-boot.zip` | 解压到 BOOT 根目录 | 5,176 B | `89abacd21d062ed24507761200267cfe1d0cbdb2e07655863f0eddbae2f349b3` |
+| `image.ub` | BOOT 分区根目录 | 47,041,467 B | `f9089048088781c94706f3c65fb6e077aa2cb82a26711de3574323227bd3cb02` |
+| `card-boot.zip` | 解压到 BOOT 根目录 | 5,176 B | `6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a` |
 | `card-userdata.zip` | 解压到 USERDATA 根目录 | 94,305 B | `7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c` |
 
 校验：四个二进制资产与 `SHA256SUMS.release` 置于同一目录，执行 `sha256sum -c SHA256SUMS.release`。

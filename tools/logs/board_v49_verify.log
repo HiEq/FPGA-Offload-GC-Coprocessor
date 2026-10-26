@@ -1,0 +1,16 @@
+# command: root@linux, then:
+#   stty -F /dev/ttyPS0 size
+#   byobu-status tmux_right  (count of "command not found", first percentage)
+#   sh -c '. /usr/lib/byobu/load_average; __load_average'
+#   ls /usr/local/bin/tty-size /etc/profile.d/00-tty-size.sh
+#   lf -version
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: 5c70714
+# date: 2026-10-26
+
+SIZE=35 120
+ERRS=0
+PCT=21%
+AVG=20%
+FILES=2
+LFVER=r42

@@ -86,6 +86,13 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
 
 ---
 
+30. **2026-10-26 — v4.9: terminal-size probe at login, CPU%% in the status bar.** Yocto's `/etc/profile` resize on a serial tty gives up before the reply arrives, so the late `ESC[8;r;ct` answer is delivered to the shell (`sh: [8: command not found`). `tty-size` asks, reads until the trailing `t`, drains, restores echo and applies the size; `00-tty-size.sh` runs it before `99-byobu.sh` and clears `FIRSTTIMESETUP`. The byobu item `load_average` reported `/proc/loadavg`, which the tmux server — blocked writing the status line to an unread serial port — holds above 1; it now defines `__load_average` and prints the CPU percentage from two `/proc/stat` samples. The same file is on Arch's root (p3), outside this repo's release scope.
+    *Verified.* Real power-off/on at 921600: zero `ESC[8;r;ct` and zero `sh: [8:` up to `login:` (`tools/logs/board_coldboot_20261026_v49.raw.log`). After login: `stty -F /dev/ttyPS0 size` equals the terminal's answer (35x120 in that run), `byobu-status tmux_right` reports no `command not found` and a value like `21%%`, `lf -version` is `r42` (`tools/logs/board_v49_verify.log`).
+    *Not verified.* A window resize without logging in again; the serial line carries no resize signal.
+    *Release.* v4.9 (Latest); `image.ub` `f9089048..`, `card-boot.zip` `6844e861..`, `BOOT.BIN` and `card-userdata.zip` unchanged from v4.8.
+
+---
+
 ---
 
 ## 0. Operating summary

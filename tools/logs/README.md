@@ -28,6 +28,8 @@
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
+| `board_coldboot_20261026_v49.raw.log` | 冷启动，串口 921600 | U-Boot → Linux → PetaLinux → `login:`；无 `ESC[8;r;ct` 与 `sh: [8:` | `docs/releases.md` v4.9 |
+| `board_v49_verify.log` | `stty -F /dev/ttyPS0 size` / `byobu-status tmux_right` / `lf -version` | 35x120 / `command not found` 0 次、`21%` / `r42` | `docs/releases.md` v4.9 |
 | `board_coldboot_20261026_v48.raw.log` | 冷启动，串口 921600 | U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:` | `docs/releases.md` v4.8 |
 | `board_v48_verify.log` | `grep BogoMIPS` / `cat /proc/cmdline` / `lf -version` | `399.99` / `console=ttyPS0,921600 earlycon` / `r42` | `docs/releases.md` v4.8 |
 | `board_test_main.log` | `./bin/test_main` | 3/3 `ALL PASS`（Test 1 只比计数；耗时见 `board_three_way.log`）| README §1 结果 |

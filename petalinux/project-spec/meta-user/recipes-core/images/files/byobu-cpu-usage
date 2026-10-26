@@ -1,0 +1,28 @@
+#!/bin/sh
+# byobu 状态项 "load_average" 的替代实现：显示实时 CPU 占用。
+#
+# byobu-status 是 source 这个文件后调用 __load_average，所以必须定义函数，
+# 不能直接写脚本体（否则会报 __load_average: command not found）。
+# 两次 /proc/stat 采样的间隔就是状态栏的刷新周期（status-interval）。
+__load_average() {
+    prev=/run/byobu_cpu.prev
+    read _ u n s i w irq sirq steal _ < /proc/stat 2>/dev/null || return
+    total=$((u + n + s + i + w + irq + sirq + steal))
+    busy=$((total - i - w))
+    pct=0
+    if [ -r "$prev" ]; then
+        read pt pb < "$prev" 2>/dev/null
+        dt=$((total - pt))
+        db=$((busy - pb))
+        [ "$dt" -gt 0 ] && pct=$((db * 100 / dt))
+    fi
+    printf '%s %s\n' "$total" "$busy" > "$prev" 2>/dev/null
+    [ "$pct" -gt 99 ] && pct=99
+    [ "$pct" -lt 0 ] && pct=0
+    printf '%2d%%' "$pct"
+}
+
+# byobu 的详细视图会用这个，保留 loadavg 的形式即可
+__load_average_detail() {
+    cat /proc/loadavg 2>/dev/null
+}

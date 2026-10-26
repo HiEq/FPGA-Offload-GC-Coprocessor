@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.9 | 2026-10-26 | 登录探测终端尺寸、状态栏显示实时 CPU% | `5c70714` |
 | v4.8 | 2026-10-26 | CPU 800 MHz、控制台 921600、FOGCCC initramfs 内置 `lf` | `e0be9bb` |
 | v4.7 | 2026-10-25 | `barrier_verify()` 把探针哨兵当作未验证（仅 USERDATA） | `78a431a` |
 | v4.6 | 2026-10-25 | 位图探针地址写后校验（仅 USERDATA） | `933d04bc` |
@@ -17,7 +18,30 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.8。v4.7 为上一个正式版；v4.2–v4.6 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
+GitHub Latest 指向 v4.9。v4.8 为上一个正式版；v4.2–v4.7 为 prerelease 历史快照；v4.1 仍是正式版，但不再是最新。
+
+---
+
+## v4.9
+
+**变更内容**
+
+- 登录阶段不再出现尺寸应答乱码：新增 `/usr/local/bin/tty-size`（发 `ESC[18t`，等 1.5 秒，读到结尾的 `t` 再排空 0.2 秒，然后恢复 echo）和 `/etc/profile.d/00-tty-size.sh`（在 `99-byobu.sh` 之前执行，并把 `FIRSTTIMESETUP` 清 0，让 Yocto 自带的 `resize` 不执行）。此前那段 `resize` 等不及应答就放弃，晚到的 `ESC[8;行;列t` 被当成命令送进 shell，登录时出现 `sh: [8: command not found`。
+- 状态栏的 `load_average` 改成实时 CPU 占用：`/usr/lib/byobu/load_average` 定义 `__load_average()`，用两次 `/proc/stat` 采样算 `(总-空闲-等待)/总`，显示形如 `21%`；上一次的累计值存在 `/run/byobu_cpu.prev`。原来的 loadavg 会被阻塞在 D 状态的 tmux（往没人读的串口写状态栏）抬到 1 以上，看起来像 CPU 很忙。
+- 同一份 `load_average` 也写入了 Arch 根分区（p3）；Arch 不在本仓库的发布范围内。
+- `BOOT.BIN`、位流、`system.dtb`、`card-userdata.zip` 与 v4.8 相同；`card-boot.zip` 重新打包（文件未变，哈希变化）。
+
+**验证结果**
+
+- 真实断电上电（921600）：整段启动到 `linux login:` 里 `ESC[8;r;ct` 出现 0 次，`sh: [8:` 0 次（`tools/logs/board_coldboot_20261026_v49.raw.log`）。
+- 登录后：`stty -F /dev/ttyPS0 size` 等于终端应答（本次 35x120）；`byobu-status tmux_right` 里 `command not found` 0 次，数值形如 `21%%`；`/usr/local/bin/tty-size` 与 profile 脚本都在；`lf -version` 为 `r42`（`tools/logs/board_v49_verify.log`）。
+- 同一次构建的 `image.ub` `f9089048…`；`card-userdata.zip` 仍为 `7a5ba950…`。
+
+**已知限制**
+
+- 串口没有窗口尺寸变化通知：改窗口大小后需要重新登录一次才会重新探测。
+- 没人读串口时 tmux 仍会阻塞在 D 状态、loadavg 仍会升高；状态栏现在显示 CPU%%，不再受它影响（btop 显示的一直是 CPU%%）。
+- 800 MHz 仍是 XC7Z100-2 的额定上限，没有余量。
 
 ---
 
