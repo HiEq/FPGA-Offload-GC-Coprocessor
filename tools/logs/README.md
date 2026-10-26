@@ -20,7 +20,7 @@
 
 二进制本身的哈希见 `artifacts/SHA256SUMS`（随卡二进制）与 `artifacts/SHA256SUMS.release`（Release 资产）。
 
-**当前证据集**（位流 md5 `6D4792448135C3796E3CAA1AD86EEA30` / BOOT sha256 `26fb8621…` / `VERSION=0x0004_0301`；
+**当前证据集**（位流 md5 `6D4792448135C3796E3CAA1AD86EEA30` / BOOT sha256 `d20530bc…` / `VERSION=0x0004_0301`；
 > 历史负控（`*_neg_*`、`board_phase3_leftover`、`board_regs_aww_verified`、`board_regs_aww_probe_forge_*`）与 `xsim_*_20261022/23` 属各自测过的那一版，文件头保留原样；
 > 2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
 > `board_phase3_dirty_api.log` 与 `board_dirty_api.log` 记录的是同一脚本、同一镜像，已删除前者。
@@ -28,6 +28,8 @@
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
+| `board_coldboot_20261026_v48.raw.log` | 冷启动，串口 921600 | U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:` | `docs/releases.md` v4.8 |
+| `board_v48_verify.log` | `grep BogoMIPS` / `cat /proc/cmdline` / `lf -version` | `399.99` / `console=ttyPS0,921600 earlycon` / `r42` | `docs/releases.md` v4.8 |
 | `board_test_main.log` | `./bin/test_main` | 3/3 `ALL PASS`（Test 1 只比计数；耗时见 `board_three_way.log`）| README §1 结果 |
 | `board_gc_test.log` | `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
 | `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |

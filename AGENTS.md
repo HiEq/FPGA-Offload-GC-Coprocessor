@@ -79,6 +79,13 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
     *Not a bug.* main trails at `7fdf426` (it only moves by explicit pull request; this line ships from dev-hieq), and the tag column is consistent — it records the release commit, the tag may land one or two docs-only commits later (v4.3 `23c7cc8b` -> tag `83eed5d9`, v4.6 `933d04bc` -> tag `83a1674`), as the footnote under the table says.
     *Known blemish.* `78a431ad` (the `barrier_verify` fix) fails CI: the new `== 1` comparison raised the hardcoded-literal count, and the baseline was updated in the next commit `30cfffc2`. The v4.7 tag and release point at `30cfffc2`, which is green. Rebuilding history to clear the red commit would renumber every commit after it — including the hashes cited by the v4.7 logs — and would move the tag, so it stays as recorded.
 
+29. **2026-10-26 — v4.8: PS 800 MHz, 921600 console, `lf` in the FOGCCC initramfs.** `BOOT.BIN` moves `ARM_PLL_CTRL[18:12]` 40 -> 48 (666.67 -> 800 MHz) and the U-Boot default-env `baudrate` to 921600; the bitstream is unchanged (`VERSION=0x0004_0301`) and only 10 bytes differ from v4.7's image. `image.ub` is rebuilt with `console=ttyPS0,921600`; Petalinux's `SERIAL_..._BAUDRATE` feeds U-Boot and the DT but not `sysvinit-inittab`, so a `ROOTFS_POSTPROCESS_COMMAND` also rewrites `start_getty 115200 ttyPS0` — without it the getty puts the tty back to 115200. FOGCCC is an initramfs with no persistent root, so `lf` r42 (static arm EABI5) and `lfrc` are installed into the image through `recipes-core/images/files/` plus the image bbappend. `artifacts/boot.scr` is now the FOGCCC-only script at 921600 (source `boot-fogccc.cmd`); `uEnv.txt` follows.
+    *Verified.* Real power-off/on at 921600: `tools/logs/board_coldboot_20261026_v48.raw.log` (U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:`). `sched_clock: 200MHz`, `BogoMIPS 399.99`, `SMP ... 799.99`; `/proc/cmdline` is `console=ttyPS0,921600 earlycon`; `/usr/bin/lf` 5,570,744 B, `lf -version` `r42`, `lf /etc` opens and quits (`tools/logs/board_v48_verify.log`). `card-userdata.zip` is byte-identical to v4.7 (`7a5ba950..`).
+    *Not verified.* Sustained full load beyond 20 s; the board exposes only a board sensor, not a die temperature.
+    *Release.* v4.8 (Latest); assets `BOOT.BIN` `d20530bc..`, `image.ub` `7c8c29b5..`, `card-boot.zip` `89abacd2..`, `card-userdata.zip` unchanged.
+
+---
+
 ---
 
 ## 0. Operating summary
