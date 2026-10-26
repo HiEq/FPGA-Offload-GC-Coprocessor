@@ -2,13 +2,22 @@
 # tty-size [ROWS COLS] -- set the console size for this tty.
 #
 # ttyPS0 is a plain serial line, so nothing negotiates the window size and
-# the kernel reports 0x0; tmux then falls back to 80x24.  Ask the terminal
-# emulator with the xterm "report text area size" sequence (CSI 18 t) and
-# apply the answer with stty.  Fall back to /etc/byobu-console ("ROWS COLS").
+# the kernel keeps whatever size it was given last; tmux then draws its
+# status line that many columns wide.  Ask the terminal emulator with the
+# xterm "report text area size" sequence (CSI 18 t) and apply the answer.
+#
+# Exactly one caller: /etc/profile.d/99-byobu.sh, right before byobu starts.
+# A second caller sends a second CSI 18 t; whichever process reads both
+# answers leaves the other with none, so the other falls back to a stale size
+# and the spare answer reaches the shell as typed input ("sh: [8: ...").
+#
+# Fallback order: /run/tty-size.last (last good size this boot), then
+# /etc/byobu-console ("ROWS COLS").
 #
 # Usage:
 #   tty-size            detect and apply
 #   tty-size 35 120     apply an explicit size
+
 set_size() {
     if [ -n "${TMUX:-}" ] && [ -c /dev/ttyPS0 ]; then
         stty -F /dev/ttyPS0 rows "$1" cols "$2" 2>/dev/null
@@ -21,10 +30,20 @@ if [ $# -ge 2 ]; then
     set_size "$1" "$2" && exit 0
 fi
 
+remember() {
+    [ -w /run ] && printf "%s %s\n" "$1" "$2" > /run/tty-size.last 2>/dev/null
+}
+
 fallback() {
-    r=35; c=120
-    if [ -r /etc/byobu-console ]; then
-        read -r r c < /etc/byobu-console
+    r=; c=
+    if [ -r /run/tty-size.last ]; then
+        read -r r c < /run/tty-size.last
+    fi
+    if [ -z "$r" ] || [ -z "$c" ]; then
+        r=35; c=120
+        if [ -r /etc/byobu-console ]; then
+            read -r r c < /etc/byobu-console
+        fi
     fi
     [ -n "$r" ] && [ -n "$c" ] || return 1
     set_size "$r" "$c"
@@ -37,7 +56,7 @@ stty -icanon -echo min 0 time 15 </dev/tty 2>/dev/null
 printf "\033[18t" >/dev/tty
 resp=
 i=0
-while [ "$i" -lt 3 ]; do
+while [ "$i" -lt 4 ]; do
     part=$(dd bs=64 count=1 </dev/tty 2>/dev/null)
     resp="$resp$part"
     [ -z "$resp" ] && break
@@ -46,16 +65,23 @@ while [ "$i" -lt 3 ]; do
     esac
     i=$((i + 1))
 done
-stty -icanon -echo min 0 time 2 </dev/tty 2>/dev/null
-dd bs=64 count=1 </dev/tty 2>/dev/null >/dev/null
+# Swallow any further answer, so it cannot reach the shell as typed input.
+stty -icanon -echo min 0 time 5 </dev/tty 2>/dev/null
+j=0
+while [ "$j" -lt 3 ]; do
+    extra=$(dd bs=64 count=1 </dev/tty 2>/dev/null)
+    [ -z "$extra" ] && break
+    j=$((j + 1))
+done
 [ -n "$saved" ] && stty "$saved" </dev/tty 2>/dev/null
 
-r=$(printf '%s' "$resp" | sed -n 's/.*\[8;\([0-9][0-9]*\);\([0-9][0-9]*\)t.*/\1/p')
-c=$(printf '%s' "$resp" | sed -n 's/.*\[8;\([0-9][0-9]*\);\([0-9][0-9]*\)t.*/\2/p')
+r=$(printf "%s" "$resp" | sed -n "s/.*\[8;\([0-9][0-9]*\);\([0-9][0-9]*\)t.*/\1/p")
+c=$(printf "%s" "$resp" | sed -n "s/.*\[8;\([0-9][0-9]*\);\([0-9][0-9]*\)t.*/\2/p")
 
-case "$r" in ''|*[!0-9]*) r= ;; esac
-case "$c" in ''|*[!0-9]*) c= ;; esac
+case "$r" in ""|*[!0-9]*) r= ;; esac
+case "$c" in ""|*[!0-9]*) c= ;; esac
 if [ -n "$r" ] && [ -n "$c" ] && [ "$r" -ge 10 ] && [ "$c" -ge 40 ]; then
+    remember "$r" "$c"
     set_size "$r" "$c" && exit 0
 fi
 

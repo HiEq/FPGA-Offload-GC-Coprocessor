@@ -64,6 +64,7 @@ tools/logs/*
 !tools/logs/board_done_race.log
 !tools/logs/board_irq*.log
 !tools/logs/board_coldboot_*.log
+!tools/logs/board_boot_*.log
 !tools/logs/board_phase2_regression.log
 !tools/logs/board_phase2_regression.raw.log
 !tools/logs/board_phase3_*.log

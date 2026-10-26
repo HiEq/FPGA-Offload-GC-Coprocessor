@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.10 | 2026-10-26 | 登录尺寸只探测一次、顶栏铺满宽度、右侧加空格 | `45815e0` |
 | v4.9 | 2026-10-26 | 登录探测终端尺寸、状态栏显示实时 CPU% | `5c70714` |
 | v4.8 | 2026-10-26 | CPU 800 MHz、控制台 921600、FOGCCC initramfs 内置 `lf` | `e0be9bb` |
 | v4.7 | 2026-10-25 | `barrier_verify()` 把探针哨兵当作未验证（仅 USERDATA） | `78a431a` |
@@ -18,7 +19,31 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.9（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6 与 v4.8 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.9。
+GitHub Latest 指向 v4.10（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8、v4.9 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.10。
+
+---
+
+## v4.10
+
+**变更内容**
+
+- 登录乱码与顶栏不满宽是同一个 bug：镜像里有两个 `tty-size` 调用者（`/etc/profile.d/00-tty-size.sh` → `/usr/local/bin/tty-size`，`/etc/profile.d/99-byobu.sh` → `/usr/bin/tty-size`），各发一次 `ESC[18t`。一个进程把两条应答一起读走时，另一个读空并退回 `/etc/byobu-console` 的 `35 120`，把刚设好的尺寸覆盖掉（tmux 客户端只有 120 列宽，状态栏 120 列）；多出来的那条应答晚到，就成了登录时打印的 `[8;56;179t`。现在只保留 `99-byobu.sh` 一个调用者（指向 `/usr/local/bin/tty-size`），删除 `/usr/bin/tty-size` 与 `00-tty-size.sh`。
+- `/etc/profile` 里 Yocto 自带的 `resize` 调用在串口 tty 上停用（`resize >/dev/null` → `: >/dev/null`）：它同样发 `ESC[18t`，读不到就返回，晚到的应答进 shell。串口尺寸只由 `tty-size` 负责。
+- `tty-size` 读到完整应答后再排空 1.5 秒（`min 0 time 5`，最多 3 次），重复应答在恢复终端前被吞掉；拿不到应答时先用 `/run/tty-size.last`（本次启动上一次成功的尺寸），最后才退回 `/etc/byobu-console`。
+- 状态栏右侧各项之间补空格：`load_average` 输出 `%2d%% `（`29% 2x0.80GHz`），`memory` / `disk` 在数值与百分比之间插空格（`972MB 14%`、`432.1MB 23%`）。
+- 同一份 `load_average`、`memory`、`disk` 改动也写入了 Arch 根分区（p3）；Arch 不在本仓库的发布范围内。
+- `BOOT.BIN`、位流、`system.dtb`、两个 card zip 与 v4.9 相同；v4.9 转为 Pre-release。
+
+**验证结果**
+
+- 完整引导（921600，`reboot` 后从 U-Boot 抓到 `linux login:`）：每次登录只发 1 次 `ESC[18t`，输出里 `[8;行;列t` 0 次、`sh: [8:` 0 次（`tools/logs/board_boot_20261026_v410.raw.log`）。
+- 登录后：`stty -F /dev/ttyPS0 size` = `56 179`；`tmux display -p '#{client_width}x#{client_height}'` = `179x56`（状态栏铺满）；状态栏渲染为 `17s 27% 2x0.80GHz 972MB 14% 432.1MB 23%`；`lf -version` = `r42`（`tools/logs/board_v410_verify.log`）。
+- 同一次构建的 `image.ub` `aba07816…`；`card-boot.zip` `6844e861…`、`card-userdata.zip` `7a5ba950…`、`BOOT.BIN` `d20530bc…` 与 v4.9 相同。
+
+**已知限制**
+
+- 串口没有窗口尺寸变化通知：改窗口大小后需要重新登录一次才会重新探测。
+- 终端不应答 `ESC[18t`（例如纯串口监视器）时，尺寸取 `/run/tty-size.last` 或 `/etc/byobu-console`，可能是旧值。
 
 ---
 

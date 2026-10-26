@@ -28,6 +28,8 @@
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
+| `board_boot_20261026_v410.raw.log` | `reboot` 后完整引导，串口 921600 | U-Boot → Linux → PetaLinux → `login:`；每次登录 1 次 `ESC[18t`，无应答漏出 | `docs/releases.md` v4.10 |
+| `board_v410_verify.log` | `stty` / `tmux client` / `byobu-status 右侧` / `lf` | `56 179` / `179x56` / `27% 2x0.80GHz 972MB 14%` / `r42` | `docs/releases.md` v4.10 |
 | `board_coldboot_20261026_v49.raw.log` | 冷启动，串口 921600 | U-Boot → Linux → PetaLinux → `login:`；无 `ESC[8;r;ct` 与 `sh: [8:` | `docs/releases.md` v4.9 |
 | `board_v49_verify.log` | `stty -F /dev/ttyPS0 size` / `byobu-status tmux_right` / `lf -version` | 35x120 / `command not found` 0 次、`21%` / `r42` | `docs/releases.md` v4.9 |
 | `board_coldboot_20261026_v48.raw.log` | 冷启动，串口 921600 | U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:` | `docs/releases.md` v4.8 |
