@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.12 | 2026-10-27 | vim-tiny 取代 busybox vi、lf 用 vim 打开、CPU 口径统一 | `9ff18a0` |
 | v4.11 | 2026-10-27 | 去掉 tmux DA2 应答乱码、Byobu 欢迎语、修好 lf 打开文件 | `c71ed5f` |
 | v4.10 | 2026-10-26 | 登录尺寸只探测一次、顶栏铺满宽度、右侧加空格 | `45815e0` |
 | v4.9 | 2026-10-26 | 登录探测终端尺寸、状态栏显示实时 CPU% | `5c70714` |
@@ -20,7 +21,31 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.11（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.10 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.11。
+GitHub Latest 指向 v4.12（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.11 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.12。
+
+---
+
+## v4.12
+
+**变更内容**
+
+- `vim-tiny`（`/usr/bin/vim`，约 1.1 MB）取代 busybox vi。busybox vi 没有备用屏，退出后文件内容留在终端上、整屏重绘也会让光标乱跳；vim 有备用屏，`:q` / `:q!` 退出后画面恢复干净。
+- 镜像预置 `~/.vimrc` 与 `/etc/vimrc`（`nocompatible` / `backspace` / `ruler`）。vim-tiny 不带 `defaults.vim`，没有 vimrc 时会去找它并报 `E1187: Failed to source defaults.vim`；有 vimrc 就不再找。
+- lf：`Enter` 用 `vim -R` 只读打开（`:q` 退出），`e` 用 `vim` 编辑（`:q!` 退出）；两处都加了“只对普通文件生效”的判断，目录不再被当成文件编辑；退出后补 `ESC[H ESC[2J` 清屏。`drawbox true` 保留。
+- 顶栏 CPU 口径统一：左侧 `5_cpu_graph` 算完把百分比写入 `$BYOBU_CONFIG_DIR/.cpu_pct`，右侧 `load_average` 直接读同一个值，两半永远一致；读不到才自己采样 2 秒。
+- `BOOT.BIN`、位流、`system.dtb`、两个 card zip 与 v4.11 相同；v4.11 转为 Pre-release。
+
+**验证结果**
+
+- `vim -R -c q /tmp/t.txt` 输出 `E1187_count=0`；`vim --version` 为 9.1；`~/.vimrc` 与 `/etc/vimrc` 均在（各 215 B）（`tools/logs/board_v412_verify.log`）。
+- lf → `Enter` 打开文本：无 `Failed to source`、无 `Press ENTER`，`:q` 回到 shell；边框正常绘制；`drawbox` 保留。
+- 顶栏左右 CPU 显示同一个数（`.cpu_pct`）；`[>0;10;1c` 与 `Welcome to the light` 仍为 0 次；`stty -F /dev/ttyPS0 size` = `51 179`。
+- 同一次构建的 `image.ub` `c958eac9…`；`BOOT.BIN` `d20530bc…`、`card-boot.zip` `6844e861…`、`card-userdata.zip` `7a5ba950…` 与 v4.11 相同。
+
+**已知限制**
+
+- lf 边框偶尔绘制不全（操作者报告），本次未复现，`drawbox` 保留待观察。
+- `vim-tiny` 没有语法高亮与帮助文件；镜像只装 tiny 版。
 
 ---
 

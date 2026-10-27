@@ -155,15 +155,15 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.11（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.10 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
-v4.11 清掉登录时 tmux 的 DA2 应答乱码、不再打印 Byobu 欢迎语、lf 里 Enter/→ 能打开文件；位流与 `VERSION=0x0004_0301` 不变。
+当前发布：v4.12（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.11 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
+v4.12 把 busybox vi 换成 vim-tiny（`:q` / `:q!` 正常、退出不留残影），lf 的打开/编辑走 vim，顶栏 CPU 左右同一个采样；位流与 `VERSION=0x0004_0301` 不变。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
 
 | 资产 | 烧录位置 | 大小 | SHA256 |
 | --- | --- | --- | --- |
 | `BOOT.BIN` | BOOT 分区根目录 | 18,582,724 B | `d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd` |
-| `image.ub` | BOOT 分区根目录 | 47,034,499 B | `42c32f0410cf1366d96a46fffe70d1232a24e55c306d7c30643ee6f492a7d07d` |
+| `image.ub` | BOOT 分区根目录 | 47,762,547 B | `c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f` |
 | `card-boot.zip` | 解压到 BOOT 根目录 | 5,176 B | `6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a` |
 | `card-userdata.zip` | 解压到 USERDATA 根目录 | 94,305 B | `7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c` |
 
