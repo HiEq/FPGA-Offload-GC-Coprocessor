@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.13 | 2026-10-27 | 文档与测试脚本整理（重命名、自动日志、800 MHz 数据），镜像同 v4.12 | `pending` |
 | v4.12 | 2026-10-27 | vim-tiny 取代 busybox vi、lf 用 vim 打开、CPU 口径统一 | `9ff18a0` |
 | v4.11 | 2026-10-27 | 去掉 tmux DA2 应答乱码、Byobu 欢迎语、修好 lf 打开文件 | `c71ed5f` |
 | v4.10 | 2026-10-26 | 登录尺寸只探测一次、顶栏铺满宽度、右侧加空格 | `45815e0` |
@@ -21,7 +22,29 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.12（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.11 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.12。
+GitHub Latest 指向 v4.13（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.12 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.13。
+
+---
+
+## v4.13
+
+**变更内容**
+
+- 板上测试脚本按内容重命名：`gc_test.py` → `fpga_vs_python.py`、`three_way.py` → `fpga_vs_c_vs_python.py`、`run_test_main.sh` → `fpga_vs_c.sh`；引用同步更新。
+- 三项测试运行结束自动写日志：`logs/fpga_vs_python_<时间>.log` 形式（`fpga_vs_c.sh` 写 `logs/test_main_<时间>.log`）。
+- 文档更新到 800 MHz 基准：`measurement.md` 同图对比表与端到端成本、`performance-history.md` 提升幅度统一为 v1 → 当前（5.9×）、`README.md` 结果表。
+- 版本说明补充：v4.8–v4.12 未改 PL；v4.3–v4.6 属协议加固，不改变吞吐。
+- 文档文字整理：`board-usage.md` 表格列名与标签、删除绝对路径小节、中断验证标注为可选；`build.md` 的 PS 频率；`design-details.md` 的架构框图与术语；各文档去掉不必要的引用块。
+
+**验证结果**
+
+- 板上实测（v4.12 镜像，PS 800 MHz）：`run_gc.sh` 8/8、170,932 拍、150.7–226.7×；`fpga_vs_c_vs_python.py` 4000 对象 645.4 µs；`fpga_vs_c.sh` 3/3 ALL PASS（`tools/logs/board_v412_800mhz.log`）。
+- 重命名后的三个脚本在卡上复跑通过，日志按「项目_时间」生成。
+- 仓库契约测试 61/61。
+
+**已知限制**
+
+- 本次不含镜像改动，`image.ub` 与 v4.12 逐字节相同。
 
 ---
 

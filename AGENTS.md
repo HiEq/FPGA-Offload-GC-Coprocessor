@@ -613,7 +613,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
   local machine; the numbers they produced live in the README's tables.
 - A Release body is a link to `docs/releases.md#vX.Y` plus the asset SHA256 table (and the checksum line). The change list, the verification summary and the known boundaries live in `docs/releases.md`, one section per version.
 - GitHub *Latest* points at the newest release that has the full evidence set (board chain plus a real power-on plus green CI), not at the newest date. Older releases are marked prerelease as historical snapshots, so the default download a visitor gets is the best-verified image.
-- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.12 (800 MHz, 921600 console, `lf`, vim, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
+- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.13 (800 MHz, 921600 console, `lf`, vim, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
 - Release assets are limited to what a stranger needs to boot and self-test:
   the boot-image pair, the two card zips, and the kernel module that matches the
   published image. Nothing else is attached.

@@ -155,7 +155,8 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.12（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.11 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
+当前发布：v4.13（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.12 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
+v4.13 只整理文档与板上测试脚本（按内容重命名、运行即写日志、800 MHz 基准数据），镜像与 v4.12 相同。
 v4.12 把 busybox vi 换成 vim-tiny（`:q` / `:q!` 正常、退出不留残影），lf 的打开/编辑走 vim，顶栏 CPU 左右同一个采样；位流与 `VERSION=0x0004_0301` 不变。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。
