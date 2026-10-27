@@ -28,6 +28,7 @@
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
+| `board_v412_verify.log` | vim/vimrc/lf 打开/CPU 口径 | `E1187_count=0`、无 ENTER 提示、`:q` 回 shell、左右 CPU 相同 | `docs/releases.md` v4.12 |
 | `board_v411_verify.log` | boot + `stty` / tmux / terminfo / lf | `51 179` / `179x51` / `screen-256color` / Enter→less；乱码与欢迎语 0 | `docs/releases.md` v4.11 |
 | `board_boot_20261026_v410.raw.log` | `reboot` 后完整引导，串口 921600 | U-Boot → Linux → PetaLinux → `login:`；每次登录 1 次 `ESC[18t`，无应答漏出 | `docs/releases.md` v4.10 |
 | `board_v410_verify.log` | `stty` / `tmux client` / `byobu-status 右侧` / `lf` | `56 179` / `179x56` / `27% 2x0.80GHz 972MB 14%` / `r42` | `docs/releases.md` v4.10 |

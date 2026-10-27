@@ -1,19 +1,23 @@
 #!/bin/sh
-# byobu status item "load_average" -> real CPU usage (same item name).
-# The trailing space separates this item from cpu_count/cpu_freq on the right.
+# 顶栏右侧 CPU%：直接读左侧 5_cpu_graph 发布的同一个采样值
+# （$BYOBU_CONFIG_DIR/.cpu_pct），两边口径一致；读不到才自己采样 2 秒。
+# 末尾的空格用来和 cpu_count / cpu_freq 分开。
 __load_average() {
-    prev=/run/byobu_cpu.prev
-    read _ u n s i w irq sirq steal _ < /proc/stat 2>/dev/null || return
-    total=$((u + n + s + i + w + irq + sirq + steal))
-    busy=$((total - i - w))
-    pct=0
-    if [ -r "$prev" ]; then
-        read pt pb < "$prev" 2>/dev/null
-        dt=$((total - pt)); db=$((busy - pb))
-        [ "$dt" -gt 0 ] && pct=$((db * 100 / dt))
-    fi
-    printf "%s %s\n" "$total" "$busy" > "$prev" 2>/dev/null
-    [ "$pct" -gt 99 ] && pct=99
+    D="${BYOBU_CONFIG_DIR:-$HOME/.config/byobu}"
+    pct=
+    [ -r "$D/.cpu_pct" ] && read -r pct < "$D/.cpu_pct"
+    case "$pct" in
+        ''|*[!0-9]*)
+            read _ u1 n1 s1 i1 w1 q1 sq1 st1 _ < /proc/stat 2>/dev/null || return
+            sleep 2
+            read _ u2 n2 s2 i2 w2 q2 sq2 st2 _ < /proc/stat 2>/dev/null || return
+            t1=$((u1+n1+s1+i1+w1+q1+sq1+st1)); t2=$((u2+n2+s2+i2+w2+q2+sq2+st2))
+            b1=$((t1-i1-w1));                b2=$((t2-i2-w2))
+            dt=$((t2-t1)); db=$((b2-b1)); pct=0
+            [ "$dt" -gt 0 ] && pct=$((db*100/dt))
+            ;;
+    esac
+    [ "$pct" -gt 100 ] && pct=100
     [ "$pct" -lt 0 ] && pct=0
     printf "%2d%% " "$pct"
 }
