@@ -25,9 +25,9 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 
 | 路径 | 说明 |
 |---|---|
-| `run_gc.sh` | GC 测试入口，需同级 `gc_test.py` |
+| `run_gc.sh` | GC 测试入口，需同级 `fpga_vs_python.py` |
 | `run_repeat.sh` | 重复测量 |
-| `gc_test.py` | GC 测试主体，`--seed` 可复现 |
+| `fpga_vs_python.py` | GC 测试主体，`--seed` 可复现 |
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出；不入库，随 `card-userdata.zip` 发布（vermagic 与已发布的 `image.ub` 严格配对）|

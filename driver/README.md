@@ -45,7 +45,7 @@ insmod fogccc-irq.ko
 cat /dev/fogccc_irq        # "0 0 <virq>"
 echo arm > /dev/fogccc_irq
 cat /dev/fogccc_irq        # "0 1 <virq>"
-python3 gc_test.py 1024 1 2 --seed 11
+python3 fpga_vs_python.py 1024 1 2 --seed 11
 cat /dev/fogccc_irq        # "1 0 <virq>"
 dmesg | tail               # "fogccc: irq fired (#1), line disabled"
 ```

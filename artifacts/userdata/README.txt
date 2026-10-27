@@ -2,9 +2,9 @@ FOGCCC USERDATA 分区说明
 ================================================================
 
 根目录：入口脚本及其直接依赖（脚本用 dirname 定位同级文件）
-  run_gc.sh         主测试入口，需同级 gc_test.py
+  run_gc.sh         主测试入口，需同级 fpga_vs_python.py
   run_repeat.sh     重复测量，调用以上两个
-  gc_test.py        GC 测试主体，--seed 可复现
+  fpga_vs_python.py        GC 测试主体，--seed 可复现
 
 bin/
   test_main         板级 C 测试套件：正确性 / 周期图 / 100 次重复 / 重复根

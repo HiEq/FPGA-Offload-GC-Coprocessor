@@ -2,7 +2,7 @@
 # ============================================================
 # FOGCCC on-board test launcher
 #
-#   put this on the USERDATA (FAT32) partition, together with gc_test.py,
+#   put this on the USERDATA (FAT32) partition, together with fpga_vs_python.py,
 #   and run it from the board:
 #
 #       sh /mnt/userdata/run_gc.sh            # default 4096 8 2
@@ -19,20 +19,20 @@ LOG="$DIR/logs/gc_run_$(date +%Y%m%d_%H%M%S).log"
 
 echo "=========================================================="
 echo " FOGCCC on-board test"
-echo "   script : $DIR/gc_test.py"
+echo "   script : $DIR/fpga_vs_python.py"
 echo "   params : maxN=$MAXN  trials=$TRIALS  avg_refs=$AVG"
 echo "   log    : $LOG"
 echo "=========================================================="
 
-if [ ! -f "$DIR/gc_test.py" ]; then
-    echo "ERROR: gc_test.py not found next to this script ($DIR)"
+if [ ! -f "$DIR/fpga_vs_python.py" ]; then
+    echo "ERROR: fpga_vs_python.py not found next to this script ($DIR)"
     exit 1
 fi
 
 # pipefail: otherwise the pipeline's status is tee's (always 0) and a failing
-# gc_test.py still looks green to the caller.
+# fpga_vs_python.py still looks green to the caller.
 set -o pipefail
-python3 "$DIR/gc_test.py" "$MAXN" "$TRIALS" "$AVG" 2>&1 | tee "$LOG"
+python3 "$DIR/fpga_vs_python.py" "$MAXN" "$TRIALS" "$AVG" 2>&1 | tee "$LOG"
 rc=$?
 set +o pipefail
 

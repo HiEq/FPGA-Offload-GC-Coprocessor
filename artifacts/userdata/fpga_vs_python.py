@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # ============================================================
-# gc_test.py - FOGCCC reliability + performance sweep
+# fpga_vs_python.py - FOGCCC reliability + performance sweep
 #
-#   usage: python3 gc_test.py [maxN] [trials] [avg_refs] [--seed N]
+#   usage: python3 fpga_vs_python.py [maxN] [trials] [avg_refs] [--seed N]
 #     maxN     : object-count upper bound per trial (default 4096 = hardware limit)
 #     trials   : randomised runs (default 8)
 #     avg_refs : average extra out-degree (default 2)
 #     --seed   : RNG seed; printed when omitted, so runs can be replayed:
-#                python3 gc_test.py 4096 8 2 --seed 12345
+#                python3 fpga_vs_python.py 4096 8 2 --seed 12345
 #
 # 判据:
 #   1) 活跃区 [0,L): 对象 0 的生成树加随机边, 期望标记数 = L

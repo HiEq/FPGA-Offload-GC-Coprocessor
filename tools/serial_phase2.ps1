@@ -56,7 +56,7 @@ $r2 -split '\r?\n' | Where-Object { $_ -match 'SIDE_TABLE|NEGRC=' } | ForEach-Ob
 $rawSections.Add("`n===== RAW: side table negative control =====`n" + $r2)
 
 Log "--- gc_test sweep ---"
-$r3 = Run-Cmd "cd $DataDir && python3 -u gc_test.py 4096 $Trials 2 --seed $Seed; printf 'G''CRC=%s\n' `$?" 'GCRC=' 1800000
+$r3 = Run-Cmd "cd $DataDir && python3 -u fpga_vs_python.py 4096 $Trials 2 --seed $Seed; printf 'G''CRC=%s\n' `$?" 'GCRC=' 1800000
 $r3 -split '\r?\n' | Where-Object { $_ -match 'PASSED \(all invariants\)|GCRC=|ERROR' } | ForEach-Object { Log $_.Trim() }
 $rawSections.Add("`n===== RAW: gc_test sweep =====`n" + $r3)
 

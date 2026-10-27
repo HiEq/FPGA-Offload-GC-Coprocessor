@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # ============================================================
-# gc_test.py - FOGCCC reliability + performance sweep
+# fpga_vs_python.py - FOGCCC reliability + performance sweep
 #
-#   usage: python3 gc_test.py [maxN] [trials] [avg_refs] [--seed N]
+#   usage: python3 fpga_vs_python.py [maxN] [trials] [avg_refs] [--seed N]
 #     maxN     : object-count upper bound per trial (default 4096 = hardware limit)
 #     trials   : randomised runs (default 8)
 #     avg_refs : average extra out-degree (default 2)
 #     --seed   : RNG seed; printed when omitted, so runs can be replayed:
-#                python3 gc_test.py 4096 8 2 --seed 12345
+#                python3 fpga_vs_python.py 4096 8 2 --seed 12345
 #
 # 判据:
 #   1) 活跃区 [0,L): 对象 0 的生成树加随机边, 期望标记数 = L
@@ -15,6 +15,39 @@
 #   3) 完成判定: 先读一次 CTRL 刷 posted write, 再轮询 DONE (并检查 CYCLES >= MIN_CYCLES)
 # ============================================================
 import mmap, os, struct, time, random, sys
+
+
+# ---- 运行日志：stdout/stderr 同时写入 logs/<项目>_<时间>.log ----
+class _Tee(object):
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+        return len(data)
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
+
+
+def _start_log(tag, script_file):
+    d = os.path.dirname(os.path.abspath(script_file))
+    base = os.path.dirname(d) if os.path.basename(d) == 'tests' else d
+    logs = os.path.join(base, 'logs')
+    try:
+        os.makedirs(logs, exist_ok=True)
+        f = open(os.path.join(logs, '%s_%s.log'
+                              % (tag, time.strftime('%Y%m%d_%H%M%S'))),
+                 'w', encoding='utf-8')
+    except OSError:
+        return None
+    sys.stdout = _Tee(sys.__stdout__, f)
+    sys.stderr = _Tee(sys.__stderr__, f)
+    return f.name
+
+LOG_PATH = _start_log('gc_test', __file__)
 
 REG_BASE   = 0x43C00000
 GRAPH_BASE = 0x1E000000

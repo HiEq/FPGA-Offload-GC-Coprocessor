@@ -26,8 +26,8 @@ Get-ChildItem $tests -File | Where-Object { $_.Extension -in '.py', '.sh' } | So
 # the ctypes binding the tests import from py/
 $jobs += ,@((Join-Path $PSScriptRoot '..\artifacts\userdata\py\fogccc.py'), "$DataDir/py/fogccc.py")
 
-# run_gc.sh expects gc_test.py at the partition root, not in tests/
-$jobs += ,@((Join-Path $tests 'gc_test.py'), "$DataDir/gc_test.py")
+# run_gc.sh expects fpga_vs_python.py at the partition root, not in tests/
+$jobs += ,@((Join-Path $tests 'fpga_vs_python.py'), "$DataDir/fpga_vs_python.py")
 
 # Root-level card scripts + the data-partition README ship inside the release zip,
 # so a card written from an older zip keeps stale copies (observed: run_repeat.sh
