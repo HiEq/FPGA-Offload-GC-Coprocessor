@@ -2,20 +2,20 @@
 set hidden true
 set drawbox true
 set scrolloff 5
-set period 1
+set period 2
 
-# 镜像里没有 xdg-open，lf 默认的 open 会直接失败（-> 看似「打不开文件」）。
-# 文本用 less 看（不走 vi，避免 busybox vi 在串口上重绘乱跳），e 用 vi 改。
+# 镜像里没有 xdg-open；vim-tiny 提供 /usr/bin/vim（有备用屏，退出不留残影）。
+# Enter 只读打开（:q 退出），e 正常编辑（:q! 退出），目录不进编辑器。
 map <enter> open
 cmd open ${{
     case "$f" in
         *.png|*.jpg|*.jpeg|*.gif|*.bmp|*.pdf|*.zip|*.gz|*.xz|*.ko|*.so)
             echo "no viewer: $f"; sleep 2 ;;
         *)
-            ${PAGER:-less} "$f" ;;
+            ${EDITOR:-vim} -R "$f"; printf '\033[H\033[2J' ;;
     esac
 }}
 cmd edit ${{
-    ${EDITOR:-vi} "$f"
+    if [ -f "$f" ]; then ${EDITOR:-vim} "$f"; printf '\033[H\033[2J'; fi
 }}
 map e edit

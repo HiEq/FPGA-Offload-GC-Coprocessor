@@ -1,4 +1,4 @@
-IMAGE_INSTALL:append = " byobu tmux htop glibc-binary-localedata-en-us ncurses-terminfo-base"
+IMAGE_INSTALL:append = " byobu tmux htop vim-tiny glibc-binary-localedata-en-us ncurses-terminfo-base"
 
 # THISDIR 在函数体里会被展开成基础 recipe 的目录，这里 := 立即固定
 FOGCCC_FILES := "${THISDIR}/files"
@@ -31,8 +31,17 @@ fogccc_postprocess() {
     grep -q 'resize >/dev/null' ${IMAGE_ROOTFS}/etc/profile || bbfatal "/etc/profile: resize call not found"
     sed -i 's#resize >/dev/null#: >/dev/null#' ${IMAGE_ROOTFS}/etc/profile
 
-    # 状态栏的 load_average 换成实时 CPU%（D 状态的 tmux 会把 loadavg 抬到 1 以上，误导）
+    # 状态栏的 load_average 换成实时 CPU%，并且和左侧 5_cpu_graph 用同一个采样：
+    # 左侧算完把百分比写进 $BYOBU_CONFIG_DIR/.cpu_pct，右侧直接读，两边口径一致。
     install -m 0755 ${FOGCCC_FILES}/byobu-cpu-usage ${IMAGE_ROOTFS}/usr/lib/byobu/load_average
+    FOGCCC_GRAPH=${IMAGE_ROOTFS}/home/root/.config/byobu/bin/5_cpu_graph
+    if [ -f "${FOGCCC_GRAPH}" ]; then
+        grep -q 'cpu_pct' "${FOGCCC_GRAPH}" || sed -i '/pct" -gt 100/a printf "%s\\n" "$pct" > "$D/.cpu_pct"' "${FOGCCC_GRAPH}"
+        grep -q 'cpu_pct' "${FOGCCC_GRAPH}" || bbfatal "5_cpu_graph does not publish .cpu_pct"
+    fi
+    # vim-tiny 提供 /usr/bin/vim；登录 shell 用它当编辑器（busybox vi 没有备用屏）
+    grep -q 'EDITOR=vim' ${IMAGE_ROOTFS}/etc/profile.d/99-byobu.sh || sed -i 's#^\(\s*\)export TERM=xterm-256color#\1export TERM=xterm-256color\n\1export EDITOR=vim#' ${IMAGE_ROOTFS}/etc/profile.d/99-byobu.sh
+    grep -q 'EDITOR=vim' ${IMAGE_ROOTFS}/etc/profile.d/99-byobu.sh || bbfatal "99-byobu.sh: EDITOR=vim not set"
     # 右侧各项之间补空格：byobu 的 item 自己不带分隔符
     sed -i 's#printf "%s" "$usage";#printf " %s" "$usage";#' ${IMAGE_ROOTFS}/usr/lib/byobu/memory
     sed -i 's#printf "%s" "$pct";#printf " %s" "$pct";#' ${IMAGE_ROOTFS}/usr/lib/byobu/disk
