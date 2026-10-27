@@ -6,12 +6,12 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）：对象体留在 DDR，引用关系抽成连续 side table
-（每对象一个 u32 数组，`0xFFFFFFFF` 结尾）；PL 负责标记与空闲扫描，分配、引用更新与回收策略
-由 PS 侧软件负责——本仓库提供寄存器与驱动接口，未接入语言运行时。stop-the-world，
-上限 4096 对象 / 1 MB 图区，测量范围仅标记与空闲扫描。
+面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）。对象体驻留 DDR，引用关系整理为连续的 side table
+（每对象一个 u32 数组，`0xFFFFFFFF` 结尾）；标记与空闲对象扫描由 PL 完成，分配、引用更新与回收策略
+由 PS 侧软件负责。本仓库提供寄存器映射与驱动接口，采用 stop-the-world 方式，对象数上限 4096、
+图区上限 1 MB，当前未接入语言运行时，测量范围限于标记与空闲扫描两个阶段。
 
-当前证据：位流 `6D479244…` / `BOOT.BIN` `26fb8621…`，2026-10-25 冷启动复验。
+当前证据：位流 `6D479244…`、`BOOT.BIN` `d20530bc…`、`image.ub` `c958eac9…`（v4.13，2026-10-27）。
 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
 测量口径与证据边界见 [`docs/measurement.md`](docs/measurement.md)。
 CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
