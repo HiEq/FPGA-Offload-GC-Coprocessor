@@ -3,3 +3,19 @@ set hidden true
 set drawbox true
 set scrolloff 5
 set period 1
+
+# 镜像里没有 xdg-open，lf 默认的 open 会直接失败（-> 看似「打不开文件」）。
+# 文本用 less 看（不走 vi，避免 busybox vi 在串口上重绘乱跳），e 用 vi 改。
+map <enter> open
+cmd open ${{
+    case "$f" in
+        *.png|*.jpg|*.jpeg|*.gif|*.bmp|*.pdf|*.zip|*.gz|*.xz|*.ko|*.so)
+            echo "no viewer: $f"; sleep 2 ;;
+        *)
+            ${PAGER:-less} "$f" ;;
+    esac
+}}
+cmd edit ${{
+    ${EDITOR:-vi} "$f"
+}}
+map e edit
