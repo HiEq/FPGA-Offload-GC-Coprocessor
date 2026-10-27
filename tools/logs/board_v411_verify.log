@@ -1,0 +1,18 @@
+# command: board boot at 921600 (v4.11 image.ub), then:
+#   stty -F /dev/ttyPS0 size
+#   tmux display -p '#{client_width}x#{client_height}'
+#   ls -l /etc/terminfo/s/screen-256color
+#   cd /tmp/lftest && lf   (Enter on aaa.txt, then q)
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd   image.ub: 42c32f0410cf1366d96a46fffe70d1232a24e55c306d7c30643ee6f492a7d07d
+# date: 2026-10-27
+# terminal emulator answered CSI 18 t with 8;51;179t
+
+stty size                 51 179
+tmux client               179x51
+TERM                      screen
+terminfo                  /etc/terminfo/s/screen-256color (1715 B)
+"[>0;10;1c" replies      0
+"[8;r;ct" replies        0
+"Welcome to the light"   0
+"sh: [8:" errors         0
+lf Enter -> less          file content shown, q returns to the shell
