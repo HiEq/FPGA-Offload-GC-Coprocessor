@@ -1,0 +1,7 @@
+" FOGCCC: vim-tiny ships no defaults.vim; having a vimrc stops vim from
+" looking for it (E1187: Failed to source defaults.vim).
+set nocompatible
+set backspace=indent,eol,start
+set ruler
+set showcmd
+set scrolloff=2

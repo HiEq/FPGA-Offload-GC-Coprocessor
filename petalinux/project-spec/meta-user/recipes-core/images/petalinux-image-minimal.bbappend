@@ -40,6 +40,9 @@ fogccc_postprocess() {
         grep -q 'cpu_pct' "${FOGCCC_GRAPH}" || bbfatal "5_cpu_graph does not publish .cpu_pct"
     fi
     # vim-tiny 提供 /usr/bin/vim；登录 shell 用它当编辑器（busybox vi 没有备用屏）
+    install -m 0644 ${FOGCCC_FILES}/vimrc ${IMAGE_ROOTFS}/home/root/.vimrc
+    install -d ${IMAGE_ROOTFS}/etc
+    install -m 0644 ${FOGCCC_FILES}/vimrc ${IMAGE_ROOTFS}/etc/vimrc
     grep -q 'EDITOR=vim' ${IMAGE_ROOTFS}/etc/profile.d/99-byobu.sh || sed -i 's#^\(\s*\)export TERM=xterm-256color#\1export TERM=xterm-256color\n\1export EDITOR=vim#' ${IMAGE_ROOTFS}/etc/profile.d/99-byobu.sh
     grep -q 'EDITOR=vim' ${IMAGE_ROOTFS}/etc/profile.d/99-byobu.sh || bbfatal "99-byobu.sh: EDITOR=vim not set"
     # 右侧各项之间补空格：byobu 的 item 自己不带分隔符
