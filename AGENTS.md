@@ -107,6 +107,13 @@ Contents: [0 Summary](#0-operating-summary) · [1 Profile](#1-interaction-profil
 
 ---
 
+33. **2026-10-27 — v4.11: the tmux DA2 answer, the byobu banner, lf open, terminfo.** Three separate leftovers from v4.10. (a) tmux queries DA2 (`CSI > c`) for VT100-like terminals; at 921600 the answer arrives after tmux stops waiting for it and is handed to the pane as typed input (`[>0;10;1c`). The image rewrites the query to `CSI > z`, which terminals ignore, so tmux falls back to its terminfo defaults; v4.10's fix covered `CSI 18 t`, a different query. (b) `byobu-shell` prints the welcome banner whenever `~/.config/byobu/.welcome-displayed` is missing, and an initramfs starts from a fresh root every boot; the flag file now ships in the image. (c) lf's default `open` runs `$OPENER`, i.e. `xdg-open`, which the image does not have, so `Enter` and `Right` did nothing; `lfrc` maps `<enter>` to `open`, opens text in `$PAGER` (less), maps `e` to `$EDITOR` (vi) and prints a notice for binary types. `ncurses-terminfo-base` is installed too: `/usr/share/terminfo` was empty, so less had no terminal capabilities to redraw from.
+    *Verified.* Board boot at 921600, then login: `[>0;10;1c` 0, `[8;r;ct` 0, `Welcome to the light` 0; `stty -F /dev/ttyPS0 size` is `51 179`, the tmux client is `179x51`, `TERM=screen`, `/etc/terminfo/s/screen-256color` exists; in lf, `Enter` on a text file shows it in `less` and `q` returns to the shell (`tools/logs/board_v411_verify.log`).
+    *Not verified.* busybox vi's cursor redraw on a large file (it still repaints whole screens); the `no viewer` notice path.
+    *Release.* v4.11 (Latest); `image.ub` `42c32f04..`; `BOOT.BIN`, `card-boot.zip` and `card-userdata.zip` unchanged from v4.10; v4.10 becomes a prerelease.
+
+---
+
 ---
 
 ## 0. Operating summary
@@ -599,7 +606,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
   local machine; the numbers they produced live in the README's tables.
 - A Release body is a link to `docs/releases.md#vX.Y` plus the asset SHA256 table (and the checksum line). The change list, the verification summary and the known boundaries live in `docs/releases.md`, one section per version.
 - GitHub *Latest* points at the newest release that has the full evidence set (board chain plus a real power-on plus green CI), not at the newest date. Older releases are marked prerelease as historical snapshots, so the default download a visitor gets is the best-verified image.
-- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.10 (800 MHz, 921600 console, `lf`, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
+- Two releases stay non-prerelease because they are the two supported board configurations: v4.7 (PS 667 MHz, 115200 console) and v4.11 (800 MHz, 921600 console, `lf`, tty-size). Every other tag is a prerelease snapshot; its assets stay downloadable, its commit history lives on dev-hieq.
 - Release assets are limited to what a stranger needs to boot and self-test:
   the boot-image pair, the two card zips, and the kernel module that matches the
   published image. Nothing else is attached.

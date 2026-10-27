@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.11 | 2026-10-27 | 去掉 tmux DA2 应答乱码、Byobu 欢迎语、修好 lf 打开文件 | `c71ed5f` |
 | v4.10 | 2026-10-26 | 登录尺寸只探测一次、顶栏铺满宽度、右侧加空格 | `45815e0` |
 | v4.9 | 2026-10-26 | 登录探测终端尺寸、状态栏显示实时 CPU% | `5c70714` |
 | v4.8 | 2026-10-26 | CPU 800 MHz、控制台 921600、FOGCCC initramfs 内置 `lf` | `e0be9bb` |
@@ -19,7 +20,30 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.10（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8、v4.9 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.10。
+GitHub Latest 指向 v4.11（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.10 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.11。
+
+---
+
+## v4.11
+
+**变更内容**
+
+- 登录乱码的另一个来源：tmux 对 VT100-like 终端发 DA2 查询（`CSI > c`），串口上应答晚到，tmux 已不再等待，就把它当键盘输入交给 pane，出现 `^[[>0;10;1c`。镜像里把该查询改成终端会忽略的 `CSI > z`，终端不回话，tmux 用 terminfo 默认能力。v4.10 处理的是 `CSI 18 t`，两者不是同一个查询。
+- Byobu 欢迎语：`byobu-shell` 只在 `~/.config/byobu/.welcome-displayed` 不存在时打印；initramfs 每次启动都是新根，所以每次打印。镜像预置该标志文件。
+- lf 打不开文件：`open` 默认调 `$OPENER`（= `xdg-open`），镜像里没有 `xdg-open`，`Enter` / `→` 静默失败。`lfrc` 现在把 `Enter` 映射到 `open`，文本用 `$PAGER`（`less`）打开，`e` 用 `$EDITOR`（`vi`），其它类型打印提示。
+- 镜像加入 `ncurses-terminfo-base`：此前 `/usr/share/terminfo` 为空，`less` 没有终端能力库可查，串口上重绘容易乱。
+- `BOOT.BIN`、位流、`system.dtb`、两个 card zip 与 v4.10 相同；v4.10 转为 Pre-release。
+
+**验证结果**
+
+- 921600 启动 + 登录：`[>0;10;1c` 0 次、`[8;行;列t` 0 次、`Welcome to the light` 0 次（`tools/logs/board_v411_verify.log`）。
+- 登录后：`stty -F /dev/ttyPS0 size` = `51 179`，tmux 客户端 `179x51`，`TERM=screen`，`/etc/terminfo/s/screen-256color` 存在（1715 B）；在 lf 里对文本文件按 `Enter` 进入 `less`，`q` 回到 shell。
+- 同一次构建的 `image.ub` `42c32f04…`；`BOOT.BIN` `d20530bc…`、`card-boot.zip` `6844e861…`、`card-userdata.zip` `7a5ba950…` 与 v4.10 相同。
+
+**已知限制**
+
+- busybox vi 在大文件上仍整屏重绘，串口上有可见闪烁；看日志用 `Enter`（`less`）。
+- 非文本文件只打印 `no viewer`，镜像里没有查看器。
 
 ---
 

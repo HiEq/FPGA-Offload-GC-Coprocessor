@@ -1,4 +1,4 @@
-IMAGE_INSTALL:append = " byobu tmux htop glibc-binary-localedata-en-us"
+IMAGE_INSTALL:append = " byobu tmux htop glibc-binary-localedata-en-us ncurses-terminfo-base"
 
 # THISDIR 在函数体里会被展开成基础 recipe 的目录，这里 := 立即固定
 FOGCCC_FILES := "${THISDIR}/files"
@@ -36,4 +36,22 @@ fogccc_postprocess() {
     # 右侧各项之间补空格：byobu 的 item 自己不带分隔符
     sed -i 's#printf "%s" "$usage";#printf " %s" "$usage";#' ${IMAGE_ROOTFS}/usr/lib/byobu/memory
     sed -i 's#printf "%s" "$pct";#printf " %s" "$pct";#' ${IMAGE_ROOTFS}/usr/lib/byobu/disk
+
+    # byobu 只在 $BYOBU_CONFIG_DIR/.welcome-displayed 不存在时打印欢迎语；
+    # initramfs 每次启动都是新根，所以每次都会打印。预置这个标志。
+    install -d ${IMAGE_ROOTFS}/home/root/.config/byobu
+    touch ${IMAGE_ROOTFS}/home/root/.config/byobu/.welcome-displayed
+
+    # tmux 启动时对 VT100-like 终端发 DA2 查询（CSI > c）。串口上这条应答晚到，
+    # tmux 不再等待，就把它当键盘输入交给 pane，登录后出现 [>0;10;1c。
+    # 把查询改成终端会忽略的 CSI > z：tmux 拿不到 DA2 就用 terminfo 的默认能力。
+    python3 - ${IMAGE_ROOTFS}/usr/bin/tmux <<'PYEOF'
+import sys
+p = sys.argv[1]
+b = open(p, 'rb').read()
+n = b.count(b'\x1b[>c')
+if n != 1:
+    raise SystemExit('tmux DA2 query: expected 1 occurrence, found %d' % n)
+open(p, 'wb').write(b.replace(b'\x1b[>c', b'\x1b[>z'))
+PYEOF
 }
