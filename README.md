@@ -11,10 +11,10 @@
 由 PS 侧软件负责——本仓库提供寄存器与驱动接口，未接入语言运行时。stop-the-world，
 上限 4096 对象 / 1 MB 图区，测量范围仅标记与空闲扫描。
 
-> 当前证据：位流 `6D479244…` / `BOOT.BIN` `26fb8621…`，2026-10-25 冷启动复验。
-> 原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
-> 测量口径与证据边界见 [`docs/measurement.md`](docs/measurement.md)。
-> CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
+当前证据：位流 `6D479244…` / `BOOT.BIN` `26fb8621…`，2026-10-25 冷启动复验。
+原始日志在 `tools/logs/`（索引 [`tools/logs/README.md`](tools/logs/README.md)）；
+测量口径与证据边界见 [`docs/measurement.md`](docs/measurement.md)。
+CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
 
 Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与接口](#3-设计与接口) ·
 [证据](#4-证据) · [发布](#5-发布) · [目录与调试](#6-目录与调试) · [License](#7-license)
@@ -27,14 +27,14 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 
 | 对比对象 | 口径 | 每对象 | 加速 |
 |---|---|---|---|
-| **FPGA 标记**（`three_way.py`）| 同图 4000 对象 | **172 ns** | — |
-| C，逐条读 DDR（未缓存）| 同图同 BFS | 577 ns | **3.4×** |
-| C，数据驻留 cache | heap 副本 | 196 ns | **1.1×** |
-| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 45.9 µs | **267×** |
+| **FPGA 标记**（`fpga_vs_c_vs_python.py`）| 同图 4000 对象 | **171 ns** | — |
+| C，逐条读 DDR（未缓存）| 同图同 BFS | 541 ns | **3.2×** |
+| C，数据驻留 cache | heap 副本 | 164 ns | **1.0×** |
+| Python 脚本 BFS（逐条读 `/dev/mem`）| 同图 | 37.9 µs | **221×** |
 
-> `FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
-> 四行来自同一张图（`tests/three_way.py`），出处 `tools/logs/board_three_way.log`；
-> 逐项口径见 [`docs/measurement.md`](docs/measurement.md)。`test_main` 只查计数正确性。
+`FPGA` 列只含引擎时间（`CYCLES / 100 MHz`），不含构图与驱动开销。
+四行来自同一张图（`tests/fpga_vs_c_vs_python.py`，v4.12 / PS 800 MHz）；逐项口径与证据见
+[`docs/measurement.md`](docs/measurement.md)。`test_main` 只查计数正确性。
 
 **实现范围**：stop-the-world，写 `START`、轮询 `DONE`。对象图由 `csrc/fpga_gc.c` /
 `python/fogccc.py` 按「对象头 + 引用数组」布局构造；**未接入**任何语言运行时的 `gc` 模块。
@@ -60,7 +60,7 @@ SDK_ENV=<sdk> ./csrc/build_c_bins.sh      # test_main / libfogccc.so
 cd /run/media/USERDATA-mmcblk0p2
 ./bin/test_main                 # 3 项（FPGA vs C 计数）
 sh run_gc.sh 4096 8 2           # 8 轮随机图，判据 PASSED (all invariants): 8/8
-python3 tests/three_way.py      # 同一张图：FPGA / C 未缓存 / C 缓存 / Python
+python3 tests/fpga_vs_c_vs_python.py      # 同一张图：FPGA / C 未缓存 / C 缓存 / Python
 ```
 
 宿主回归：
@@ -147,7 +147,7 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | 阶段 2 / 阶段 3 | `PHASE2_PASS`、`CONTRACT_RESULT OK`、dirty 全套 OK、收尾 `occ=0` |
 | `run_gc.sh 4096 8 2` | 8/8 |
 | `abort_test` / `abort_sweep` / `done_race` | T1–T5 / 11/11 / P3 0/20 |
-| `three_way.py`（同图四方）| `THREE_WAY_RESULT OK` |
+| `fpga_vs_c_vs_python.py`（同图四方）| `THREE_WAY_RESULT OK` |
 | `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy` | PASS（负控对修复前 RTL 全部 FAIL）|
 
 日志索引与逐条出处：[`tools/logs/README.md`](tools/logs/README.md)。
@@ -155,7 +155,8 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 5. 发布
 
-当前发布：v4.12（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.11 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
+当前发布：v4.13（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.12 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
+v4.13 只整理文档与板上测试脚本（按内容重命名、运行即写日志、800 MHz 基准数据），镜像与 v4.12 相同。
 v4.12 把 busybox vi 换成 vim-tiny（`:q` / `:q!` 正常、退出不留残影），lf 的打开/编辑走 vim，顶栏 CPU 左右同一个采样；位流与 `VERSION=0x0004_0301` 不变。
 
 `BOOT.BIN` 与 `image.ub` 不入库，随 GitHub Release 发布（再分发限制见 [`NOTICE`](NOTICE)）。

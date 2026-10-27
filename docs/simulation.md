@@ -1,10 +1,10 @@
 # 仿真回归
 
-> 主 [`README.md`](../README.md) 的「4. 证据」只给结论；本文件是完整用例矩阵与反向验证。
+主 [`README.md`](../README.md) 的「4. 证据」只给结论；本文件是完整用例矩阵与反向验证。
 
-`sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）**只跑 `tb_gc_top`**，
+`sim\run_sim.bat`（Windows）或 `sim/run_sim.sh`（Linux，需 `VIVADO_BIN`）**仅运行 `tb_gc_top`**，
 覆盖下面的主用例、T1–T8、T-FREE、T-DIRTY、T-DIRTY-RACE、T-ABORT/T-ABORT2、T-MAXFAN/T-ROOTCLAMP/T-STAR 和 AXI 协议检查。
-定向回归要单独跑：
+定向回归需单独运行：
 
 - `sim\run_axi_tb.bat` / `sim/run_axi_tb.sh` —— `tb_axi_read`（未完成读事务上限）
 - `sim\run_race_tb.bat` / `sim/run_race_tb.sh` —— `tb_runstart_race`（同拍旧 R beat）
@@ -35,20 +35,20 @@
 | **T-ABORT2** | **abort 后只写 `START`（不写 `CLEAR_Q`）**：队列/流水线里上一轮的残留必须已被 abort 丢弃，新图只标出它自己的活跃集、`STATUS=0x10`（idle、无错误）|
 | **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 当拍到达的旧响应必须被丢弃；未修复时数据 FIFO 留下上一轮的字，新 run 的第一笔 ref 被顶掉。每次必须命中 `RREADY=0` 窗口，未命中直接 FAIL（`sim/run_race_tb.bat` / `.sh`）|
 | **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；同拍 `cmd_valid` 的 enqueue 也必须被丢弃（脉冲后 `c0w==c0r`、`c1w==c1r`）。未修复时第二阶段报 `c0r=4 c0w=5` / `c1r=0 c1w=1`，修复后 `c0r=c0w=4`、`c1r=c1w=0`（`sim/run_cmdfifo_tb.bat` / `.sh`）|
-| **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 顶到 80 深，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
+| **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 达到 80 深度，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
 | **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
 | **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
 | **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
 
-> 反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
-> T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 2 会报 1588 条 `[AXI][FAIL]`
-> （而功能用例**照样通过**，因为存储模型不检查 ARSIZE）。
-> T6/T7/T8 的反向验证：把 `0x28` 读回改成常量 → T6 报 2 处 FAIL；把 `err_ovf`
-> 赋 0 → T7 `STATUS[0]=0`；把读主控的 `err` 去掉 → T8 `STATUS[1]=0`。
-> T-FREE 的反向验证：把 `gc_freelist` 换回打包布局（读 `mem[o>>5]` 的第 `o%32` 位）→
-> T-FREE 报 `FREE_COUNT=62 != 32`、弹出集合 lo=31/hi=1；板级同症状：n=512 时 `FREE_COUNT=496 != 128`。
-> T-DIRTY 的反向验证：A0（去掉屏障 → `marked=0`）、B（按根路径去重 → obj10 漏标）、
-> RACE2（remark 前 flush → obj60 漏标）——三段都在同一 TB 内断言"必须发生的后果"。
-> 板级反向对照：新 `test_main` 跑在**旧比特流**上时，位图读回全部对不上
-> （`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
+反向验证（全部实测过）：去掉对应修复后 —— T1 变 `marked=1`、T3 死锁超时、
+T4 超时、T5 变 `marked=0`、把 `ARSIZE` 改成 2 会报 1588 条 `[AXI][FAIL]`
+（功能用例**仍然通过**，因为存储模型不检查 ARSIZE）。
+T6/T7/T8 的反向验证：把 `0x28` 读回改成常量 → T6 报 2 处 FAIL；把 `err_ovf`
+赋 0 → T7 `STATUS[0]=0`；把读主控的 `err` 去掉 → T8 `STATUS[1]=0`。
+T-FREE 的反向验证：把 `gc_freelist` 换回打包布局（读 `mem[o>>5]` 的第 `o%32` 位）→
+T-FREE 报 `FREE_COUNT=62 != 32`、弹出集合 lo=31/hi=1；板级同症状：n=512 时 `FREE_COUNT=496 != 128`。
+T-DIRTY 的反向验证：A0（去掉屏障 → `marked=0`）、B（按根路径去重 → obj10 漏标）、
+RACE2（remark 前 flush → obj60 漏标）——三段都在同一 TB 内断言"必须发生的后果"。
+板级反向对照：新 `test_main` 运行于**旧比特流**上时，位图读回全部对不上
+（`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。

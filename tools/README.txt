@@ -22,7 +22,7 @@ FOGCCC 串口控制台 —— 使用说明
         BOOT.BIN / image.ub / boot.scr / mount_data.sh
 
   USERDATA 分区
-        run_gc.sh / run_repeat.sh / gc_test.py
+        run_gc.sh / run_repeat.sh / fpga_vs_python.py
         bin/test_main
         tests/  py/  ko/
         logs/gc_run_*.log
@@ -69,7 +69,7 @@ FOGCCC 串口控制台 —— 使用说明
     logs\               脚本日志输出，已加入 .gitignore
   tests\
     test-serial-session.ps1  串口公共件的单元测试（不需要板子，含"旧 buffer 里的提示符"负控）
-    gc_test.py          板级测试，与卡上 run_gc.sh 同一份
+    fpga_vs_python.py          板级测试，与卡上 run_gc.sh 同一份
     irq_drv_test.sh     中断端到端验证，验收级
   debug\
     hw_program.tcl      JTAG 烧比特流

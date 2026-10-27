@@ -23,7 +23,7 @@ echo "=== GROUP1: gc_test, different seeds (vs Python BFS 参照) ==="
 i=1
 while [ $i -le $N ]; do
     seed=$((BASE + i))
-    out=$(python3 "$D/gc_test.py" 4096 1 2 --seed "$seed" 2>&1)
+    out=$(python3 "$D/fpga_vs_python.py" 4096 1 2 --seed "$seed" 2>&1)
     rc=$?
     echo "$out" | grep -E '^  \[ *1/'
     if [ $rc -ne 0 ] || ! echo "$out" | grep -q 'PASSED (all invariants)'; then
@@ -36,7 +36,7 @@ done
 echo "=== GROUP2: same seed x5 (DDR jitter only) ==="
 i=1
 while [ $i -le 5 ]; do
-    out=$(python3 "$D/gc_test.py" 4096 1 2 --seed 424242 2>&1)
+    out=$(python3 "$D/fpga_vs_python.py" 4096 1 2 --seed 424242 2>&1)
     rc=$?
     echo "$out" | grep -E '^  \[ *1/'
     if [ $rc -ne 0 ] || ! echo "$out" | grep -q 'PASSED (all invariants)'; then

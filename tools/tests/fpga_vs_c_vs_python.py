@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-# three_way.py - mark ONE graph with four implementations
+# fpga_vs_c_vs_python.py - mark ONE graph with four implementations
 #
 #   FPGA : the PL engine (CYCLES / 100 MHz, engine time only)
 #   C-u  : fpga_gc_sw_mark(), same graph, uncached DDR
@@ -11,7 +11,7 @@
 # The graph is built once per size, so all four numbers describe the same
 # object graph.  All four counts must equal the C oracle.
 #
-#   usage: python3 tests/three_way.py [--sizes 10,50,...,4000] [--avg-refs 3]
+#   usage: python3 tests/fpga_vs_c_vs_python.py [--sizes 10,50,...,4000] [--avg-refs 3]
 # ============================================================
 import argparse
 import gc
@@ -20,6 +20,39 @@ import os
 import struct
 import sys
 import time
+
+
+# ---- 运行日志：stdout/stderr 同时写入 logs/<项目>_<时间>.log ----
+class _Tee(object):
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+        return len(data)
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
+
+
+def _start_log(tag, script_file):
+    d = os.path.dirname(os.path.abspath(script_file))
+    base = os.path.dirname(d) if os.path.basename(d) == 'tests' else d
+    logs = os.path.join(base, 'logs')
+    try:
+        os.makedirs(logs, exist_ok=True)
+        f = open(os.path.join(logs, '%s_%s.log'
+                              % (tag, time.strftime('%Y%m%d_%H%M%S'))),
+                 'w', encoding='utf-8')
+    except OSError:
+        return None
+    sys.stdout = _Tee(sys.__stdout__, f)
+    sys.stderr = _Tee(sys.__stderr__, f)
+    return f.name
+
+LOG_PATH = _start_log('three_way', __file__)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'py'))
