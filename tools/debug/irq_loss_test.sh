@@ -28,7 +28,7 @@ echo "base count = $base   (each cycle must add exactly 1)"
 ok=0
 i=1
 while [ $i -le $N ]; do
-    python3 "$D/gc_test.py" 1024 1 2 --seed $((100 + i)) >/dev/null 2>&1
+    python3 "$D/fpga_vs_python.py" 1024 1 2 --seed $((100 + i)) >/dev/null 2>&1
     echo arm > "$DEV"
     sleep 1
     c=$(cut -d' ' -f1 "$DEV")
@@ -44,8 +44,8 @@ done
 echo "cycles=$N ok=$ok"
 
 # ---- coalescing: two runs while disarmed -> one interrupt (level line) ----
-python3 "$D/gc_test.py" 1024 1 2 --seed 900 >/dev/null 2>&1
-python3 "$D/gc_test.py" 1024 1 2 --seed 901 >/dev/null 2>&1
+python3 "$D/fpga_vs_python.py" 1024 1 2 --seed 900 >/dev/null 2>&1
+python3 "$D/fpga_vs_python.py" 1024 1 2 --seed 901 >/dev/null 2>&1
 c0=$(cut -d' ' -f1 "$DEV")
 echo arm > "$DEV"
 sleep 1

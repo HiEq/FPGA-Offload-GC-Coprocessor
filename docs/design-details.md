@@ -1,21 +1,24 @@
 # 设计细节：架构、脏边增量标记、AXI 清理、中断
 
-> 主 [`README.md`](../README.md) 只保留寄存器映射、关键参数与对象图布局；展开说明在这里。
+主 [`README.md`](../README.md) 只保留寄存器映射、关键参数与对象图布局；展开说明在这里。
 
 ## 架构与工作流
 
 ```
-Zynq-7000 XC7Z100
-PS（ARM A9）                          PL（100 MHz）
-  host app / SW GC                     gc_top
-  fpga_gc.c  ──── AXI-Lite ──────────►  ├── gc_regs        寄存器
-  fogccc.py                            ├── gc_mark_engine BFS FSM
-  /dev/mem mmap ─ AXI HP (64-bit) ───►  ├── gc_bitmap      4096×32
-                                       ├── gc_queue       4096×12
-                                       ├── gc_freelist    free 扫描
-                                       ├── gc_dirty_fifo  脏边工作源
-                                       └── gc_axi_read    双流读主控
-DDR3 @ 0x1E000000：对象图
++---------------------------------------------------------------------------------+
+| Zynq-7000 XC7Z100                                                               |
+| PS (ARM Cortex-A9 x2 @ 800 MHz)        PL (FCLK0 = 100 MHz)                     |
+|   host app / SW GC                       gc_top                                 |
+|   fpga_gc.c    -- AXI-Lite -------->     |- gc_regs          registers          |
+|   fogccc.py                              |- gc_mark_engine   BFS FSM            |
+|   /dev/mem mmap -- AXI HP (64-bit) ->    |- gc_bitmap        4096x32            |
+|                                          |- gc_queue         4096x12            |
+|                                          |- gc_freelist      free scan          |
+|                                          |- gc_dirty_fifo    dirty-edge source  |
+|                                          `- gc_axi_read      dual-stream reader |
+|                                                                                 |
+| DDR3 0x1E000000: object graph (written by the host)                             |
++---------------------------------------------------------------------------------+
 ```
 
 1. 宿主把对象图写入 DDR `0x1E000000`。
@@ -38,7 +41,7 @@ DDR3 @ 0x1E000000：对象图
 
 **epoch**：
 
-1. **全标记**：`CTRL[5]`（只武装 flush）+ 一次 `BM_KEEP=0` 的 `START` → 清位图与 FIFO，从根集全标。
+1. **全标记**：`CTRL[5]`（仅预置 flush）+ 一次 `BM_KEEP=0` 的 `START` → 清位图与 FIFO，从根集全标。
 2. **增量步**：`CTRL = 0x11`（`BM_KEEP` 与 `START` 同一次写），不 flush；mutator 可并发推送。
 3. **remark**：mutator 停止后再来一个增量 epoch（根集可空），消费与 `DONE` 同拍到达的记录。
    remark 前不 flush。
@@ -50,22 +53,22 @@ DDR3 @ 0x1E000000：对象图
 
 **屏障顺序**：先让指针存储对 PL 可见（写完回读/屏障），再写 `0x440`。
 
-**`CTRL[5]` 是武装式 flush**：写只武装，在下一次 `BM_KEEP=0` 的 `START` 生效，被增量 start 丢弃。
-因此迟到的 store 副本最坏只是提前武装下一次全标记，不会清掉当前 epoch 的记录。
-清 FIFO 而不动位图时用 `CLEAR_Q`，不要用 flush。
+**`CTRL[5]` 为预置式 flush**：写入仅预置，在下一次 `BM_KEEP=0` 的 `START` 生效，被增量 start 丢弃。
+因此迟到的 store 副本至多提前预置下一次全标记，不会清除当前 epoch 的记录。
+清 FIFO 而不动位图时使用 `CLEAR_Q`，不使用 flush。
 
 **确认一条记录真的进了 FIFO**：`DIRTY_STAT[31:20]` 是最后接受的 ID，与 `[19:16]` 的 tag 组成 id 级回执。
 `dirty_push_acked()` / `fpga_gc_dirty_push_acked()` 写一条、回读 tag+id，不匹配换 tag 重试；
 重试用尽或溢出位被置 ⇒ 返回 0，调用者退回全标记。
 `barrier_verify()` / `fpga_gc_read_mark()` 按效果验收：全标 ⇒ 未发现漏标；有未标 ⇒ 退回全标记。
-后者是**必要非充分**检查（epoch 前已标的目标看不出是否重扫）。
+后者是**必要非充分**检查：epoch 之前已标记的目标无法反映本次是否重扫。
 
 **溢出路径**：忽略 `0x444[9]` 继续增量会漏标（`dirty_overflow_test.py` 的负控）；
 退回全标记后 `marked == oracle`、`free` 正确、flush 后 `ovf=0`。
 
 **写路径重投递**：本板每个 store 投递两遍且不保证相邻。`gc_top` 用 `engine_idle` 门控软件
 `CLEAR_Q`，`gc_mark_engine` 在接受 `START` 时自行脉冲 `q_clear`，故迟到的 `CLEAR_Q` 不会中途清队列，
-迟到的 `START` 只是冗余重跑且仍满足 `q_tail == marked`（`ctrl_spill_test.py`）。
+迟到的 `START` 只是一次冗余执行，且仍满足 `q_tail == marked`（`ctrl_spill_test.py`）。
 
 **软件接口**：`fpga_gc_dirty_push` / `dirty_flush` / `dirty_status|drained|pushed|popped` /
 `fpga_gc_mark_incremental`（保留位图、不 flush），以及 ctypes 绑定中的同名方法。
@@ -90,7 +93,7 @@ DDR3 @ 0x1E000000：对象图
 ```
 insmod fogccc-irq.ko          # 映射 SPI 61 + request_irq，生成 /dev/fogccc_irq
 echo arm > /dev/fogccc_irq    # done=0 时不会触发
-python3 gc_test.py 1024 1 2 --seed 11
+python3 fpga_vs_python.py 1024 1 2 --seed 11
 cat /dev/fogccc_irq           # "1 0 <virq>"：已触发，处理函数自动关线
 ```
 

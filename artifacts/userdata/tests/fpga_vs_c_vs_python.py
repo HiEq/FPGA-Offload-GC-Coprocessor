@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-# three_way.py - mark ONE graph with four implementations
+# fpga_vs_c_vs_python.py - mark ONE graph with four implementations
 #
 #   FPGA : the PL engine (CYCLES / 100 MHz, engine time only)
 #   C-u  : fpga_gc_sw_mark(), same graph, uncached DDR
@@ -11,7 +11,7 @@
 # The graph is built once per size, so all four numbers describe the same
 # object graph.  All four counts must equal the C oracle.
 #
-#   usage: python3 tests/three_way.py [--sizes 10,50,...,4000] [--avg-refs 3]
+#   usage: python3 tests/fpga_vs_c_vs_python.py [--sizes 10,50,...,4000] [--avg-refs 3]
 # ============================================================
 import argparse
 import gc

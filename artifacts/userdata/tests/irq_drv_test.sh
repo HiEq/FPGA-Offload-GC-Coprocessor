@@ -27,7 +27,7 @@ BEFORE=$(cat $DEV)
 echo "== state after arm (done is still 0, so no IRQ expected): $BEFORE =="
 
 echo "== run one GC test (done 0 -> 1) =="
-python3 "$D/gc_test.py" 1024 1 2 --seed 11 2>&1 | grep -E 'seed=|^  \[ *1/|PASSED'
+python3 "$D/fpga_vs_python.py" 1024 1 2 --seed 11 2>&1 | grep -E 'seed=|^  \[ *1/|PASSED'
 # Poll for the interrupt with a timeout; a second run (count already > 0) is
 # supported below.
 n=0

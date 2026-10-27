@@ -1,0 +1,188 @@
+# command: board, v4.12 image.ub, PS 800 MHz (BogoMIPS 399.99)
+#   sh run_gc.sh 4096 8 2
+#   python3 tests/three_way.py
+#   ./bin/test_main
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# image.ub: c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f
+# date: 2026-10-27
+# note: card clock has no RTC, the on-card log name carries 2018-03-09
+
+linux login: root
+]0;root@linux () - byobu=(B
+0:-*(B                                                                                                 2018-03-09 13:48:20(B(B
+0:-*(B                                                                                                 2018-03-09 13:48:20(Btmux set -g status off
+tmux set -g status off
+BOARD_MHZ=BogoMIPS : 399.99
+DATE=Fri Mar 9 13:48:23 UTC 2018
+==========================================================
+FOGCCC on-board test
+script : /run/media/USERDATA-mmcblk0p2/gc_test.py
+params : maxN=4096  trials=8  avg_refs=2
+log    : /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_134824.log
+==========================================================
+====================================================================================
+FOGCCC  FPGA mark  --  strict reliability + performance sweep
+maxN=4096  trials=8  avg_refs=2   (HW limit 4096, min cycles 4096)
+seed=184882019   (replay exactly: --seed 184882019)
+expected count is KNOWN A PRIORI = L (live region), garbage must be 0
+regs @ 0x43C00000  graph @ 0x1E000000  reset CTRL = 0x00000000
+MAGIC = 0x47434343   VERSION = 0x00040301
+====================================================================================
+[ 1/ 8] N=  3436 exp=  2577 | HW      438.10 us (  43810 cyc) | free   859 | SW      99.33 ms |   226.7x | build   225.1 ms | OK
+[ 2/ 8] N=  2198 exp=  1648 | HW      293.90 us (  29390 cyc) | free   550 | SW      64.07 ms |   218.0x | build   160.8 ms | OK
+[ 3/ 8] N=  1615 exp=  1211 | HW      225.42 us (  22542 cyc) | free   404 | SW      46.70 ms |   207.2x | build   107.5 ms | OK
+[ 4/ 8] N
+=  1372 exp=  1029 | HW      196.31 us (  19631 cyc) | free   343 | SW      39.55 ms |   201.5x | build    92.1 ms | OK
+[ 5/ 8] N=   824
+exp=   618 | HW      131.39 us (  13139 cyc) | free   206 | SW      23.73 ms |   180.6x | build    55.1 ms | OK
+[ 6/ 8]
+N=   525 exp=   393 | HW       99.06 us (   9906 cyc) | free   132 | SW      14.93 ms |   150.7x | build    34.2 ms | OK
+[ 7/ 8] N=  14
+05 exp=  1053 | HW      199.85 us (  19985 cyc) | free   352 | SW      40.19 ms |   201.1x | build    91.5 ms | OK
+[
+8/ 8] N=   766 exp=   574 | HW      125.29 us (  12529 cyc) | free   192 | SW      21.87 ms |   174.6x | build    51.2 ms | OK
+==================
+==================================================================
+SUMMARY   (expected = live-region size L, garbage must be 0)
+====================================================================================
+trial       N
+exp    garb    HW cycles       HW us      SW ms  speedup   HWmk   SWmk  verdict
+-------------------------------------------------------------------------------------------------
+1    3436    2577     859        43810      438.10      99.33   226.7x   2577   2577  OK
+2    2198    1648     550        29390      293.90      64.07   218.
+0x   1648   1648  OK
+3    1615    1211     404        22542      225.42      46.70   207.2x   1211   1211  OK
+4    1372    1029     343        19631      196.31      39.55   201.5x   1029   1029  OK
+5     824     618     206        13139
+131.39      23.73   180.6x    618    618  OK
+6     525     393     132         9906       99.06      14.93   150.7x    393    393  OK
+7    1405    1053     352        19985      199.85      40.19   201.1x   1053   1053  OK
+8     766     574     192        12529      125.29      21.87   174.6x    574    574  OK
+-------------------------------------------------------------------------------------------------
+trials                :
+8
+skipped (graph too big):
+0
+seed                  : 184882019   (replay: --seed 1848
+82019)
+PASSED (all invariants): 8/8
+total HW cycles        : 170932  (= 1709.32 us @100MHz)
+end-to-end note        : graph build+write (Python) 102.2 ms avg vs HW 0.214 ms avg
+total SW (Python)      : 350.38 ms
+speedup min/avg/max    : 150.7x / 195.0x / 226.7x
+N range                : 525 .. 3436
+NOTE: 'SW ms' is an interpreted-Python reference BFS used as a
+correctness oracle + rough CPU cost bound, NOT an optimised
+C implementation.  The rigorous hardware metric i
+s the
+deterministic HW cycle coun
+t @100MHz.
+==================================================================================
+==
+e
+==========================================================
+done.  log saved on the card: /run/media/USERDATA-mmcblk0p2/logs/gc_run_20180309_134824.log
+exit code: 0
+==========================================================
+AFTER_GC_RC=0
+py
+[FOGCCC] Initialized:
+AXI-Lite regs @ 0x43C00000
+Graph DDR     @ 0x1E000000 (1MB)
+MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+objects   mkd     HW us    C-u us    C-c us    Py ms  Cu/HW  Cc/HW  Py/HW  verdict
+----------------------------------------------------------------------------------------
+10     9      44.0       6.5       2.7    0.755    0.1x    0.1x     17x  OK
+50    47      48.6      25.2       7.5    1.952    0.5x    0.2x     40x  OK
+100    96      57.2      52.8      12.2    3.783    0.9x    0.2x     66x  OK
+500   474     113.5     243.0      57.6   17.839    2.1x    0.5x    157x  OK
+1000   945     185.0     485.8     123.1   35.680    2.6x    0.7x    193x  OK
+2000  1882     340.1     997.3     290.8   70.099    2.9x    0.9x    206x  OK
+4000  3766     645.4    2038.3     619.1  142.787    3.2x    1.0x    221x  OK
+FPGA us = engine cycles only; C-u us = in-process C BFS on the same uncached DDR graph;
+C-c us  = same BFS on a heap copy (cache-resident bound, copy not timed); Py ms = interpreter BFS.
+THREE_WAY_RESULT OK
+AFTER_THREE_RC=0
+./bin/test_main
++--------------------------------------------+
+|  FOGCCC GC Coprocessor Test Suite          |
+|  Platform: Xilinx Zynq-7000 XC7Z100        |
++--------------------------------------------+
+[FOGCCC] Initialized:
+AXI-Lite regs @ 0x43C00000
+Graph DDR     @ 0x1E000000 (1MB)
+MAGIC/VERSION : 0x47434343 / 0x00040301
+=============================================================
+Test 1: correctness (FPGA vs C)
+=============================================================
+Objects    FPGA       C          verdict
+---------- ---------- ---------- --------
+10         9          9          OK
+50         47         47         OK
+100        96         96         OK
+500        474        474        OK
+1000       945        945        OK
+2000       1882       1882       OK
+4000       3766       3766       OK
+Result: ALL PASS
+=============================================
+Test 2: Cycle Graph
+=============================================
+Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
+Roots: {0, 3}
+Expected: 4  SW: 4  FPGA: 4  => PASS
+=============================================
+Test 3: duplicate roots
+=============================================
+roots={0}      -> marked=183  STATUS=0x0
+roots={0,0,0}  -> marked=183  STATUS=0x0
+PASS (duplicate roots must not double count, expect 183 == 183)
+--- Hardware Statistics ---
+Marked objects : 183
+STATUS         : 0x0
+HW cycles      : 6891
+HW time        : 68.91 us (@100MHz)
+Queue head/tail: 183 / 183 (depth=0)
+Throughput     : 2.66 M objects/sec
+=============================================
+SUMMARY
+=============================================
+Test 1 (Correctness) : PASS
+Test 2 (Cycle)       : PASS
+Test 3 (Dup roots)   : PASS
+-------------------------------------------
+Overall: *** ALL PASS ***
+=============================================
+AFTER_MAIN_RC=0
+tmux set -g status on
+Test 2: Cycle Graph
+=============================================
+Graph: 0->1->2->0 (cycle), 3->1, 4 (isolated)
+Roots: {0, 3}
+Expected: 4  SW: 4  FPGA: 4  => PASS
+=============================================
+Test 3: duplicate roots
+=============================================
+roots={0}      -> marked=183  STATUS=0x0
+roots={0,0,0}  -> marked=183  STATUS=0x0
+PASS (duplicate roots must not double count, expect 183 == 183)
+--- Hardware Statistics ---
+Marked objects : 183
+STATUS         : 0x0
+HW cycles      : 6891
+HW time        : 68.91 us (@100MHz)
+Queue head/tail: 183 / 183 (depth=0)
+Throughput     : 2.66 M objects/sec
+=============================================
+SUMMARY
+=============================================
+Test 1 (Correctness) : PASS
+Test 2 (Cycle)       : PASS
+Test 3 (Dup roots)   : PASS
+-------------------------------------------
+Overall: *** ALL PASS ***
+=============================================
+AFTER_MAIN_RC=0
+F T34.9C cpu |||||||||| 0:-*(B                              1h13m  0% 2x0.80(BGHz 972(BMB 14(B% 431.6(BMB 23(B% 2018-03-09 13:59:40(Broot@linux:/run/media/USERDATA-mmcblk0p2#  F T35.1C cpu |||||||||| 0:-*(B                              1h13m  0% 2x0.80(BGHz 972(BMB 14(B% 431.6(BMB 23(B% 2018-03-09 13:59:41(B F T35.1C cpu |||||||||| 0:-*(B                              1h24m  0% 2x0.80(BGHz 972(BMB 14(B% 431.6(BMB 23(B% 2018-03-09 13:59:41(B
+BOARD800_DONE

@@ -76,7 +76,7 @@ Write-Host "--- 2) mount + verify files ---"
 Cmd "mkdir -p /mnt/userdata" 8000
 Cmd "mount -t vfat /dev/mmcblk0p2 /mnt/userdata" 8000
 Cmd "df -h /mnt/userdata | tail -2" 8000
-Cmd "md5sum /mnt/userdata/gc_test.py" 15000
+Cmd "md5sum /mnt/userdata/fpga_vs_python.py" 15000
 Cmd "ls -l /mnt/boot/BOOT.BIN 2>/dev/null || ls -l /run/media/*/BOOT.BIN 2>/dev/null || echo no-boot-mount" 10000
 Cmd "cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpga-manager" 8000
 

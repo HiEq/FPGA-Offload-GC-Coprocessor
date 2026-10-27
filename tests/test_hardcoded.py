@@ -77,7 +77,7 @@ class RuleTest(unittest.TestCase):
 
     def test_tests_are_exempt_except_for_secrets(self):
         self.assertTrue(hardcoded.is_test_file("sim/tb_gc_top.v"))
-        self.assertTrue(hardcoded.is_test_file("tools/tests/gc_test.py"))
+        self.assertTrue(hardcoded.is_test_file("tools/tests/fpga_vs_python.py"))
         self.assertFalse(hardcoded.is_test_file("rtl/gc_regs.v"))
         self.assertEqual(self.findings("sim/tb_x.v", "wdata = 32'hDEADBEEF;"), [])
         self.assertEqual(

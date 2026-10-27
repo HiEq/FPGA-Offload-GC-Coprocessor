@@ -80,7 +80,7 @@ def main():
         return 1
     print("=" * 84)
 
-    # ---------- graph builder (same generator as gc_test.py) ----------
+    # ---------- graph builder (same generator as fpga_vs_python.py) ----------
     state = {'marked': None, 'n': 0, 'L': 0}
 
     def build(nn, do_clear_q=False):
