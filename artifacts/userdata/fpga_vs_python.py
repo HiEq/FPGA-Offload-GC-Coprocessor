@@ -16,6 +16,43 @@
 # ============================================================
 import mmap, os, struct, time, random, sys
 
+
+# ---- 运行日志：stdout/stderr 同时写入 logs/<项目>_<时间>.log ----
+class _Tee(object):
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+        return len(data)
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
+
+
+def _start_log(tag, script_file):
+    if os.environ.get('FOGCCC_NO_LOG'):
+        return None
+    d = os.path.dirname(os.path.abspath(script_file))
+    base = os.path.dirname(d) if os.path.basename(d) == 'tests' else d
+    logs = os.path.join(base, 'logs')
+    try:
+        os.makedirs(logs, exist_ok=True)
+        f = open(os.path.join(logs, '%s_%s.log'
+                              % (tag, time.strftime('%Y%m%d_%H%M%S'))),
+                 'w', encoding='utf-8')
+    except OSError:
+        return None
+    sys.stdout = _Tee(sys.__stdout__, f)
+    sys.stderr = _Tee(sys.__stderr__, f)
+    return f.name
+
+LOG_PATH = _start_log('fpga_vs_python', __file__)
+if LOG_PATH:
+    print('log    : %s' % LOG_PATH)
+
 REG_BASE   = 0x43C00000
 GRAPH_BASE = 0x1E000000
 GRAPH_SIZE = 0x100000          # 1 MiB

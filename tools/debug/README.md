@@ -1,6 +1,6 @@
 # tools/debug/ —— 调试工具
 
-不参与验收。性能基准见 `../serial_run_gc.ps1`，功能测试见 `../tests/`。
+不参与验收。性能基准见 `../serial_fpga_vs_python.ps1`，功能测试见 `../tests/`。
 
 | 脚本 | 用途 |
 |---|---|
@@ -17,7 +17,7 @@
 | `serial_capture_boot.ps1` | 抓取一次上电启动的完整串口记录 |
 | `serial_coldboot_verify.ps1` | 冷启动后登录并核对环境（BOOT.BIN 哈希 / mount / no-map / FPGA 状态 / `test_main`） |
 
-> 一次性脚本用完即退库：`diag_gctest_trial.py`（某次 `gc_test` stall 定位）已移除，结论记在
+> 一次性脚本用完即退库：`diag_gctest_trial.py`（某次 `fpga_vs_python` stall 定位）已移除，结论记在
 > `tools/logs/` 与 `AGENTS.md` 的对应条目。
 
 ## 用法

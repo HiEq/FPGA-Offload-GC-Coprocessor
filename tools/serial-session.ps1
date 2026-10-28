@@ -2,7 +2,7 @@
 # serial-session.ps1 - shared serial plumbing for the host scripts
 #
 # Shared serial plumbing: open the port, pump bytes, chunked write, strip ANSI,
-# print the tail. Used by serial_cmd.ps1 and serial_run_gc.ps1.
+# print the tail. Used by serial_cmd.ps1 and serial_fpga_vs_python.ps1.
 # Waits take a $From offset so a stale prompt in the buffer cannot satisfy a new wait.
 #
 # BOOT-WINDOW RULE (2026-10-24): never write to the console while the board may be
@@ -28,7 +28,7 @@
 function New-BoardSerialSession {
     param(
         [string]$Port = 'auto',
-        [int]$Baud = 115200
+        [int]$Baud = 921600
     )
     $Port = Resolve-SerialPort $Port
     $sp = New-Object System.IO.Ports.SerialPort $Port, $Baud, 'None', 8, 'One'

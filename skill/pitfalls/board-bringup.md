@@ -75,6 +75,14 @@
 - **根因**：`/run` 不可写 → 每次都当首次采样。
 - **处理**：改用用户目录（`$BYOBU_CONFIG_DIR`）保存状态，或直接在 item 内采样固定窗口。
 
+## 13. 主机串口脚本无响应（`push_tests.ps1` / `serial_cmd.ps1`）
+
+- **判别**：脚本报 `shell did not answer 'stty -echo'`，但手工用同一端口发回车能收到提示符。
+- **根因**：两处默认值不一致。`serial-session.ps1` 与两个推送脚本默认 115200，控制台实际
+  921600；另外 byobu/tmux 状态栏在提示符之后持续重绘，按“提示符结尾”匹配的正则会失败。
+- **处理**：三个脚本的默认波特率统一为 921600；推送前先 `tmux set -g status off`。
+- **验证**：修改后 `serial_push_chunked.ps1` 逐文件 `md5 MATCH`，`serial_cmd.ps1` 正常回显。
+
 ## 失效条件
 
 - 换到 PYNQ 镜像（systemd + Jupyter）后，第 1、2、5、6 条的路径与机制不同。

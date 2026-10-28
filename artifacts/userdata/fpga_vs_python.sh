@@ -15,7 +15,7 @@ MAXN=${1:-4096}
 TRIALS=${2:-8}
 AVG=${3:-2}
 mkdir -p "$DIR/logs" 2>/dev/null
-LOG="$DIR/logs/gc_run_$(date +%Y%m%d_%H%M%S).log"
+LOG="$DIR/logs/fpga_vs_python_run_$(date +%Y%m%d_%H%M%S).log"
 
 echo "=========================================================="
 echo " FOGCCC on-board test"
@@ -32,7 +32,7 @@ fi
 # pipefail: otherwise the pipeline's status is tee's (always 0) and a failing
 # fpga_vs_python.py still looks green to the caller.
 set -o pipefail
-python3 "$DIR/fpga_vs_python.py" "$MAXN" "$TRIALS" "$AVG" 2>&1 | tee "$LOG"
+FOGCCC_NO_LOG=1 python3 "$DIR/fpga_vs_python.py" "$MAXN" "$TRIALS" "$AVG" 2>&1 | tee "$LOG"
 rc=$?
 set +o pipefail
 

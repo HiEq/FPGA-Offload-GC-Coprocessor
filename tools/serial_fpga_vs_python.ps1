@@ -65,7 +65,7 @@ Read-BoardSerial -Session $s -Ms 400
 # ================= 1b) host time sync =================
 # The board has no RTC and no network, so its clock falls back to 2018-03-09 on
 # every power-up. Push the host's UTC time in, so fpga_vs_python.sh writes its
-# gc_run_*.log files under a real date.
+# fpga_vs_python_run_*.log files under a real date.
 Write-Host "--- 1b) host time sync ---"
 $hostUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
 Cmd "date -s '$hostUtc'" 8000
@@ -87,7 +87,7 @@ Write-Host "--- 3) fpga_vs_python.sh ---"
 $from = $s.Sb.Length
 # `$? must reach the board literally: in a double-quoted string PowerShell
 # expands it to True/False.
-SendLine "sh /mnt/userdata/fpga_vs_python.sh; echo RUN_GC_RC=`$?"
+SendLine "sh /mnt/userdata/fpga_vs_python.sh; echo RUN_RC=`$?"
 $done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' -MaxMs 420000 -From $from
 Write-Host ("  finished = " + $done)
 # Let the shell print the exit-code line that follows the summary.
@@ -96,7 +96,7 @@ $new   = $s.Sb.ToString($from, $s.Sb.Length - $from)
 $lines = ($new -split "`r?`n")
 $ml    = $lines | Where-Object { $_ -match 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' } | Select-Object -First 1
 if ($ml) { Write-Host ("  verdict line: " + ((ConvertFrom-Ansi $ml).Trim())) }
-$rcLine = $lines | Where-Object { $_ -match 'RUN_GC_RC=\d+' } | Select-Object -Last 1
+$rcLine = $lines | Where-Object { $_ -match 'RUN_RC=\d+' } | Select-Object -Last 1
 
 Close-BoardSerialSession -Session $s
 [System.IO.File]::WriteAllText($outFile, $s.Sb.ToString())
@@ -123,12 +123,12 @@ if ($ml -match 'PASSED \(all invariants\):\s*(\d+)/(\d+)') {
     }
 }
 # The board's own exit code is the last word, and it must actually be present:
-# a truncated transcript that never shows RUN_GC_RC is not a pass.
+# a truncated transcript that never shows RUN_RC is not a pass.
 if (-not $rcLine) {
-    Write-Host "RESULT: FAIL (no RUN_GC_RC line; transcript truncated?)"
+    Write-Host "RESULT: FAIL (no RUN_RC line; transcript truncated?)"
     exit 1
 }
-if ($rcLine -match 'RUN_GC_RC=(\d+)' -and $Matches[1] -ne '0') {
+if ($rcLine -match 'RUN_RC=(\d+)' -and $Matches[1] -ne '0') {
     Write-Host ("RESULT: FAIL (fpga_vs_python.sh exit " + $Matches[1] + ")")
     exit 1
 }

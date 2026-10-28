@@ -25,7 +25,7 @@ FOGCCC 串口控制台 —— 使用说明
         fpga_vs_python.sh / fpga_vs_python_repeat.sh / fpga_vs_python.py
         bin/test_main
         tests/  py/  ko/
-        logs/gc_run_*.log
+        logs/fpga_vs_python_run_*.log
 
   USERDATA 必须为 FAT32，不是 exFAT。
   Windows 无法创建 >32GB 的 FAT32，可在板上格式化：
@@ -44,9 +44,9 @@ FOGCCC 串口控制台 —— 使用说明
         sh /run/media/USERDATA-mmcblk0p2/fpga_vs_python.sh
      指定规模：
         sh /mnt/userdata/fpga_vs_python.sh 2048 5 3     # maxN trials avg_refs
-  5. 结果输出到窗口，同时写入 USERDATA 的 logs/gc_run_*.log
+  5. 结果输出到窗口，同时写入 USERDATA 的 logs/fpga_vs_python_run_*.log
   6. 时钟：板上没有 RTC、也没有网络，每次上电时间都退回 2018-03-09。
-     控制台 (fogccc.bat) 和 serial_run_gc.ps1 会用宿主时间自动发一次 date -s
+     控制台 (fogccc.bat) 和 serial_fpga_vs_python.ps1 会用宿主时间自动发一次 date -s
      （只在 shell 提示符、且控制台空闲时发），这样日志的时间戳才是真实日期。
      不想被自动设置就加 -NoTimeSync。
 
@@ -56,13 +56,13 @@ FOGCCC 串口控制台 —— 使用说明
 【本目录文件】
   入口
     fogccc.bat          统一控制台
-    serial_run_gc.ps1   性能基准：串口执行 gc_test 并解析结果
+    serial_fpga_vs_python.ps1   性能基准：串口执行 fpga_vs_python.sh 并解析结果
   基础设施
     serial-monitor.ps1  控制台后端（与 LINUX-FPGA 工程共用同一份；等端口/时间戳/宿主时间同步）
                         注意：它**故意**不依赖 serial-session.ps1 —— 它是跨仓字节一致的
                         共享件，要动就必须两个仓库同一次提交一起动。
     serial-session.ps1  会话公共件：开端口 / 收字节 / 分块写 / 等提示符 / 去 ANSI / 取末尾 N 行
-                        serial_cmd.ps1 和 serial_run_gc.ps1 都只调它，不再各写一份
+                        serial_cmd.ps1 和 serial_fpga_vs_python.ps1 都只调它，不再各写一份
     log.bat             查看串口日志
     serial_cmd.ps1      串口发送命令并抓取输出（很薄，逻辑都在 serial-session.ps1）
     serial-port.ps1     串口自动识别 (CH340)，上面各脚本默认 -Port auto

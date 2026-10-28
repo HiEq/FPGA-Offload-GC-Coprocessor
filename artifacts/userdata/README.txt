@@ -2,9 +2,10 @@ FOGCCC USERDATA 分区说明
 ================================================================
 
 根目录：入口脚本及其直接依赖（脚本用 dirname 定位同级文件）
-  fpga_vs_python.sh         主测试入口，需同级 fpga_vs_python.py
-  fpga_vs_python_repeat.sh     重复测量，调用以上两个
-  fpga_vs_python.py        GC 测试主体，--seed 可复现
+  fpga_vs_python.sh          主测试入口（8 轮），需同级 fpga_vs_python.py
+  fpga_vs_python_repeat.sh   重复测量（N 个种子 + 固定种子 5 次）
+  fpga_vs_c.sh               FPGA vs C 计数器对比，调用 bin/test_main
+  fpga_vs_python.py          GC 测试主体，--seed 可复现
 
 bin/
   test_main         板级 C 测试套件：正确性 / 周期图 / 100 次重复 / 重复根
@@ -27,10 +28,17 @@ tests/
                     阶段 3A/3B 脏集、并发增量、溢出、残留、收尾查脏 FIFO
   ctrl_spill_test.py CTRL 写重投递的溢出防护验证
   dirty_api_test.py  阶段 3A C 驱动 + ctypes 绑定验收（含 --neg）
+  fpga_vs_c_vs_python.py
+                    FPGA / C 未缓存 / C 缓存 / Python 四路同图对比
+  side_table_test.py / barrier_verify_test.py / regs_aww_board_test.py
+                    side table、屏障验证、寄存器写投递（A/B）
   py_bfs.py         Python BFS oracle（fpga_vs_python.sh 用）
 
 logs/
-  gc_run_*.log      fpga_vs_python.sh 输出
+  fpga_vs_python_run_*.log     fpga_vs_python.sh 的完整输出
+  fpga_vs_python_repeat_*.log  fpga_vs_python_repeat.sh 的完整输出
+  fpga_vs_c_*.log              fpga_vs_c.sh 的完整输出
+  fpga_vs_python_*.log         单次运行；被上面两个包装脚本调用时不写
 
 ----------------------------------------------------------------
 不在此分区的内容
@@ -42,6 +50,7 @@ logs/
   也可以挂到 /mnt/userdata:  mkdir -p /mnt/userdata && mount -t vfat /dev/mmcblk0p2 /mnt/userdata
   sh fpga_vs_python.sh 4096 8 2
   sh fpga_vs_python_repeat.sh 10
+  sh fpga_vs_c.sh
   ./bin/test_main                   需 root
   insmod ko/fogccc-irq.ko
   sh tests/irq_drv_test.sh

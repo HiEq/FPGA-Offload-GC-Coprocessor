@@ -38,6 +38,8 @@ class _Tee(object):
 
 
 def _start_log(tag, script_file):
+    if os.environ.get('FOGCCC_NO_LOG'):
+        return None
     d = os.path.dirname(os.path.abspath(script_file))
     base = os.path.dirname(d) if os.path.basename(d) == 'tests' else d
     logs = os.path.join(base, 'logs')
@@ -52,7 +54,9 @@ def _start_log(tag, script_file):
     sys.stderr = _Tee(sys.__stderr__, f)
     return f.name
 
-LOG_PATH = _start_log('three_way', __file__)
+LOG_PATH = _start_log('fpga_vs_c_vs_python', __file__)
+if LOG_PATH:
+    print('log    : %s' % LOG_PATH)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'py'))

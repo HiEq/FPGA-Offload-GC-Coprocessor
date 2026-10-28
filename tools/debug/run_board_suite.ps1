@@ -1,6 +1,6 @@
 # ============================================================
 # run_board_suite.ps1 - the warm-image board regression (everything that is
-#   NOT covered by run_phase3_board.ps1 and the three_way comparison).
+#   NOT covered by run_phase3_board.ps1 and the fpga_vs_c_vs_python comparison).
 #
 #   Each step goes through tools\debug\board_cmd.ps1, which probes with reads
 #   only until a shell prompt is seen and never writes during the boot window.
@@ -26,7 +26,7 @@ $steps = @(
     @('abort_test',       "cd $DataDir && python3 -u tests/abort_test.py"),
     @('abort_sweep',      "cd $DataDir && python3 -u tests/abort_sweep.py"),
     @('done_race',        "cd $DataDir && python3 -u tests/done_race_test.py"),
-    @('run_gc',           "cd $DataDir && sh fpga_vs_python.sh 4096 8 2"),
+    @('fpga_vs_python',    "cd $DataDir && sh fpga_vs_python.sh 4096 8 2"),
     @('repeat',           "cd $DataDir && sh fpga_vs_python_repeat.sh 10"),
     @('irq',              "cd $DataDir && sh tests/irq_drv_test.sh"),
     @('regs_aww_acked',   "cd $DataDir && python3 -u tests/regs_aww_board_test.py --acked"),
