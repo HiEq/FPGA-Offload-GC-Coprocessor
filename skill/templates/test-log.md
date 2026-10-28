@@ -9,7 +9,7 @@
 # boot.bin : <sha256>
 # image    : <sha256>（内核/rootfs 镜像）
 # date     : <YYYY-MM-DD>
-# operator : <谁跑的>
+# operator : <执行人>
 # expected : <关键判定行，如 PASSED (all invariants): 8/8>
 # result   : <PASS / FAIL / 部分>
 ```
