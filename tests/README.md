@@ -1,7 +1,7 @@
 # tests/ —— 静态契约测试
 
-gate 工作流跑的就是这个目录。它**只读文本**：不综合、不仿真、不连板子。
-全绿的含义是"源码、寄存器映射、文档、工作流彼此一致"，不是"设计能用"
+gate 工作流执行的就是这个目录。它**只读文本**：不综合、不仿真、不连板子。
+全部通过的含义是"源码、寄存器映射、文档、工作流彼此一致"，不是"设计能用"
 （证据分级见 AGENTS.md §4.2）。
 
 ```bash
@@ -21,7 +21,7 @@ Windows 上把 python3 换成 python。只依赖标准库。
 
 ## 硬编码 ratchet
 
-contract job 会跑 test_hardcoded.py。规则是**只拦新增**：
+contract job 会执行 test_hardcoded.py。规则是**只拦新增**：
 
 - magic：≥1000 的十进制、≥3 位十六进制、Verilog 带位宽字面量；
   #define / parameter / localparam / const 声明行豁免（那正是"命名"）。

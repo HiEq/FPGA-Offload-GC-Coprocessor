@@ -37,7 +37,7 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 
 - `FPGA us` = `CYCLES` / 100 MHz：只含引擎时间，不含构图、写对象头、清队列轮询、驱动 `usleep`。
 - `C us`：同一张图、同一 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**未缓存**访问。
-- C（缓存）：同一 BFS 跑在堆副本上的上限参照（`fpga_vs_c_vs_python.py` 的 C-c 列）。
+- C（缓存）：同一 BFS 运行在堆副本上的上限参照（`fpga_vs_c_vs_python.py` 的 C-c 列）。
 - `py_bfs.py`：Python 字节码 BFS（逐条读 `/dev/mem`），只作量级参照（17–221×）。
 
 ## 端到端成本

@@ -123,7 +123,7 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 | 关键行 | 含义 |
 |---|---|
 | `PASSED (all invariants)` | 功能正确 |
-| `CONTRACT_RESULT OK` | free-list 软件契约（扫描中探针 / 早读 / 扫描中重跑）符合文档 |
+| `CONTRACT_RESULT OK` | free-list 软件契约（扫描中探针 / 早读 / 扫描中重新执行）符合文档 |
 | `DIRTY_SET_RESULT OK` / `DIRTY_CONCURRENT_RESULT OK` | 脏集/增量标记（含并发 remark）与 CPU oracle 一致 |
 | `CTRL_SPILL_RESULT OK` | 卡上位流含 `CTRL` 写重投递防护 |
 | `IRQ_DRIVEN_DONE_OK` | 中断通路正常 |
@@ -137,7 +137,7 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 - `sh: fpga_vs_python.sh: No such file or directory` → 当前目录不是数据分区；先
   `cd /run/media/USERDATA-mmcblk0p2`，或改用绝对路径
 - `./bin/test_main: No such file or directory` → 分区没挂到该路径（`/mnt/userdata` 是空目录）；
-  换 `/run/media/USERDATA-mmcblk0p2` 或先跑 `mount_data.sh`
+  换 `/run/media/USERDATA-mmcblk0p2` 或先执行 `mount_data.sh`
 - `insmod: already loaded` → 先 `rmmod fogccc_irq`
 - 打不开 `/dev/mem` → 必须是 root
 - 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）

@@ -67,5 +67,5 @@ serial_push_resume.ps1 也会自己 mkdir + mount）。两条路径是同一个�
 
 两个随卡二进制（`bin/test_main`、py/libfogccc.so）的 SHA256 记录在 artifacts/SHA256SUMS。
 
-用 `tools/make_manifest.ps1` 重新生成；CI 跑 -Check，二进制改了但 manifest 没更新会直接红。
+用 `tools/make_manifest.ps1` 重新生成；CI 执行 -Check，二进制改了但 manifest 没更新会直接失败。
 
