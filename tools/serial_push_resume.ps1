@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Dest,
     [int]$ChunkKB = 64,
     [string]$Port = 'auto',
-    [int]$Baud = 115200
+    [int]$Baud = 921600
 )
 
 # Resumable large-file push. Each chunk is decoded, md5-checked, moved to a part

@@ -1,9 +1,9 @@
 #!/bin/sh
-# fpga_vs_c.sh - FPGA vs C 计数对比，输出同时写入 logs/test_main_<时间>.log
+# fpga_vs_c.sh - FPGA vs C 计数对比，输出同时写入 logs/fpga_vs_c_<时间>.log
 D=$(cd "$(dirname "$0")" && pwd)
 L="$D/logs"
 mkdir -p "$L" 2>/dev/null
-LOG="$L/test_main_$(date +%Y%m%d_%H%M%S).log"
+LOG="$L/fpga_vs_c_$(date +%Y%m%d_%H%M%S).log"
 if [ ! -x "$D/bin/test_main" ]; then
     echo "missing $D/bin/test_main" >&2
     exit 2

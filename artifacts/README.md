@@ -20,7 +20,7 @@ FAT32，卷标 `BOOT`，约 512 MB。板子由 FSBL 从该分区启动。
 
 FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcblk0p2`
 （stock `/etc/fstab` 里**没有** p2 条目）；`/mnt/userdata` 需要自己挂：
-`sh /mnt/boot/mount_data.sh`（主机脚本 `serial_run_gc.ps1` /
+`sh /mnt/boot/mount_data.sh`（主机脚本 `serial_fpga_vs_python.ps1` /
 `serial_push_resume.ps1` 也会自己 `mkdir` + `mount`）。两条路径是同一个分区，固定用一个即可。
 
 | 路径 | 说明 |

@@ -2,7 +2,7 @@
 # run_phase3_board.ps1 - Phase 3A/3B board verification chain
 #
 #   1. test_main            (C suite, v4.2 pairing)
-#   2. serial_phase2.ps1    (Phase 2 regression: side-table + gc_test sweep)
+#   2. serial_phase2.ps1    (Phase 2 regression: side-table + fpga_vs_python sweep)
 #   3. freelist_contract    (Phase 2 contract negative controls)
 #   4. dirty_set_test       (Phase 3A: incremental epochs + oracle + no-barrier neg)
 #   5. dirty_concurrent     (Phase 3B: concurrent mutator + remark + stress)

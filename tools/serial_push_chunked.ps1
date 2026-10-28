@@ -4,7 +4,7 @@ param(
     [int]$ChunkKB = 128,
     [int]$LineDelayMs = 1,
     [string]$Port = 'auto',
-    [int]$Baud = 115200
+    [int]$Baud = 921600
 )
 
 $ErrorActionPreference = 'Stop'

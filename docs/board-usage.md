@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | 板卡控制台 | 双击 `tools\fogccc.bat` | 显示开机日志并进入登录 shell，键盘输入直通板卡；进入 shell 后以宿主时间执行一次 `date -s` |
 | 查看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
-| 运行 GC 基准测试 | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动以 root 登录（先试空密码，再试 `root`）、挂载 `/mnt/userdata`、执行 `fpga_vs_python.sh`；必须同时出现 `PASSED (all invariants): n/n` 与 `RUN_GC_RC=0` 才判定通过（最长约 7 分钟）|
+| 运行 GC 基准测试 | `powershell -ExecutionPolicy Bypass -File tools\serial_fpga_vs_python.ps1` | 自动以 root 登录（先试空密码，再试 `root`）、挂载 `/mnt/userdata`、执行 `fpga_vs_python.sh`；必须同时出现 `PASSED (all invariants): n/n` 与 `RUN_RC=0` 才判定通过（最长约 7 分钟）|
 | 分块推送文件 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关闭回显、按提示符同步、分块传输并逐块校验 md5；逐行经 shell 传输，约 2 KB/s，仅适用于小文件 |
 | 断点续传文件 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每个分块写入卡上 `parts/` 并记录进度；掉线或断电后重新执行同一命令即从断点继续（43 MB 的 `image.ub` 约 90 分钟）|
 | 生成二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 使用 `-Check` 校验二进制与清单一致 |
@@ -33,7 +33,7 @@
 
 串口为独占资源，同一时刻只能有一个窗口占用 COM 口；运行脚本前先关闭 `fogccc.bat`，否则报“拒绝访问/端口被占用”。
 
-板卡无 RTC、无网络，上电后时钟回到 2018-03-09；`fogccc.bat` 与 `serial_run_gc.ps1` 在 shell 空闲时以宿主时间执行一次 `date -s`（`-NoTimeSync` 可关闭），因此卡上日志的时间戳为真实日期。
+板卡无 RTC、无网络，上电后时钟回到 2018-03-09；`fogccc.bat` 与 `serial_fpga_vs_python.ps1` 在 shell 空闲时以宿主时间执行一次 `date -s`（`-NoTimeSync` 可关闭），因此卡上日志的时间戳为真实日期。
 
 ## 板上测试命令速查
 
@@ -130,7 +130,7 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 | `REPEAT_DONE` | 重复性测试完成 |
 | `MISMATCH` / `FAIL` / `FAILED` | 失败 |
 
-日志：`/mnt/userdata/logs/gc_run_<日期>_<时间>.log`。
+日志：`/mnt/userdata/logs/fpga_vs_python_run_<日期>_<时间>.log`。
 
 ### 8. 常见问题
 
