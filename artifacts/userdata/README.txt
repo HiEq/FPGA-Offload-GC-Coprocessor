@@ -2,8 +2,8 @@ FOGCCC USERDATA 分区说明
 ================================================================
 
 根目录：入口脚本及其直接依赖（脚本用 dirname 定位同级文件）
-  run_gc.sh         主测试入口，需同级 fpga_vs_python.py
-  run_repeat.sh     重复测量，调用以上两个
+  fpga_vs_python.sh         主测试入口，需同级 fpga_vs_python.py
+  fpga_vs_python_repeat.sh     重复测量，调用以上两个
   fpga_vs_python.py        GC 测试主体，--seed 可复现
 
 bin/
@@ -27,10 +27,10 @@ tests/
                     阶段 3A/3B 脏集、并发增量、溢出、残留、收尾查脏 FIFO
   ctrl_spill_test.py CTRL 写重投递的溢出防护验证
   dirty_api_test.py  阶段 3A C 驱动 + ctypes 绑定验收（含 --neg）
-  py_bfs.py         Python BFS oracle（run_gc.sh 用）
+  py_bfs.py         Python BFS oracle（fpga_vs_python.sh 用）
 
 logs/
-  gc_run_*.log      run_gc.sh 输出
+  gc_run_*.log      fpga_vs_python.sh 输出
 
 ----------------------------------------------------------------
 不在此分区的内容
@@ -40,8 +40,8 @@ logs/
 常用命令（板上）
   cd /run/media/USERDATA-mmcblk0p2
   也可以挂到 /mnt/userdata:  mkdir -p /mnt/userdata && mount -t vfat /dev/mmcblk0p2 /mnt/userdata
-  sh run_gc.sh 4096 8 2
-  sh run_repeat.sh 10
+  sh fpga_vs_python.sh 4096 8 2
+  sh fpga_vs_python_repeat.sh 10
   ./bin/test_main                   需 root
   insmod ko/fogccc-irq.ko
   sh tests/irq_drv_test.sh

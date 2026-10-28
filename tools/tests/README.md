@@ -5,7 +5,7 @@
 
 | 脚本 | 类型 | 用途 |
 |---|---|---|
-| `fpga_vs_python.py` | 功能 + 性能（板级） | 卡上 `run_gc.sh` 调用的同一份；`--seed N` 可复现；mark 后校验 FREE_COUNT/FREE_DATA |
+| `fpga_vs_python.py` | 功能 + 性能（板级） | 卡上 `fpga_vs_python.sh` 调用的同一份；`--seed N` 可复现；mark 后校验 FREE_COUNT/FREE_DATA |
 | `side_table_test.py` | 功能（板级） | Phase 1/2：用 `gc.get_referents`（`tp_traverse`）构建真实 解释器容器图；mark 后按 FREE_COUNT/FREE_DATA 校验 free 集合；`--neg` 注入故障 |
 | `irq_drv_test.sh` | 功能（验收级） | 中断端到端：`done` → GIC SPI 61 → 内核 handler |
 | `fpga_vs_c_vs_python.py` | 性能（板级） | 同一张图依次跑 FPGA / C 未缓存 / C 缓存 / Python，四个计数必须相等；C 计时在 C 内完成 |

@@ -64,7 +64,7 @@ Read-BoardSerial -Session $s -Ms 400
 
 # ================= 1b) host time sync =================
 # The board has no RTC and no network, so its clock falls back to 2018-03-09 on
-# every power-up. Push the host's UTC time in, so run_gc.sh writes its
+# every power-up. Push the host's UTC time in, so fpga_vs_python.sh writes its
 # gc_run_*.log files under a real date.
 Write-Host "--- 1b) host time sync ---"
 $hostUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
@@ -80,14 +80,14 @@ Cmd "md5sum /mnt/userdata/fpga_vs_python.py" 15000
 Cmd "ls -l /mnt/boot/BOOT.BIN 2>/dev/null || ls -l /run/media/*/BOOT.BIN 2>/dev/null || echo no-boot-mount" 10000
 Cmd "cat /sys/class/fpga_manager/fpga0/state 2>/dev/null || echo no-fpga-manager" 8000
 
-# ================= 3) run_gc.sh =================
-Write-Host "--- 3) run_gc.sh ---"
+# ================= 3) fpga_vs_python.sh =================
+Write-Host "--- 3) fpga_vs_python.sh ---"
 # Only output produced from here on may satisfy the verdict pattern: the buffer
 # still holds the whole session, including earlier 'FAILED' lines.
 $from = $s.Sb.Length
 # `$? must reach the board literally: in a double-quoted string PowerShell
 # expands it to True/False.
-SendLine "sh /mnt/userdata/run_gc.sh; echo RUN_GC_RC=`$?"
+SendLine "sh /mnt/userdata/fpga_vs_python.sh; echo RUN_GC_RC=`$?"
 $done = Read-BoardSerialUntil -Session $s -Pattern 'PASSED \(all invariants\)|FAILED|Traceback|no trials completed' -MaxMs 420000 -From $from
 Write-Host ("  finished = " + $done)
 # Let the shell print the exit-code line that follows the summary.
@@ -129,7 +129,7 @@ if (-not $rcLine) {
     exit 1
 }
 if ($rcLine -match 'RUN_GC_RC=(\d+)' -and $Matches[1] -ne '0') {
-    Write-Host ("RESULT: FAIL (run_gc.sh exit " + $Matches[1] + ")")
+    Write-Host ("RESULT: FAIL (fpga_vs_python.sh exit " + $Matches[1] + ")")
     exit 1
 }
 Write-Host "RESULT: PASS"
