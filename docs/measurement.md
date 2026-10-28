@@ -1,6 +1,6 @@
-# 测量口径与证据
+# 测量条件与证据
 
-主 [`README.md`](../README.md) 只给汇总表；逐组数据、口径与出处在这里。
+主 [`README.md`](../README.md) 只给汇总表；逐组数据、测量条件与出处在这里。
 当前证据：`image.ub` `c958eac9…` / `BOOT.BIN` `d20530bc…`（v4.12，2026-10-27，PS 800 MHz）。
 
 ## 计数正确性（`test_main` Test 1）
@@ -9,7 +9,7 @@
 `marked`；`test_main` Test 1 只输出计数，不输出耗时。七行 10–4000 全部 `OK`，出处
 `tools/logs/board_test_main.log`。`marked < Objects` 是随机图中从根 0 不可达的对象。
 
-## 同图FPGA/C/Python对比测试（`tests/fpga_vs_c_vs_python.py`）
+## 同一张图的 FPGA / C / Python 对比（`tests/fpga_vs_c_vs_python.py`）
 
 同一张图依次执行 FPGA、C 未缓存、C 缓存、Python 四种实现；
 C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_v412_800mhz.log`（v4.12 / PS 800 MHz）。
@@ -33,10 +33,10 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 
 硬件仅在指针追逐受 DDR 延迟限制时占优（2.1–3.2×）；图驻留 cache 时为 0.5–1.0×。
 
-## 口径
+## 测量条件
 
 - `FPGA us` = `CYCLES` / 100 MHz：只含引擎时间，不含构图、写对象头、清队列轮询、驱动 `usleep`。
-- `C us`：同图同 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**未缓存**口径。
+- `C us`：同一张图、同一 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**未缓存**访问。
 - C（缓存）：同一 BFS 跑在堆副本上的上限参照（`fpga_vs_c_vs_python.py` 的 C-c 列）。
 - `py_bfs.py`：Python 字节码 BFS（逐条读 `/dev/mem`），只作量级参照（17–221×）。
 
@@ -47,7 +47,7 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 | 阶段 | 时间 |
 | --- | --- |
 | 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| 102.2 ms / 图平均 |
-| 同图 Python BFS（oracle）| 43.8 ms / 图平均 |
+| 同一张图的 Python BFS（oracle）| 43.8 ms / 图平均 |
 | 硬件标记（引擎）| 0.214 ms / 图平均 |
 
 单次卸载的端到端成本由构图主导（约 478× 标记时间）。构图走 Python；

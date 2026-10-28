@@ -93,7 +93,7 @@ petalinux-package boot --fsbl images/linux/zynq_fsbl.elf \
                        --fpga images/linux/system.bit --u-boot --force
 ```
 
-TF 卡上的三件套：`BOOT.BIN` + `image.ub` + **`boot.scr`**
+TF 卡上的三个文件：`BOOT.BIN` + `image.ub` + **`boot.scr`**
 
 ## `images/linux/system.bit` 的更新时机
 
