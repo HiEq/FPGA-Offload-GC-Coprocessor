@@ -13,6 +13,7 @@
 1 magic rtl/gc_freelist.v
 6 magic rtl/gc_mark_engine.v
 27 magic rtl/gc_regs.v
+1 hostpath skill/pitfalls/board-bringup.md
 1 hostpath tools/debug/README.md
 5 magic tools/debug/board_cmd.ps1
 3 magic tools/debug/cold_cycle.ps1
