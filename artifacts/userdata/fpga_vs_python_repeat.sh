@@ -7,19 +7,35 @@
 # Group 1: N runs, different seeds
 # Group 2: 5 runs, same seed
 #
+# The full transcript goes to logs/fpga_vs_python_repeat_<time>.log.
 # Exit code is evidence: any non-zero child, or a missing summary line,
 # turns the whole run red. REPEAT_DONE is only printed when everything passed.
 # ============================================================
 D=$(cd "$(dirname "$0")" && pwd)
 N=${1:-10}
+export FOGCCC_NO_LOG=1
+
+# Re-run once with stdout/stderr captured, then print the log so the
+# caller still sees it live and the exit code stays the inner one.
+if [ -z "$REPEAT_LOGGED" ]; then
+    mkdir -p "$D/logs" 2>/dev/null
+    LOG="$D/logs/fpga_vs_python_repeat_$(date +%Y%m%d_%H%M%S).log"
+    REPEAT_LOGGED=1 REPEAT_LOG="$LOG" \
+        sh "$D/$(basename "$0")" "$@" > "$LOG" 2>&1
+    rc=$?
+    cat "$LOG"
+    echo "   log    : $LOG"
+    exit $rc
+fi
 BASE=$((20251017))
 fail=0
 
 echo "################################################################"
+echo "#  log: $REPEAT_LOG"
 echo "#  REPEAT TEST   N=$N   dir=$D"
 echo "################################################################"
 
-echo "=== GROUP1: gc_test, different seeds (vs Python BFS 参照) ==="
+echo "=== GROUP1: fpga_vs_python, different seeds (vs Python BFS 参照) ==="
 i=1
 while [ $i -le $N ]; do
     seed=$((BASE + i))

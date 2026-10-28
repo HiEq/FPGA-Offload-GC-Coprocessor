@@ -34,9 +34,9 @@
 3 path tools/serial-monitor.ps1
 5 magic tools/serial-session.ps1
 1 magic tools/serial_cmd.ps1
+13 magic tools/serial_fpga_vs_python.ps1
 5 magic tools/serial_phase2.ps1
 7 magic tools/serial_push_chunked.ps1
 16 magic tools/serial_push_resume.ps1
-13 magic tools/serial_run_gc.ps1
 1 magic tools/vivado_affinity.ps1
 3 magic vivado/build.tcl

@@ -1,6 +1,6 @@
 # tools/tests/ —— 功能测试
 
-性能基准入口为 `../serial_run_gc.ps1`。本目录只放功能性验证脚本。
+性能基准入口为 `../serial_fpga_vs_python.ps1`。本目录只放功能性验证脚本。
 运行条件：板子在运行，串口空闲。日志写入 `tools/logs/`。调试工具见 `../debug/`。
 
 | 脚本 | 类型 | 用途 |
