@@ -45,13 +45,13 @@ ci: pin the checkout action to a commit SHA
   缺失时 `pr-policy` 直接失败。
 - 合并方式只有 **squash**；合并后删除 head 分支。
 - 通过条件（全部，缺一不可）：
-  1. `lint`、`contract`、`commit-policy`、`pr-policy` 四个检查全绿；
+  1. `lint`、`contract`、`commit-policy`、`pr-policy` 四个检查全部通过；
   2. 分支与 `main` 同步（`strict_required_status_checks_policy`）。
 - **不要求 approval**：`required_approving_review_count = 0`，
   `require_code_owner_review = false`，`require_last_push_approval = false`。
   `CODEOWNERS` 仍然存在，但只用于自动请求 reviewer，不参与合并判断。
 - 分支名、commit 格式、PR 标题与证据两行是 **CI 检查**（`commit-policy` /
-  `pr-policy`），不是 approval 检查；它们失败时 PR 直接红，无需人工 Review。
+  `pr-policy`），不是 approval 检查；它们失败时 PR 不能合并，无需人工 Review。
 
 ## 4. CI 检查
 
@@ -62,7 +62,7 @@ ci: pin the checkout action to a commit SHA
 | `commit-policy` | 同上 | PR 范围内每个非 merge commit 的格式 | 不检查内容正确性 |
 | `pr-policy` | 同上 | PR 标题、head 分支名、目标分支、证据两行 | 不检查正文质量 |
 
-`verilator`/`shellcheck` 之类未接入：接入前先在本地跑一遍，确认现有代码是绿的，
+`verilator`/`shellcheck` 之类未接入：接入前先在本地执行一次，确认现有代码全部通过，
 否则等于把 main 锁死。
 
 ## 5. 启用服务端规则（需要 **admin**）
@@ -88,7 +88,7 @@ Require status checks（`lint`、`contract`、`commit-policy`、`pr-policy`，�
 ### 启用顺序（很重要）
 
 1. 先合入本 PR（此时 ruleset 还没要求新检查，所以能合）。
-2. 确认 `gate` 工作流已经在这个 PR 上跑过一次，四个检查名字在
+2. 确认 `gate` 工作流已经在这个 PR 上执行过一次，四个检查名字在
    **Settings → Branches → Required checks** 的候选列表里出现过。
 3. 再执行上面的 `gh api` / 网页操作。顺序反了，`main` 会卡在"required check 永远
    不出现"的状态。

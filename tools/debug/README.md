@@ -9,7 +9,7 @@
 | gic_dump.py | GIC 寄存器只读探针（0xF8F01000） |
 | gic_irq_test.py | GIC SPI 61 使能/挂起位探测 |
 | irq_loss_test.sh | 中断计数与合并行为，非验收测试 |
-| diag_run.ps1 | 经串口跑一条命令并等到 sentinel（其余板级调试脚本的底座） |
+| diag_run.ps1 | 经串口执行一条命令并等到 sentinel（其余板级调试脚本的底座） |
 | run_phase3_board.ps1 | 阶段 3 板级验收链（脏集 / 并发 / 溢出 / 残留 / 防护 + 收尾查脏 FIFO 为空） |
 | diag_freelist.py | free-list 位图与计数的板级诊断 |
 | dirty_probe.py | DIRTY_PUSH 的 2× 计数（store 重投递）测量探针 |
@@ -35,5 +35,5 @@ D=. sh tests/irq_drv_test.sh
 
 ## 判据
 
-- hw_program.tcl 成功只表示烧写完成，不代表设计正确；完成后仍需跑 tests/ 或基准
+- hw_program.tcl 成功只表示烧写完成，不代表设计正确；完成后仍需执行 tests/ 或基准
 - gic_* 只读，不改变状态；irq_loss_test.sh 会 insmod/rmmod

@@ -36,7 +36,7 @@
 | **T-RACE** | **`run_start`/`abort` 同拍 R beat**：flush 当拍到达的旧响应必须被丢弃；未修复时数据 FIFO 留下上一轮的字，新 run 的第一笔 ref 被顶掉。每次必须命中 `RREADY=0` 窗口，未命中直接 FAIL（`sim/run_race_tb.bat` / `.sh`）|
 | **T-CMDFIFO** | **`run_start`/`abort` 同拍命令 FIFO**：同拍不能再发下一条 AR；同拍 `cmd_valid` 的 enqueue 也必须被丢弃（脉冲后 `c0w==c0r`、`c1w==c1r`）。未修复时第二阶段报 `c0r=4 c0w=5` / `c1r=0 c1w=1`，修复后 `c0r=c0w=4`、`c1r=c1w=0`（`sim/run_cmdfifo_tb.bat` / `.sh`）|
 | **T-MAXFAN** | 单个对象 **`ref_count=4095`**：引用 FIFO 达到 80 深度，对象头流仍必须排空（共享 R 通道不死锁），`marked` 精确、`STATUS=0x10` |
-| **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），跑完且 `marked=256` |
+| **T-ROOTCLAMP** | **`root_count=0xFFFFFFFF`**：硬件必须钳到 256（`root_rd_addr` 只有 8 位），执行完毕且 `marked=256` |
 | **T-STAR** | **4096 对象星形图**（root 0 → 1..4095）：`marked=4096`、`q_tail=0`（12 位指针回绕）、`STATUS=0x10` |
 | **#6** | 未完成读事务数（outstanding AR）任何时刻 ≤ `MAXO`(8) |
 | **AXI** | 协议检查器：`ARSIZE=3`/`ARLEN=0`/`ARBURST=INCR`/8 字节对齐/`ARID≤1`/`VALID` 在 `READY` 前不许撤销且载荷稳定 |
