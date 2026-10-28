@@ -180,12 +180,32 @@ v4.12 把 busybox vi 换成 vim-tiny（`:q` / `:q!` 正常、退出不留残影�
 rtl/       顶层 + 寄存器 + BFS 引擎 + 位图/队列/free-list/脏 FIFO + AXI 读
 sim/       自检 testbench、定向 TB、AXI 协议检查器
 csrc/      驱动、test_main、Python BFS 参照
+driver/    IRQ_F2P 内核模块
 python/    ctypes 绑定
 vivado/    BD + 综合/实现脚本
+petalinux/ 镜像配方与构建脚本
 tools/     串口与上板脚本、测试、日志
 artifacts/ 卡上产物与二进制清单（BOOT.BIN/image.ub 不入库）
+skill/     技能包
 docs/      构建、上板、测量、仿真、设计细节
+tests/     仓库契约测试
 ```
+
+选题指南 3.3.5.4 的推荐结构与本仓库的对应关系如下。本仓库未采用推荐目录名，按该节要求在此给出对照；
+所有目录名为小写英文，不含空格与中文字符。
+
+| 指南推荐 | 本仓库 | 内容 |
+| --- | --- | --- |
+| `README.md` | `README.md` | 项目简介与复现步骤 |
+| `src/` | `rtl/`、`csrc/`、`driver/`、`python/` | PL 源码、C 驱动与 `test_main`、内核模块、ctypes 绑定 |
+| `sim/` | `sim/` | 自检 testbench、定向用例、AXI 协议检查器 |
+| `build/` | `vivado/`、`petalinux/`、`Makefile` | 位流与镜像的构建脚本、综合与实现报告 |
+| `board/` | `tools/`、`tools/logs/` | 串口与上板脚本、逐次实测日志 |
+| `data/` | `artifacts/` | 卡上产物、二进制清单与校验值 |
+| `skill/` | `skill/` | 技能包，索引见 `skill/README.md` |
+| `report/` | `docs/` | 设计、构建、测量、仿真、发布记录；独立设计报告按指南另行提交 |
+
+`tests/` 为仓库自身的契约测试（目录规范、提交信息、字面量基线），不属于上述结构。
 
 完整目录说明见 [`docs/build.md`](docs/build.md)。调试：标记结果/周期/队列在 `0x10`/`0x14`/`0x18`/`0x1C`，
 对象图在 DDR `0x1E000000`；内部信号可用 ILA（`vivado/build.tcl` 加 `system_ila`）。

@@ -68,9 +68,14 @@ tools/        serial_*.ps1、push_tests.ps1、make_manifest/card/release_*、
 driver/       fogccc_irq.c + PetaLinux 模块 recipe
 petalinux/    工程骨架与构建脚本（BUILD_GUIDE.md）
 artifacts/    卡上产物、SHA256SUMS（二进制清单）
+skill/        技能包（pitfalls / scripts / templates / prompts）
 docs/         构建、上板、测量、仿真、性能历史、设计细节
+tests/        仓库契约测试（目录、提交信息、字面量基线）
 .github/      CI（lint：语法 + iverilog 定向回归 + gcc + SHA256SUMS）
+Makefile      常用命令入口
 AGENTS.md     AI 参与者的工程约束
 ```
+
+与选题指南 3.3.5.4 推荐目录的对照见 [`README.md`](../README.md) 第 6 节。
 
 `artifacts/BOOT.BIN` 与 `artifacts/image.ub` 被 `.gitignore` 排除，只随 Release 发布。
