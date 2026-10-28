@@ -12,7 +12,7 @@
 ## 同图FPGA/C/Python对比测试（`tests/fpga_vs_c_vs_python.py`）
 
 同一张图依次执行 FPGA、C 未缓存、C 缓存、Python 四种实现；
-C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_three_way.log`。
+C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_v412_800mhz.log`（v4.12 / PS 800 MHz）。
 
 | 对象 | mkd | FPGA us | C-u us | C-c us | Py ms | Cu/HW | Cc/HW | Py/HW |
 | --: | --: | --: | --: | --: | --: | --: | --: | --: |
@@ -42,7 +42,7 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 
 ## 端到端成本
 
-`fpga_vs_python.py 4096 8 2`（`tools/logs/board_gc_test.log`）：
+`fpga_vs_python.py 4096 8 2`（`tools/logs/board_v412_800mhz.log`）：
 
 | 阶段 | 时间 |
 | --- | --- |
