@@ -22,7 +22,7 @@ FOGCCC 串口控制台 —— 使用说明
         BOOT.BIN / image.ub / boot.scr / mount_data.sh
 
   USERDATA 分区
-        run_gc.sh / run_repeat.sh / fpga_vs_python.py
+        fpga_vs_python.sh / fpga_vs_python_repeat.sh / fpga_vs_python.py
         bin/test_main
         tests/  py/  ko/
         logs/gc_run_*.log
@@ -39,11 +39,11 @@ FOGCCC 串口控制台 —— 使用说明
   4. 挂载并运行：
         mkdir -p /mnt/userdata
         mount /dev/mmcblk0p2 /mnt/userdata
-        sh /mnt/userdata/run_gc.sh
+        sh /mnt/userdata/fpga_vs_python.sh
      也可以不挂载，直接用 rootfs 自动挂好的路径（udev 按卷标挂）：
-        sh /run/media/USERDATA-mmcblk0p2/run_gc.sh
+        sh /run/media/USERDATA-mmcblk0p2/fpga_vs_python.sh
      指定规模：
-        sh /mnt/userdata/run_gc.sh 2048 5 3     # maxN trials avg_refs
+        sh /mnt/userdata/fpga_vs_python.sh 2048 5 3     # maxN trials avg_refs
   5. 结果输出到窗口，同时写入 USERDATA 的 logs/gc_run_*.log
   6. 时钟：板上没有 RTC、也没有网络，每次上电时间都退回 2018-03-09。
      控制台 (fogccc.bat) 和 serial_run_gc.ps1 会用宿主时间自动发一次 date -s
@@ -69,7 +69,7 @@ FOGCCC 串口控制台 —— 使用说明
     logs\               脚本日志输出，已加入 .gitignore
   tests\
     test-serial-session.ps1  串口公共件的单元测试（不需要板子，含"旧 buffer 里的提示符"负控）
-    fpga_vs_python.py          板级测试，与卡上 run_gc.sh 同一份
+    fpga_vs_python.py          板级测试，与卡上 fpga_vs_python.sh 同一份
     irq_drv_test.sh     中断端到端验证，验收级
   debug\
     hw_program.tcl      JTAG 烧比特流

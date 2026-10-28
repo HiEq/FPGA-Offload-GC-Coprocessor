@@ -25,8 +25,8 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 
 | 路径 | 说明 |
 |---|---|
-| `run_gc.sh` | GC 测试入口，需同级 `fpga_vs_python.py` |
-| `run_repeat.sh` | 重复测量 |
+| `fpga_vs_python.sh` | GC 测试入口，需同级 `fpga_vs_python.py` |
+| `fpga_vs_python_repeat.sh` | 重复测量 |
 | `fpga_vs_python.py` | GC 测试主体，`--seed` 可复现 |
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
@@ -40,10 +40,10 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 | `tests/dirty_set_test.py` / `dirty_concurrent_test.py` / `dirty_overflow_test.py` / `dirty_leftover_test.py` / `dirty_state.py` | 阶段 3A/3B：脏集、并发增量标记、溢出、残留屏障、收尾查脏 FIFO |
 | `tests/ctrl_spill_test.py` | `CTRL` 写重投递的溢出防护验证 |
 | `tests/dirty_api_test.py` | 阶段 3A 的 C 驱动 + ctypes 绑定接口验收（含 `--neg` 反向验证） |
-| `tests/py_bfs.py` | Python BFS 参照（独立 oracle，`run_gc.sh` 用） |
+| `tests/py_bfs.py` | Python BFS 参照（独立 oracle，`fpga_vs_python.sh` 用） |
 | `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定，含 STATUS 与位图探针 |
 
-日志不在本目录，`run_gc.sh` 写入卡上 `logs/`。
+日志不在本目录，`fpga_vs_python.sh` 写入卡上 `logs/`。
 
 以下文件只留在仓库，不放入卡：
 
