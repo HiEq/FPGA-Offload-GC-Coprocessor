@@ -157,24 +157,24 @@ gc_dirty_fifo 是标记引擎的第二工作源：写 0x440 推入一个 ID，�
 
 ## 5. 发布
 
-当前发布：v4.13（GitHub Latest，800 MHz）。v4.7（667 MHz）保留为上一个正式版；v4.1–v4.6、v4.8–v4.12 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。
-v4.13 只整理文档与板上测试脚本（按内容重命名、运行即写日志、800 MHz 基准数据），镜像与 v4.12 相同。
-v4.12 把 busybox vi 换成 vim-tiny（:q / :q! 正常、退出不留残影），lf 的打开/编辑走 vim，顶栏 CPU 左右同一个采样；位流与 VERSION=0x0004_0301 不变。
+当前发布 v4.13（GitHub Latest，800 MHz）。v4.7（667 MHz）为上一个正式版；v4.1–v4.6、
+v4.8–v4.12 为 Pre-release 历史快照。v4.13 只改文档与测试脚本，镜像与 v4.12 相同。
 
-BOOT.BIN 与 image.ub 不入库，随 GitHub Release 发布（再分发限制见 [NOTICE](NOTICE)）。
+BOOT.BIN 与 image.ub 不入库，随 Release 发布（再分发限制见 [NOTICE](NOTICE)）。
+BOOT.BIN、image.ub 放 BOOT 分区根目录；card-boot.zip 与 card-userdata.zip 分别解压到
+BOOT 与 USERDATA 根目录。
 
-| 资产 | 烧录位置 | 大小 | SHA256 |
-| --- | --- | --- | --- |
-| BOOT.BIN | BOOT 分区根目录 | 18,582,724 B | d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd |
-| image.ub | BOOT 分区根目录 | 47,762,547 B | c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f |
-| card-boot.zip | 解压到 BOOT 根目录 | 5,176 B | 6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a |
-| card-userdata.zip | 解压到 USERDATA 根目录 | 94,305 B | 7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c |
+| 资产 | 大小 | SHA256 |
+| --- | --- | --- |
+| BOOT.BIN | 18,582,724 B | d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd |
+| image.ub | 47,762,547 B | c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f |
+| card-boot.zip | 5,176 B | 6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a |
+| card-userdata.zip | 94,305 B | 7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c |
 
-校验：四个二进制资产与 SHA256SUMS.release 置于同一目录，执行 `sha256sum -c SHA256SUMS.release`。
-每个版本的变更内容、验证结果与已知限制见 [docs/releases.md](docs/releases.md)。
-卡布局、烧录与上电步骤见 [docs/board-usage.md](docs/board-usage.md)。
-card-userdata.zip 的 ko/fogccc-irq.ko 与发布镜像的内核严格配对
-（vermagic=6.18.10-xilinx-g4f7afe14f724）。
+校验：四个资产与 SHA256SUMS.release 同目录，执行 `sha256sum -c SHA256SUMS.release`。
+各版本变更与限制见 [docs/releases.md](docs/releases.md)，卡布局与上电见
+[docs/board-usage.md](docs/board-usage.md)。ko/fogccc-irq.ko 与镜像内核按
+vermagic=6.18.10-xilinx-g4f7afe14f724 配对。
 
 ## 6. 目录与调试
 
@@ -189,7 +189,7 @@ petalinux/ 镜像配方与构建脚本
 tools/     串口与上板脚本、测试、日志
 artifacts/ 卡上产物与二进制清单（BOOT.BIN/image.ub 不入库）
 skill/     技能包
-report/    大模型协作记录与设计报告
+report/    大模型协作记录（设计报告仅本地保存）
 docs/      构建、上板、测量、仿真、设计细节
 tests/     仓库契约测试
 ```
@@ -206,7 +206,7 @@ tests/     仓库契约测试
 | board/ | tools/、tools/logs/ | 串口与上板脚本、逐次实测日志 |
 | data/ | artifacts/ | 卡上产物、二进制清单与校验值 |
 | skill/ | skill/ | 技能包，索引见 skill/README.md |
-| report/ | report/、docs/ | 大模型协作记录与设计报告；设计、测量、仿真、发布记录见 docs/ |
+| report/ | report/、docs/ | 大模型协作记录；设计报告仅本地保存；设计、测量、仿真、发布记录见 docs/ |
 
 tests/ 为仓库自身的契约测试（目录规范、提交信息、字面量基线），不属于上述结构。
 本仓库没有独立的 data/：测试数据由脚本运行时生成；board/ 对应 tools/ 与 tools/logs/。
