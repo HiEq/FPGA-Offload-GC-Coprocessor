@@ -8,8 +8,8 @@ FAT32，卷标 BOOT，约 512 MB。板子由 FSBL 从该分区启动。
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| BOOT.BIN | 18.6 MB | FSBL + 比特流 + U-Boot |
-| image.ub | 47.0 MB | 内核 + 设备树 + initramfs（内置 lf、tty-size 与 921600 的 getty） |
+| BOOT.BIN | 18,582,724 B（约 17.7 MiB）| FSBL + 位流 + U-Boot |
+| image.ub | 47,762,547 B（约 45.5 MiB）| 内核 + 设备树 + initramfs（内置 lf、tty-size 与 921600 的 getty） |
 | boot.scr | 384 B | 只启动 FOGCCC 的 U-Boot 脚本（console=ttyPS0,921600），源文本 boot-fogccc.cmd |
 | uEnv.txt | 40 B | 默认环境 bootargs（921600）；启动脚本不读取 |
 | system.dtb | 18 KB | 设备树，与 image.ub 内的一致 |

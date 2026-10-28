@@ -72,7 +72,7 @@ FOGCCC 串口控制台 —— 使用说明
     fpga_vs_python.py          板级测试，与卡上 fpga_vs_python.sh 同一份
     irq_drv_test.sh     中断端到端验证，验收级
   debug\
-    hw_program.tcl      JTAG 烧比特流
+    hw_program.tcl      JTAG 烧位流
     hw_probe.tcl        JTAG 器件探测
     gic_dump.py         GIC 寄存器只读探针
     gic_irq_test.py     GIC SPI 探测
