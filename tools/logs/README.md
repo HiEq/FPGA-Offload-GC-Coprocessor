@@ -18,95 +18,95 @@
 # test: tools/tests/<name>.py md5 <md5>
 ```
 
-二进制本身的哈希见 `artifacts/SHA256SUMS`（随卡二进制）与 `artifacts/SHA256SUMS.release`（Release 资产）。
+二进制本身的哈希见 artifacts/SHA256SUMS（随卡二进制）与 artifacts/SHA256SUMS.release（Release 资产）。
 
-**当前证据集**（位流 md5 `6D4792448135C3796E3CAA1AD86EEA30` / BOOT sha256 `d20530bc…` / `VERSION=0x0004_0301`；
-> 历史负控（`*_neg_*`、`board_phase3_leftover`、`board_regs_aww_verified`、`board_regs_aww_probe_forge_*`）与 `xsim_*_20261022/23` 属各自测过的那一版，文件头保留原样；
-> 2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
-> `board_phase3_dirty_api.log` 与 `board_dirty_api.log` 记录的是同一脚本、同一镜像，已删除前者。
-> 2026-10-25：v4.5 镜像（根集可读回 + 写后校验）通过真实断电上电完成全链复验，启动文本见 `board_coldboot_20261025_v45.raw.log`；`board_coldboot_20261025.raw.log`（v4.4）与 10-24 的两份（v4.3）保留作对照。
+**当前证据集**（位流 md5 6D4792448135C3796E3CAA1AD86EEA30 / BOOT sha256 d20530bc… / VERSION=0x0004_0301；
+历史负控（*_neg_*、board_phase3_leftover、board_regs_aww_verified、board_regs_aww_probe_forge_*）与 xsim_*_20261022/23 属各自测过的那一版，文件头保留原样；
+2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
+board_phase3_dirty_api.log 与 board_dirty_api.log 记录的是同一脚本、同一镜像，已删除前者。
+2026-10-25：v4.5 镜像（根集可读回 + 写后校验）通过真实断电上电完成全链复验，启动文本见 board_coldboot_20261025_v45.raw.log；board_coldboot_20261025.raw.log（v4.4）与 10-24 的两份（v4.3）保留作对照。
 
-v4.13 起测试脚本按内容改名：`run_gc.sh` → `fpga_vs_python.sh`、`run_repeat.sh` →
-`fpga_vs_python_repeat.sh`、`gc_test.py` → `fpga_vs_python.py`、`three_way.py` →
-`fpga_vs_c_vs_python.py`。表中「命令」列记录产生该日志时的真实命令；带 `（historical）`
+v4.13 起测试脚本按内容改名：run_gc.sh → fpga_vs_python.sh、run_repeat.sh →
+fpga_vs_python_repeat.sh、gc_test.py → fpga_vs_python.py、three_way.py →
+fpga_vs_c_vs_python.py。表中「命令」列记录产生该日志时的真实命令；带（historical）
 的命令按旧名记录，按现名复跑等价。
 
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
-| `board_v412_verify.log` | vim/vimrc/lf 打开/CPU 口径 | `E1187_count=0`、无 ENTER 提示、`:q` 回 shell、左右 CPU 相同 | `docs/releases.md` v4.12 |
-| `board_v411_verify.log` | boot + `stty` / tmux / terminfo / lf | `51 179` / `179x51` / `screen-256color` / Enter→less；乱码与欢迎语 0 | `docs/releases.md` v4.11 |
-| `board_boot_20261026_v410.raw.log` | `reboot` 后完整引导，串口 921600 | U-Boot → Linux → PetaLinux → `login:`；每次登录 1 次 `ESC[18t`，无应答漏出 | `docs/releases.md` v4.10 |
-| `board_v410_verify.log` | `stty` / `tmux client` / `byobu-status 右侧` / `lf` | `56 179` / `179x56` / `27% 2x0.80GHz 972MB 14%` / `r42` | `docs/releases.md` v4.10 |
-| `board_coldboot_20261026_v49.raw.log` | 冷启动，串口 921600 | U-Boot → Linux → PetaLinux → `login:`；无 `ESC[8;r;ct` 与 `sh: [8:` | `docs/releases.md` v4.9 |
-| `board_v49_verify.log` | `stty -F /dev/ttyPS0 size` / `byobu-status tmux_right` / `lf -version` | 35x120 / `command not found` 0 次、`21%` / `r42` | `docs/releases.md` v4.9 |
-| `board_coldboot_20261026_v48.raw.log` | 冷启动，串口 921600 | U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:` | `docs/releases.md` v4.8 |
-| `board_v48_verify.log` | `grep BogoMIPS` / `cat /proc/cmdline` / `lf -version` | `399.99` / `console=ttyPS0,921600 earlycon` / `r42` | `docs/releases.md` v4.8 |
-| `board_test_main.log` | `./bin/test_main` | 3/3 `ALL PASS`（Test 1 只比计数；耗时见 `board_three_way.log`）| `docs/measurement.md` / README §4 |
-| `board_gc_test.log` | `sh run_gc.sh 4096 8 2`（historical） | `PASSED (all invariants): 8/8` | v4.5 证据；现入口 `board_v412_800mhz.log` |
-| `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2`（historical） | `PASSED (all invariants): 8/8` | v4.5 证据；同一套件现入口 `board_fpga_vs_python.log` |
-| `board_abort_test.log` | `python3 -u tests/abort_test.py` | T1–T5 `RESULT: PASS` | README abort 契约 |
-| `board_abort_sweep.log` | `python3 -u tests/abort_sweep.py` | `RESULT: PASS (11/11)`（各相位 `bitmap_bad=0`）| README abort 相位 |
-| `board_done_race.log` | `python3 -u tests/done_race_test.py` | `RESULT: PASS`（P3 20/20；P1/P2 0/300）| AGENTS #9 / #18 |
-| `board_irq.log` | `cd <datadir> && sh tests/irq_drv_test.sh`（**必须是重启后第一条命令**：`done` 必须为 0）| `IRQ_DRIVEN_DONE_OK (before='0 1 44' after='1 0 44')` | README 中断 / AGENTS #20 |
-| `board_repeat.log` | `sh run_repeat.sh 10`（historical） | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ `REPEAT_DONE` | v4.5 证据；现入口 `fpga_vs_python_repeat.sh` |
-| `board_freelist_n4096.log` | `python3 -u tests/freelist_n4096_test.py` | 4096 边界全空闲 ⇒ `FREELIST4096_RESULT OK` | docs 阶段 2 / 工具测试索引 |
-| `board_phase2_regression.log` / `board_phase2_regression.raw.log` | `tools/serial_phase2.ps1` | side-table 正/负控 + `gc_test.py 4096 8 2 --seed 12345`（historical）⇒ `RESULT: PHASE2_PASS` | docs 阶段 2 |
-| `board_phase3_test_main.log` | `tools/debug/run_phase3_board.ps1` 第 1 步 | 3/3 `ALL PASS` | docs 阶段 3 |
-| `board_phase3_dirty_set.log` | 同上 第 4 步 `tests/dirty_set_test.py` | `DIRTY_SET_RESULT OK` | docs 阶段 3A |
-| `board_phase3_dirty_set_base_neg_20261023.log` | 同上脚本的**修复前**版本，重启后第一个跑（`0x04` 仍是复位值 0）| 引擎按地址 0 读对象头 ⇒ 不追引用（`A marked=2`、`D e1=1`）⇒ `DIRTY_SET_RESULT FAIL` | AGENTS #19（对象基址泄漏负控）|
-| `board_phase3_dirty_set_boot_neg_20261023.log` | `tests/dirty_set_test.py` 作**重启后第一个**测试 | `A occ=3 pushed=3` 但 `marked=2`（id 0 的记录没进位图）⇒ `DIRTY_SET_RESULT FAIL`；暖机后同一脚本 `occ=4 marked=6` ⇒ 「AW/W 乱配 ⇒ 伪造/丢失 `DIRTY_PUSH`」的复现件 | AGENTS #20（**开放**）|
-| `board_phase3_dirty_concurrent_plain_neg.log` | 同上加 `--plain-push`（旧的不带回执推送）| **负控**：冷窗口那条记录丢失后表现为推送计数偏短或 `marked != oracle`，与带回执的正证形成对照 | AGENTS #20（并发路径 A/B）|
-| `board_dirty_concurrent_plain.log` | `dirty_concurrent_test.py --plain-push`（暖机）| `DIRTY_CONCURRENT_RESULT OK`；暖机期不丢，冷窗口的确定性 A/B 见 `board_regs_aww` 两行 | AGENTS #20 |
-| `board_phase3_dirty_concurrent.log` | 同上 第 5 步（mutator 走 id 级回执）| `DIRTY_CONCURRENT_RESULT OK`；`ack: retries=0 giveups=0`（本轮没有触发重试）；`live_pushes` 29/100 | docs 阶段 3B / AGENTS #20 |
-| `board_phase3_dirty_overflow.log` | 同上 第 6 步 | `DIRTY_OVERFLOW_RESULT OK` | docs 溢出契约 |
-| `board_phase3_ctrl_spill.log` | 同上 第 7 步 `tests/ctrl_spill_test.py` | `CTRL_SPILL_RESULT OK` | docs 写路径防护 |
-| `board_phase3_freelist_contract.log` | 同上 第 3 步 | `CONTRACT_RESULT OK` | docs 阶段 2 契约 |
-| `board_phase3_leftover.log` | `tests/dirty_leftover_test.py` | 旧二进制 `q_tail=10 != marked=9` FAIL → 修好后 `ALL PASS` | docs flush 契约 |
-| `board_dirty_state_end.log` | `dirty_state.py` + `dirty_leftover_test.py`（链末）| `DIRTY_STATE occ=0`；留两条记录后 `test_main` 仍 `ALL PASS` ⇒ `DIRTY_LEFTOVER_RESULT OK` | AGENTS #18(a) |
-| `board_coldboot_verify_20261025_v45.log` | `tools/debug/serial_coldboot_verify.ps1`（v4.5 上电后）| `D1..D6=0`；卡上 `BOOT.BIN` sha256 `26fb8621…`；`VERSION=0x0004_0301`；`fpga_manager=operating`；`test_main` 3/3 `ALL PASS` | README 冷启动 / AGENTS #24 |
-| `board_coldboot_20261024.raw.log` | v4.3 那次上电的整段串口（只读探活；上电落在 archlinux）| U-Boot 2026.01 → Linux → `login:`；启动窗口内未写入任何字节 | 上一版对照 |
-| `board_coldboot_reboot_20261024.raw.log` | 切到 fogccclinux 后的 reboot 整段串口 | PetaLinux 启动 → `linux login:`；之后全部板级日志都在这个环境里跑 | README 冷启动 / AGENTS #22 |
-| `board_coldboot_20261025_v45.raw.log` | v4.5 镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → `PetaLinux 2026.1` → `login:`；随后复验读回 `BOOT.BIN` = `26fb8621…`、`VERSION=0x0004_0301` | README 冷启动 / AGENTS #24 |
-| `board_coldboot_20261025_v46.raw.log` | v4.6 二进制 + v4.5 镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → `PetaLinux 2026.1` → `login:`；上电为整机断电，非 reboot | README 冷启动 / AGENTS #25 |
-| `board_coldboot_verify_20261025_v46.log` | `serial_coldboot_verify.ps1`，该次上电后首跑 | `D1..D6=0`；卡上 `BOOT.BIN` sha256 `26fb8621…`；`fpga_manager=operating`；`VERSION=0x0004_0301`；`test_main` 3/3 `ALL PASS` | README 冷启动 / AGENTS #25 |
-| `board_regs_aww_cold_20261025_v46.log` | `regs_aww_board_test.py`，该次上电后第一条 `DIRTY_PUSH` 序列 | 冷轮 `loss=[] forged=[]`；暖轮 `loss 0/14`、多标 0/14 ⇒ `REGS_AWW_RESULT OK` | AGENTS #20/#25 |
-| `board_dirty_api_probe_20261025_v46.log` | `dirty_api_test.py` + `regs_aww --verify-effect`（同一会话）| `DIRTY_API_RESULT OK`（`acked push: [True, True]`）；`VERIFY_EFFECT_RESULT OK`（0/14 需回退）⇒ v4.6 校验后的探针写可用 | AGENTS #25 |
-| `board_barrier_verify.log` | `barrier_verify_test.py`（v4.7 卡上文件）| 16 个已标记 id → `True`；未标记 id 3 → `False`；混合集合 → `False` ⇒ `BARRIER_VERIFY_RESULT OK` | AGENTS #26 |
-| `board_barrier_verify_sentinel_neg.log` | 卡上同时加载修复前/后的 `fogccc.py`，`read_mark` 固定返回 `0xFFFFFFFF` | **负控**：修复前 → `True`（把哨兵当标记），修复后 → `False` | AGENTS #26 |
-| `board_barrier_verify_neg.log` | 同一张卡上的修复前模块，正常 `0/1` 读回 | 普通路径两者一致（都在 0/1 上判断正确）；说明分歧只出现在哨兵 | AGENTS #26 |
-| `board_v47_main_dirty.log` | `test_main` + `dirty_api_test.py`（v4.7 回归）| `test_main` 3/3 `ALL PASS`；`DIRTY_API_RESULT OK` | AGENTS #26 |
-| `board_v47_regression.log` | `regs_aww --verify-effect`（v4.7 回归）| `VERIFY_EFFECT_RESULT OK`（暖轮 0/14 失败、0/14 需回退）⇒ 修复后的探针路径可用 | AGENTS #26 |
-| `tag_leak_probe_20261022.log` | `DIRTY_PUSH` 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
-| `host_reproduce.log` | `tools/reproduce_all.ps1`（板外）| manifest 一致 + PS 单测 + 六组 xsim（`tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB）全 `PASS` | docs 仿真回归 |
-| `host_read_mark.log` | `csrc/test_read_mark_host.c`（真实驱动 + 数组冒充寄存器块）| 忙引擎 → `0xFFFFFFFF` 且不写 `BM_ADDR`；空闲 → 按位 `0/1` ⇒ `READ_MARK_RESULT OK`。负控（哨兵改成 0）→ `FAIL` | AGENTS #26（哨兵来源）|
-| `xsim_spill_ungated_20261022.log` / `xsim_spill_gated_20261022.log` | `sim\run_sim.bat` | T-CTRL-SPILL：未门控 3 errors → 门控 `PASS` | AGENTS #19 负控 |
-| `xsim_dirtyflush_ungated_20261023.log` | `sim\run_sim.bat` | T-DIRTY-FLUSHSPILL：**无任何防护**的 RTL → `drained=0`/`marked=0`（2 errors）| AGENTS #19 负控 1 |
-| `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|
-| `xsim_dirtyflushidle_armconsume_20261023.log` | `sim\run_sim.bat` | arm-and-consume RTL → FLUSHIDLE/FLUSHSPILL/QFULL/QFULLNEG/RACE **全过** | AGENTS #19（arm-and-consume）|
-| `xsim_qfull_dirty_20261023.log` | `sim\run_sim.bat` | T-DIRTY-QFULL **观测**（峰值占用 4094/4096、`q_full`&&dirty 0 拍、`S_DIRTY_PUSH` 等待 0 拍）+ 强制负控 T-DIRTY-QFULLNEG（`force q_full` + 待处理记录 ⇒ 引擎按分析挂住）⇒「不可达」有了两段证据 | AGENTS #19（q_full+dirty）|
-| `board_three_way.log` | `tests/three_way.py`（historical，同一张图）| FPGA / C 未缓存 / C 缓存 / Python，四个计数一致 ⇒ `THREE_WAY_RESULT OK` | AGENTS #10（历史）；同图对比现见 `board_v412_800mhz.log` |
-| `board_regs_aww_cost.log` | 同脚本 `--cost`（200 次推送 ×2）| plain **17.3 µs/push** vs acked **31.8 µs/push**（**1.84×**，暖机期 `retries=0`）| AGENTS #20（回执开销）|
-| `xsim_handover_neg_20261024.log` | `tools/debug/neg_handover.ps1`（把 `gc_top.v`/`gc_axi_read.v` 换回修复前）| **负控**：三个 TB 全部 `[FAIL]` —— `stale data survived abort: d0=0x22222222` / `stale beat visible: 0xccccdddd`(×2) / `timeout after duplicate START; state=14 q=26` | AGENTS #21 |
-| `board_regs_aww_acked.log` | `regs_aww_board_test.py --acked`，重启后第一个跑 | 冷轮 `loss=[] forged=[]`（命令写标记后不再丢）⇒ 暖轮 `loss 0/14`、多标 0/14 ⇒ `REGS_AWW_RESULT OK` | AGENTS #20/#23 |
-| `board_regs_aww.log` | 同一脚本 `--plain`，重启后第一个跑（A/B 对照）| 冷轮 `loss=[] forged=[]`（旧版这里是 `loss=[8]`）；暖轮 `loss 0/14`、多标 0/14 ⇒ `REGS_AWW_RESULT OK` | AGENTS #20/#23 |
-| `board_regs_aww_verify_effect.log` | 同脚本 `--verify-effect`，重启后第一个跑 | round 0 `verify=OK`（**不再触发回退**）；暖轮 14/14 无需回退 ⇒ `VERIFY_EFFECT_RESULT OK` | AGENTS #20（F1 按效果验收）|
-| `board_regs_aww_verified.log` | 同脚本 `--verified`（标签回查 + 重试），重启后第一个跑 | `retries=0 giveups=0` 却仍 `loss=[8]`（3 次启动 3 次）⇒ **标签回查不足以证明 id 落地**（伪造记录可复用同一个 4 位 tag）；暖轮仍 `loss 0/14` | AGENTS #20（A 侧负结果）|
-| `board_regs_aww_probe_forge_20261023.log` | 同上脚本的早期版本 | 每轮都多标 id 0（其 WDATA=0 来自位图探测写）⇒ 暖机期也会发生 AW/W 错配，方向是**多标**（安全）| AGENTS #20（暖机侧证据）|
-| `xsim_regs_aww_20261025.log` | `sim\run_regs_aww_tb.bat` | `gc_regs` 的 AW/W 契约：配对写正确 / 重复投递只算一次 / 无 AW 时不消费 W（P1–P3）+ **P4/P6 负控**（无标记的 W 不产生记录、不触发 START）+ P5 回执 ⇒ `PASS` | AGENTS #20/#23 |
-| `xsim_freelist_20261022.log` | 已退役的独立 `tb_freelist` 台架 | 273 errors（台架期望过期，非 RTL 缺口）；台架源与 runner 已移除 | 退役说明 |
+| board_v412_verify.log | vim/vimrc/lf 打开/CPU 百分比 | E1187_count=0、无 ENTER 提示、:q 回 shell、左右 CPU 相同 | docs/releases.md v4.12 |
+| board_v411_verify.log | boot + stty / tmux / terminfo / lf | 51 179 / 179x51 / screen-256color / Enter→less；乱码与欢迎语 0 | docs/releases.md v4.11 |
+| board_boot_20261026_v410.raw.log | reboot 后完整引导，串口 921600 | U-Boot → Linux → PetaLinux → login:；每次登录 1 次 ESC[18t，无应答漏出 | docs/releases.md v4.10 |
+| board_v410_verify.log | stty / tmux client / byobu-status 右侧 / lf | 56 179 / 179x56 / 27% 2x0.80GHz 972MB 14% / r42 | docs/releases.md v4.10 |
+| board_coldboot_20261026_v49.raw.log | 冷启动，串口 921600 | U-Boot → Linux → PetaLinux → login:；无 ESC[8;r;ct 与 sh: [8: | docs/releases.md v4.9 |
+| board_v49_verify.log | stty -F /dev/ttyPS0 size / byobu-status tmux_right / lf -version | 35x120 / command not found 0 次、21% / r42 | docs/releases.md v4.9 |
+| board_coldboot_20261026_v48.raw.log | 冷启动，串口 921600 | U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> login: | docs/releases.md v4.8 |
+| board_v48_verify.log | grep BogoMIPS / cat /proc/cmdline / lf -version | 399.99 / console=ttyPS0,921600 earlycon / r42 | docs/releases.md v4.8 |
+| board_test_main.log | ./bin/test_main | 3/3 ALL PASS（Test 1 只比计数；耗时见 board_three_way.log）| docs/measurement.md / README §4 |
+| board_gc_test.log | sh run_gc.sh 4096 8 2（historical） | PASSED (all invariants): 8/8 | v4.5 证据；现入口 board_v412_800mhz.log |
+| board_run_gc.log | tools/debug/run_board_suite.ps1 → sh run_gc.sh 4096 8 2（historical） | PASSED (all invariants): 8/8 | v4.5 证据；同一套件现入口 board_fpga_vs_python.log |
+| board_abort_test.log | python3 -u tests/abort_test.py | T1–T5 RESULT: PASS | README abort 契约 |
+| board_abort_sweep.log | python3 -u tests/abort_sweep.py | RESULT: PASS (11/11)（各相位 bitmap_bad=0）| README abort 相位 |
+| board_done_race.log | python3 -u tests/done_race_test.py | RESULT: PASS（P3 20/20；P1/P2 0/300）| AGENTS #9 / #18 |
+| board_irq.log | cd ＜datadir＞ && sh tests/irq_drv_test.sh（**必须是重启后第一条命令**：done 必须为 0）| IRQ_DRIVEN_DONE_OK (before='0 1 44' after='1 0 44') | README 中断 / AGENTS #20 |
+| board_repeat.log | sh run_repeat.sh 10（historical） | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ REPEAT_DONE | v4.5 证据；现入口 fpga_vs_python_repeat.sh |
+| board_freelist_n4096.log | python3 -u tests/freelist_n4096_test.py | 4096 边界全空闲 ⇒ FREELIST4096_RESULT OK | docs 阶段 2 / 工具测试索引 |
+| board_phase2_regression.log / board_phase2_regression.raw.log | tools/serial_phase2.ps1 | side-table 正/负控 + gc_test.py 4096 8 2 --seed 12345（historical）⇒ RESULT: PHASE2_PASS | docs 阶段 2 |
+| board_phase3_test_main.log | tools/debug/run_phase3_board.ps1 第 1 步 | 3/3 ALL PASS | docs 阶段 3 |
+| board_phase3_dirty_set.log | 同上 第 4 步 tests/dirty_set_test.py | DIRTY_SET_RESULT OK | docs 阶段 3A |
+| board_phase3_dirty_set_base_neg_20261023.log | 同上脚本的**修复前**版本，重启后第一个跑（0x04 仍是复位值 0）| 引擎按地址 0 读对象头 ⇒ 不追引用（A marked=2、D e1=1）⇒ DIRTY_SET_RESULT FAIL | AGENTS #19（对象基址泄漏负控）|
+| board_phase3_dirty_set_boot_neg_20261023.log | tests/dirty_set_test.py 作**重启后第一个**测试 | A occ=3 pushed=3 但 marked=2（id 0 的记录没进位图）⇒ DIRTY_SET_RESULT FAIL；暖机后同一脚本 occ=4 marked=6 ⇒ 「AW/W 乱配 ⇒ 伪造/丢失 DIRTY_PUSH」的复现件 | AGENTS #20（**开放**）|
+| board_phase3_dirty_concurrent_plain_neg.log | 同上加 --plain-push（旧的不带回执推送）| **负控**：冷窗口那条记录丢失后表现为推送计数偏短或 marked != oracle，与带回执的正证形成对照 | AGENTS #20（并发路径 A/B）|
+| board_dirty_concurrent_plain.log | dirty_concurrent_test.py --plain-push（暖机）| DIRTY_CONCURRENT_RESULT OK；暖机期不丢，冷窗口的确定性 A/B 见 board_regs_aww 两行 | AGENTS #20 |
+| board_phase3_dirty_concurrent.log | 同上 第 5 步（mutator 走 id 级回执）| DIRTY_CONCURRENT_RESULT OK；ack: retries=0 giveups=0（本轮没有触发重试）；live_pushes 29/100 | docs 阶段 3B / AGENTS #20 |
+| board_phase3_dirty_overflow.log | 同上 第 6 步 | DIRTY_OVERFLOW_RESULT OK | docs 溢出契约 |
+| board_phase3_ctrl_spill.log | 同上 第 7 步 tests/ctrl_spill_test.py | CTRL_SPILL_RESULT OK | docs 写路径防护 |
+| board_phase3_freelist_contract.log | 同上 第 3 步 | CONTRACT_RESULT OK | docs 阶段 2 契约 |
+| board_phase3_leftover.log | tests/dirty_leftover_test.py | 旧二进制 q_tail=10 != marked=9 FAIL → 修好后 ALL PASS | docs flush 契约 |
+| board_dirty_state_end.log | dirty_state.py + dirty_leftover_test.py（链末）| DIRTY_STATE occ=0；留两条记录后 test_main 仍 ALL PASS ⇒ DIRTY_LEFTOVER_RESULT OK | AGENTS #18(a) |
+| board_coldboot_verify_20261025_v45.log | tools/debug/serial_coldboot_verify.ps1（v4.5 上电后）| D1..D6=0；卡上 BOOT.BIN sha256 26fb8621…；VERSION=0x0004_0301；fpga_manager=operating；test_main 3/3 ALL PASS | README 冷启动 / AGENTS #24 |
+| board_coldboot_20261024.raw.log | v4.3 那次上电的整段串口（只读探活；上电落在 archlinux）| U-Boot 2026.01 → Linux → login:；启动窗口内未写入任何字节 | 上一版对照 |
+| board_coldboot_reboot_20261024.raw.log | 切到 fogccclinux 后的 reboot 整段串口 | PetaLinux 启动 → linux login:；之后全部板级日志都在这个环境里跑 | README 冷启动 / AGENTS #22 |
+| board_coldboot_20261025_v45.raw.log | v4.5 镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → PetaLinux 2026.1 → login:；随后复验读回 BOOT.BIN = 26fb8621…、VERSION=0x0004_0301 | README 冷启动 / AGENTS #24 |
+| board_coldboot_20261025_v46.raw.log | v4.6 二进制 + v4.5 镜像的真实断电上电，整段串口（只读）| U-Boot 2026.01 → Linux 6.18.10 → PetaLinux 2026.1 → login:；上电为整机断电，非 reboot | README 冷启动 / AGENTS #25 |
+| board_coldboot_verify_20261025_v46.log | serial_coldboot_verify.ps1，该次上电后首跑 | D1..D6=0；卡上 BOOT.BIN sha256 26fb8621…；fpga_manager=operating；VERSION=0x0004_0301；test_main 3/3 ALL PASS | README 冷启动 / AGENTS #25 |
+| board_regs_aww_cold_20261025_v46.log | regs_aww_board_test.py，该次上电后第一条 DIRTY_PUSH 序列 | 冷轮 loss=[] forged=[]；暖轮 loss 0/14、多标 0/14 ⇒ REGS_AWW_RESULT OK | AGENTS #20/#25 |
+| board_dirty_api_probe_20261025_v46.log | dirty_api_test.py + regs_aww --verify-effect（同一会话）| DIRTY_API_RESULT OK（acked push: [True, True]）；VERIFY_EFFECT_RESULT OK（0/14 需回退）⇒ v4.6 校验后的探针写可用 | AGENTS #25 |
+| board_barrier_verify.log | barrier_verify_test.py（v4.7 卡上文件）| 16 个已标记 id → True；未标记 id 3 → False；混合集合 → False ⇒ BARRIER_VERIFY_RESULT OK | AGENTS #26 |
+| board_barrier_verify_sentinel_neg.log | 卡上同时加载修复前/后的 fogccc.py，read_mark 固定返回 0xFFFFFFFF | **负控**：修复前 → True（把哨兵当标记），修复后 → False | AGENTS #26 |
+| board_barrier_verify_neg.log | 同一张卡上的修复前模块，正常 0/1 读回 | 普通路径两者一致（都在 0/1 上判断正确）；说明分歧只出现在哨兵 | AGENTS #26 |
+| board_v47_main_dirty.log | test_main + dirty_api_test.py（v4.7 回归）| test_main 3/3 ALL PASS；DIRTY_API_RESULT OK | AGENTS #26 |
+| board_v47_regression.log | regs_aww --verify-effect（v4.7 回归）| VERIFY_EFFECT_RESULT OK（暖轮 0/14 失败、0/14 需回退）⇒ 修复后的探针路径可用 | AGENTS #26 |
+| tag_leak_probe_20261022.log | DIRTY_PUSH 标签规则探针 | 重投递计数不精确、语义安全 | docs / AGENTS #18 豁免 |
+| host_reproduce.log | tools/reproduce_all.ps1（板外）| manifest 一致 + PS 单测 + 六组 xsim（tb_gc_top / tb_axi_read / tb_runstart_race / tb_cmdfifo_flush / tb_regs_aww / 三个 hand-over TB）全 PASS | docs 仿真回归 |
+| host_read_mark.log | csrc/test_read_mark_host.c（真实驱动 + 数组冒充寄存器块）| 忙引擎 → 0xFFFFFFFF 且不写 BM_ADDR；空闲 → 按位 0/1 ⇒ READ_MARK_RESULT OK。负控（哨兵改成 0）→ FAIL | AGENTS #26（哨兵来源）|
+| xsim_spill_ungated_20261022.log / xsim_spill_gated_20261022.log | sim\run_sim.bat | T-CTRL-SPILL：未门控 3 errors → 门控 PASS | AGENTS #19 负控 |
+| xsim_dirtyflush_ungated_20261023.log | sim\run_sim.bat | T-DIRTY-FLUSHSPILL：**无任何防护**的 RTL → drained=0/marked=0（2 errors）| AGENTS #19 负控 1 |
+| xsim_dirtyflushidle_ungated_20261023.log | sim\run_sim.bat | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|
+| xsim_dirtyflushidle_armconsume_20261023.log | sim\run_sim.bat | arm-and-consume RTL → FLUSHIDLE/FLUSHSPILL/QFULL/QFULLNEG/RACE **全过** | AGENTS #19（arm-and-consume）|
+| xsim_qfull_dirty_20261023.log | sim\run_sim.bat | T-DIRTY-QFULL **观测**（峰值占用 4094/4096、q_full&&dirty 0 拍、S_DIRTY_PUSH 等待 0 拍）+ 强制负控 T-DIRTY-QFULLNEG（force q_full + 待处理记录 ⇒ 引擎按分析挂住）⇒「不可达」有了两段证据 | AGENTS #19（q_full+dirty）|
+| board_three_way.log | tests/three_way.py（historical，同一张图）| FPGA / C 未缓存 / C 缓存 / Python，四个计数一致 ⇒ THREE_WAY_RESULT OK | AGENTS #10（历史）；同图对比现见 board_v412_800mhz.log |
+| board_regs_aww_cost.log | 同脚本 --cost（200 次推送 ×2）| plain **17.3 µs/push** vs acked **31.8 µs/push**（**1.84×**，暖机期 retries=0）| AGENTS #20（回执开销）|
+| xsim_handover_neg_20261024.log | tools/debug/neg_handover.ps1（把 gc_top.v/gc_axi_read.v 换回修复前）| **负控**：三个 TB 全部 [FAIL] —— stale data survived abort: d0=0x22222222 / stale beat visible: 0xccccdddd(×2) / timeout after duplicate START; state=14 q=26 | AGENTS #21 |
+| board_regs_aww_acked.log | regs_aww_board_test.py --acked，重启后第一个跑 | 冷轮 loss=[] forged=[]（命令写标记后不再丢）⇒ 暖轮 loss 0/14、多标 0/14 ⇒ REGS_AWW_RESULT OK | AGENTS #20/#23 |
+| board_regs_aww.log | 同一脚本 --plain，重启后第一个跑（A/B 对照）| 冷轮 loss=[] forged=[]（旧版这里是 loss=[8]）；暖轮 loss 0/14、多标 0/14 ⇒ REGS_AWW_RESULT OK | AGENTS #20/#23 |
+| board_regs_aww_verify_effect.log | 同脚本 --verify-effect，重启后第一个跑 | round 0 verify=OK（**不再触发回退**）；暖轮 14/14 无需回退 ⇒ VERIFY_EFFECT_RESULT OK | AGENTS #20（F1 按效果验收）|
+| board_regs_aww_verified.log | 同脚本 --verified（标签回查 + 重试），重启后第一个跑 | retries=0 giveups=0 却仍 loss=[8]（3 次启动 3 次）⇒ **标签回查不足以证明 id 落地**（伪造记录可复用同一个 4 位 tag）；暖轮仍 loss 0/14 | AGENTS #20（A 侧负结果）|
+| board_regs_aww_probe_forge_20261023.log | 同上脚本的早期版本 | 每轮都多标 id 0（其 WDATA=0 来自位图探测写）⇒ 暖机期也会发生 AW/W 错配，方向是**多标**（安全）| AGENTS #20（暖机侧证据）|
+| xsim_regs_aww_20261025.log | sim\run_regs_aww_tb.bat | gc_regs 的 AW/W 契约：配对写正确 / 重复投递只算一次 / 无 AW 时不消费 W（P1–P3）+ **P4/P6 负控**（无标记的 W 不产生记录、不触发 START）+ P5 回执 ⇒ PASS | AGENTS #20/#23 |
+| xsim_freelist_20261022.log | 已退役的独立 tb_freelist 台架 | 273 errors（台架期望过期，非 RTL 缺口）；台架源与 runner 已移除 | 退役说明 |
 
-> **口径**：2026-10-22 起不再保留解释器口径的日志（AGENTS #10）。本目录只有
-> 「FPGA 引擎 / 同图 C（未缓存·缓存）/ Python 脚本」三口径。
-> 旧镜像（`81640C7C` / `3590FBB5` / v4.1）的板级输出随其发布记录退役，需要时可从 git 历史取回。
+**测量条件**：2026-10-22 起不再保留解释器计时方式的日志（AGENTS #10）。本目录只有
+「FPGA 引擎 / 同一张图 C（未缓存·缓存）/ Python 脚本」三类。
+旧镜像（81640C7C / 3590FBB5 / v4.1）的板级输出随其发布记录退役，需要时可从 git 历史取回。
 
 命名约定：
 
-- `board_<suite>.log` —— 板级套件的**固定名**（重跑覆盖；运行时间写在文件头或首行）
-- `board_coldboot_<…>.raw.log` —— 上电启动的整段串口记录
-- `xsim_<…>.log` —— `sim\run_sim.bat` 的输出
-- 其它（`hw_program.log`、`serial.log`、`*_verify_*.log` …）都是过程日志，默认被 `.gitignore` 忽略，用完即删
+- board_＜suite＞.log —— 板级套件的**固定名**（重跑覆盖；运行时间写在文件头或首行）
+- board_coldboot_＜…＞.raw.log —— 上电启动的整段串口记录
+- xsim_＜…＞.log —— sim\run_sim.bat 的输出
+- 其它（hw_program.log、serial.log、*_verify_*.log …）都是过程日志，默认被 .gitignore 忽略，用完即删
 
-串口日志保留原始行宽与换行；导出工具的 ANSI 控制符、提示符回显、`mount` 前导行会被剔除，并在文件头注明，数据行不改。
+串口日志保留原始行宽与换行；导出工具的 ANSI 控制符、提示符回显、mount 前导行会被剔除，并在文件头注明，数据行不改。
 
-新增证据日志时要同时做三件事：起一个**固定名**、在 `.gitignore` 里加白名单、并在引用它的文档里写清
+新增证据日志时要同时做三件事：起一个**固定名**、在 .gitignore 里加白名单、并在引用它的文档里写清
 **命令 + commit + 日期**（AGENTS.md §4.8.1）。
