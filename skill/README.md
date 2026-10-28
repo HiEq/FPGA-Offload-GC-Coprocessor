@@ -1,12 +1,12 @@
 # skill/ — 可复用技能包
 
 本目录按《2026 FPGA 赛道选题指南（AMD）》3.3.5.2 组织：把开发过程中沉淀的经验显式写出来，
-供**换题目、换板卡**的队伍直接复用。每项都写明适用场景、用法、失效条件，以及在本项目中
+供**换题目、换板卡**的队伍复用。每项都写明适用场景、用法、失效条件，以及在本项目中
 实际验证过的效果。
 
 | 目录 | 类型 | 用途 | 适用范围 |
 |---|---|---|---|
-| pitfalls/rtl-build-board.md | 踩坑清单 | RTL 竞争、报告读错、构建与上板错配的 16 类故障 | 任意 Zynq-7000 + Vivado/PetaLinux 工程 |
+| pitfalls/rtl-build-board.md | 故障清单 | RTL 竞争、报告读错、构建与上板错配的 16 类故障 | 任意 Zynq-7000 + Vivado/PetaLinux 工程 |
 | scripts/check_release.py | 校验脚本 | 校验发布资产与 SHA256SUMS 是否一致 | 任意带校验清单的仓库 |
 | scripts/vivado_summary.py | 校验脚本 | 从 Vivado 报告提取资源与时序，输出对比表 | 任意 Vivado 工程 |
 | scripts/verify_bootbin.py | 校验脚本 | 证明重打包的 BOOT.BIN 只有位流分区变化 | Zynq-7000 bootgen 镜像 |
@@ -14,7 +14,7 @@
 | templates/test-log.md | 案例模板 | 板测日志头模板（命令/位流/哈希/日期） | 任意板上测试 |
 | templates/negative-control.md | 案例模板 | 负控与边界矩阵填写单：注入方式、必须失败的信号 | 任意回归测试 |
 | prompts/hw-sw-partition.md | 提示词工作流 | 算法描述 → 软硬件划分；综合报告 → 瓶颈 | 任意软硬件协同选题 |
-| pitfalls/doc-style.md | 踩坑清单（写作） | 技术文档的写法约束与常见退回项 | 任意工程文档 |
+| pitfalls/doc-style.md | 写作规范 | 技术文档的写法约束与常见退回项 | 任意工程文档 |
 
 ## 使用方式
 
@@ -50,7 +50,7 @@ python3 skill/scripts/verify_bootbin.py new/BOOT.BIN ref/BOOT.BIN \
 - rtl-build-board.md：第 4–9 条针对单拍、单时钟域、12 位 ID 的读引擎；换成突发读或 HLS 接口后失效。
 - doc-style.md：面向技术评审材料；海报类宣传稿可放宽措辞，但数字仍须可追溯。
 - check_release.py：只比对清单与文件，不判断资产能否启动。
-- vivado_summary.py：依赖报告表头与列序，Vivado 改版后需重跑一次核对。
+- vivado_summary.py：依赖报告表头与列序，Vivado 改版后需重新执行一次核对。
 - verify_bootbin.py：只证明分区结构；位流是否可用仍由上板测试决定。默认保护区按 Zynq-7000
   布局设定，换器件或换 bootgen 配方时用 --head/--tail 调整。
 - report-outline.md：按本赛道 3.3.5.3 编写，换赛道需改章节。
