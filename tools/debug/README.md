@@ -4,7 +4,7 @@
 
 | 脚本 | 用途 |
 |---|---|
-| hw_program.tcl | JTAG 烧比特流，无需拔卡或重启 |
+| hw_program.tcl | JTAG 烧位流，无需拔卡或重启 |
 | hw_probe.tcl | JTAG 器件探测 |
 | gic_dump.py | GIC 寄存器只读探针（0xF8F01000） |
 | gic_irq_test.py | GIC SPI 61 使能/挂起位探测 |

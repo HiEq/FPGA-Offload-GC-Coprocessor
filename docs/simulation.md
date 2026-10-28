@@ -12,7 +12,7 @@
 - `sim\run_regs_aww_tb.bat` —— `tb_regs_aww`（`gc_regs` 的 AW/W 配对契约；`P4`/`P6` 是命令写标记的负控：无标记的 W 不得产生记录/START）
 - `sim\run_port_tb.bat` / `.sh` —— `tb_flush_data` / `tb_stale_ar_flush` / `tb_start_while_busy`（start/abort 交接窗口）
 
-`tools\reproduce_all.ps1` 串起 manifest、PS 单测和**六组 xsim**：
+`tools\reproduce_all.ps1` 串起 manifest、PS 单测和**六次 xsim 运行**（8 个 testbench，含三个 hand-over TB）：
 `tb_gc_top` / `tb_axi_read` / `tb_runstart_race` / `tb_cmdfifo_flush` / `tb_regs_aww` / 三个 hand-over TB。
 
 | 检查 | 内容 |
@@ -50,5 +50,5 @@ T-FREE 的反向验证：把 `gc_freelist` 换回打包布局（读 `mem[o>>5]` 
 T-FREE 报 `FREE_COUNT=62 != 32`、弹出集合 lo=31/hi=1；板级同症状：n=512 时 `FREE_COUNT=496 != 128`。
 T-DIRTY 的反向验证：A0（去掉屏障 → `marked=0`）、B（按根路径去重 → obj10 漏标）、
 RACE2（remark 前 flush → obj60 漏标）——三段都在同一 TB 内断言"必须发生的后果"。
-板级反向对照：新 `test_main` 运行于**旧比特流**上时，位图读回全部对不上
-（`bitmap readback=8 != MARKED=9`），换新比特流后 4/4 PASS。
+板级反向对照：新 `test_main` 运行于**旧位流**上时，位图读回全部对不上
+（`bitmap readback=8 != MARKED=9`），换新位流后 4/4 PASS。

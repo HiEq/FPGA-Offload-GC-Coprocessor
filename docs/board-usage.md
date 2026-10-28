@@ -7,7 +7,7 @@
 | 分区 | 卷标 | 内容 |
 |---|---|---|
 | p1 | `BOOT` | `BOOT.BIN`、`image.ub`，解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）|
-| p2 | `USERDATA` | 解压 `card-userdata.zip`（`run_*.sh` / `fpga_vs_python.py` / `bin/` / `py/` / `tests/` / `ko/`）|
+| p2 | `USERDATA` | 解压 `card-userdata.zip`（`fpga_vs_*.sh` / `fpga_vs_python.py` / `bin/` / `py/` / `tests/` / `ko/`）|
 
 `USERDATA` 必须是 FAT32（内核未编 exFAT）。Windows 图形界面无法创建 >32 GB 的 FAT32，
 可用 `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`。
@@ -140,7 +140,7 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
   换 `/run/media/USERDATA-mmcblk0p2` 或先执行 `mount_data.sh`
 - `insmod: already loaded` → 先 `rmmod fogccc_irq`
 - 打不开 `/dev/mem` → 必须是 root
-- 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）
+- 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 位流已加载，且测试时 PL 处于 `done=0`（刚上电）
 - `fpga_vs_python.sh` 找不到 `fpga_vs_python.py` → 脚本按自身目录找文件，整个目录要一起放在 `/mnt/userdata`
 - 某个 `tests/*.py` 报 `ModuleNotFoundError`（旧模块名未更新）→ 卡上 `tests/` 是**整套**副本，
   只推了部分文件。用 `tools\push_tests.ps1` 整批同步（`serial_phase2.ps1` 与 `run_phase3_board.ps1` 已内置该步骤）

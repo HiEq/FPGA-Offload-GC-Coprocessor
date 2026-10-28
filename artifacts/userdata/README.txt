@@ -8,7 +8,7 @@ FOGCCC USERDATA 分区说明
   fpga_vs_python.py          GC 测试主体，--seed 可复现
 
 bin/
-  test_main         板级 C 测试套件：正确性 / 周期图 / 100 次重复 / 重复根
+  test_main         板级 C 测试套件：正确性 / 循环图 / 重复根只算一次（3 项）
 
 ko/
   fogccc-irq.ko     IRQ_F2P[0] 内核模块，仅 tests/irq_drv_test.sh 使用

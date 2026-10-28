@@ -7,6 +7,7 @@
 | 项目 | 规格 |
 | --- | --- |
 | FPGA | Xilinx Zynq-7000 XC7Z100FFG900-2 |
+| 开发板 | OpenSoc OS-ZYNQ7100 Lite（XC7Z100），1 GB DDR3，CH340 串口 |
 | LUT / FF | 277,400 CLB LUT / 554,800 CLB FF |
 | BRAM / DSP | 755 × 36Kb / 2,020 slices |
 | PS | 2× ARM Cortex-A9 @ 800 MHz（v4.8 起；v4.7 及以前 666.67 MHz），DDR3 @ 533.33 MHz |
@@ -16,7 +17,7 @@
 | 实测资源 | LUT 26,826 (9.67%) / FF 71,460 (12.88%) / BRAM 5.5 (0.73%) / DSP 0 |
 | 时序 | WNS +0.049 ns / WHS +0.049 ns（v4.5 起未再重建 PL，裕量偏紧） |
 
-资源与时序取自 `vivado/build.tcl` 的实现报告（位流 md5 `6D4792448135C3796E3CAA1AD86EEA30`，2026-10-25），v4.6–v4.12 未重建 PL，数值不变。`fogccc_proj/` 不入库，可由该脚本重建。
+资源与时序取自 `vivado/build.tcl` 的实现报告（位流 md5 `6D4792448135C3796E3CAA1AD86EEA30`，2026-10-25），v4.6 起未重建 PL（v4.13 与 v4.12 镜像相同），数值不变。`fogccc_proj/` 不入库，可由该脚本重建；原始报告副本见 `vivado/reports/`。
 
 ## 工具链版本
 
