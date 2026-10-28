@@ -25,15 +25,16 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 
 | 路径 | 说明 |
 |---|---|
-| `fpga_vs_python.sh` | GC 测试入口，需同级 `fpga_vs_python.py` |
-| `fpga_vs_python_repeat.sh` | 重复测量 |
+| `fpga_vs_python.sh` | 主测试入口（8 轮），需同级 `fpga_vs_python.py` |
+| `fpga_vs_python_repeat.sh` | 重复测量（多个种子 + 固定种子 5 次）|
+| `fpga_vs_c.sh` | FPGA vs C 计数对比，调用 `bin/test_main` |
 | `fpga_vs_python.py` | GC 测试主体，`--seed` 可复现 |
 | `README.txt` | 卡上目录说明 |
 | `bin/test_main` | 板级 C 测试套件 |
 | `ko/fogccc-irq.ko` | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出；不入库，随 `card-userdata.zip` 发布（vermagic 与已发布的 `image.ub` 严格配对）|
 | `tests/side_table_test.py` | 容器图（真解释器 `tp_traverse` 边界）→「对象头+引用数组」的板级对照 |
 | `tests/irq_drv_test.sh` | 中断驱动端到端验证 |
-| `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同图恢复/换图恢复） |
+| `tests/abort_test.py` | `CTRL[3]` abort 的五段验收（基线/控制组/打断/同一张图恢复/换图恢复） |
 | `tests/abort_sweep.py` | abort 相位扫描（0–480 µs），`--delays` 可重复单点 |
 | `tests/done_race_test.py` | `START` posted-write 的 stale-DONE 实验 + 连续换图回归 |
 | `tests/freelist_contract_test.py` / `tests/freelist_n4096_test.py` | free-list 软件契约负控（A–D）/ 4096 边界全覆盖 |
@@ -43,7 +44,7 @@ FAT32，卷标 `USERDATA`。开机由 **udev** 挂到 `/run/media/USERDATA-mmcbl
 | `tests/py_bfs.py` | Python BFS 参照（独立 oracle，`fpga_vs_python.sh` 用） |
 | `py/fogccc.py` + `py/libfogccc.so` | Python ctypes 绑定，含 STATUS 与位图探针 |
 
-日志不在本目录，`fpga_vs_python.sh` 写入卡上 `logs/`。
+日志不在本目录，三个 `fpga_vs_*.sh` 入口各自写入卡上 `logs/<脚本名>_<时间>.log`。
 
 以下文件只留在仓库，不放入卡：
 
