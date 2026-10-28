@@ -26,6 +26,11 @@
 > `board_phase3_dirty_api.log` 与 `board_dirty_api.log` 记录的是同一脚本、同一镜像，已删除前者。
 > 2026-10-25：v4.5 镜像（根集可读回 + 写后校验）通过真实断电上电完成全链复验，启动文本见 `board_coldboot_20261025_v45.raw.log`；`board_coldboot_20261025.raw.log`（v4.4）与 10-24 的两份（v4.3）保留作对照。
 
+v4.13 起测试脚本按内容改名：`run_gc.sh` → `fpga_vs_python.sh`、`run_repeat.sh` →
+`fpga_vs_python_repeat.sh`、`gc_test.py` → `fpga_vs_python.py`、`three_way.py` →
+`fpga_vs_c_vs_python.py`。表中「命令」列记录产生该日志时的真实命令；带 `（historical）`
+的命令按旧名记录，按现名复跑等价。
+
 | 文件 | 命令 | 结论 | 谁引用 |
 | --- | --- | --- | --- |
 | `board_v412_verify.log` | vim/vimrc/lf 打开/CPU 口径 | `E1187_count=0`、无 ENTER 提示、`:q` 回 shell、左右 CPU 相同 | `docs/releases.md` v4.12 |
@@ -36,16 +41,16 @@
 | `board_v49_verify.log` | `stty -F /dev/ttyPS0 size` / `byobu-status tmux_right` / `lf -version` | 35x120 / `command not found` 0 次、`21%` / `r42` | `docs/releases.md` v4.9 |
 | `board_coldboot_20261026_v48.raw.log` | 冷启动，串口 921600 | U-Boot 2026.01 -> Linux 6.18.10 -> PetaLinux 2026.1 -> `login:` | `docs/releases.md` v4.8 |
 | `board_v48_verify.log` | `grep BogoMIPS` / `cat /proc/cmdline` / `lf -version` | `399.99` / `console=ttyPS0,921600 earlycon` / `r42` | `docs/releases.md` v4.8 |
-| `board_test_main.log` | `./bin/test_main` | 3/3 `ALL PASS`（Test 1 只比计数；耗时见 `board_three_way.log`）| README §1 结果 |
-| `board_gc_test.log` | `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
-| `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2` | `PASSED (all invariants): 8/8` | README 可靠性 |
+| `board_test_main.log` | `./bin/test_main` | 3/3 `ALL PASS`（Test 1 只比计数；耗时见 `board_three_way.log`）| `docs/measurement.md` / README §4 |
+| `board_gc_test.log` | `sh run_gc.sh 4096 8 2`（historical） | `PASSED (all invariants): 8/8` | v4.5 证据；现入口 `board_v412_800mhz.log` |
+| `board_run_gc.log` | `tools/debug/run_board_suite.ps1` → `sh run_gc.sh 4096 8 2`（historical） | `PASSED (all invariants): 8/8` | v4.5 证据；同一套件现入口 `board_fpga_vs_python.log` |
 | `board_abort_test.log` | `python3 -u tests/abort_test.py` | T1–T5 `RESULT: PASS` | README abort 契约 |
 | `board_abort_sweep.log` | `python3 -u tests/abort_sweep.py` | `RESULT: PASS (11/11)`（各相位 `bitmap_bad=0`）| README abort 相位 |
 | `board_done_race.log` | `python3 -u tests/done_race_test.py` | `RESULT: PASS`（P3 20/20；P1/P2 0/300）| AGENTS #9 / #18 |
 | `board_irq.log` | `cd <datadir> && sh tests/irq_drv_test.sh`（**必须是重启后第一条命令**：`done` 必须为 0）| `IRQ_DRIVEN_DONE_OK (before='0 1 44' after='1 0 44')` | README 中断 / AGENTS #20 |
-| `board_repeat.log` | `sh run_repeat.sh 10` | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ `REPEAT_DONE` | docs 板上速查 |
+| `board_repeat.log` | `sh run_repeat.sh 10`（historical） | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ `REPEAT_DONE` | v4.5 证据；现入口 `fpga_vs_python_repeat.sh` |
 | `board_freelist_n4096.log` | `python3 -u tests/freelist_n4096_test.py` | 4096 边界全空闲 ⇒ `FREELIST4096_RESULT OK` | docs 阶段 2 / 工具测试索引 |
-| `board_phase2_regression.log` / `board_phase2_regression.raw.log` | `tools/serial_phase2.ps1` | side-table 正/负控 + `gc_test 4096 8 2` ⇒ `RESULT: PHASE2_PASS` | docs 阶段 2 |
+| `board_phase2_regression.log` / `board_phase2_regression.raw.log` | `tools/serial_phase2.ps1` | side-table 正/负控 + `gc_test.py 4096 8 2 --seed 12345`（historical）⇒ `RESULT: PHASE2_PASS` | docs 阶段 2 |
 | `board_phase3_test_main.log` | `tools/debug/run_phase3_board.ps1` 第 1 步 | 3/3 `ALL PASS` | docs 阶段 3 |
 | `board_phase3_dirty_set.log` | 同上 第 4 步 `tests/dirty_set_test.py` | `DIRTY_SET_RESULT OK` | docs 阶段 3A |
 | `board_phase3_dirty_set_base_neg_20261023.log` | 同上脚本的**修复前**版本，重启后第一个跑（`0x04` 仍是复位值 0）| 引擎按地址 0 读对象头 ⇒ 不追引用（`A marked=2`、`D e1=1`）⇒ `DIRTY_SET_RESULT FAIL` | AGENTS #19（对象基址泄漏负控）|
@@ -79,7 +84,7 @@
 | `xsim_dirtyflushidle_ungated_20261023.log` | `sim\run_sim.bat` | 旧"仅空闲门控"RTL → **T-DIRTY-FLUSHIDLE 失败**（空闲裸 flush 清掉已推记录）| AGENTS #19 负控 2（P2-a 缺口）|
 | `xsim_dirtyflushidle_armconsume_20261023.log` | `sim\run_sim.bat` | arm-and-consume RTL → FLUSHIDLE/FLUSHSPILL/QFULL/QFULLNEG/RACE **全过** | AGENTS #19（arm-and-consume）|
 | `xsim_qfull_dirty_20261023.log` | `sim\run_sim.bat` | T-DIRTY-QFULL **观测**（峰值占用 4094/4096、`q_full`&&dirty 0 拍、`S_DIRTY_PUSH` 等待 0 拍）+ 强制负控 T-DIRTY-QFULLNEG（`force q_full` + 待处理记录 ⇒ 引擎按分析挂住）⇒「不可达」有了两段证据 | AGENTS #19（q_full+dirty）|
-| `board_three_way.log` | `tests/three_way.py`（同一张图）| FPGA / C 未缓存 / C 缓存 / Python，四个计数一致 ⇒ `THREE_WAY_RESULT OK` | README §1 / docs/measurement |
+| `board_three_way.log` | `tests/three_way.py`（historical，同一张图）| FPGA / C 未缓存 / C 缓存 / Python，四个计数一致 ⇒ `THREE_WAY_RESULT OK` | AGENTS #10（历史）；同图对比现见 `board_v412_800mhz.log` |
 | `board_regs_aww_cost.log` | 同脚本 `--cost`（200 次推送 ×2）| plain **17.3 µs/push** vs acked **31.8 µs/push**（**1.84×**，暖机期 `retries=0`）| AGENTS #20（回执开销）|
 | `xsim_handover_neg_20261024.log` | `tools/debug/neg_handover.ps1`（把 `gc_top.v`/`gc_axi_read.v` 换回修复前）| **负控**：三个 TB 全部 `[FAIL]` —— `stale data survived abort: d0=0x22222222` / `stale beat visible: 0xccccdddd`(×2) / `timeout after duplicate START; state=14 q=26` | AGENTS #21 |
 | `board_regs_aww_acked.log` | `regs_aww_board_test.py --acked`，重启后第一个跑 | 冷轮 `loss=[] forged=[]`（命令写标记后不再丢）⇒ 暖轮 `loss 0/14`、多标 0/14 ⇒ `REGS_AWW_RESULT OK` | AGENTS #20/#23 |
