@@ -28,7 +28,7 @@ XSA 来自 Vivado 工程（vivado/build.tcl）。PS7 的关键点（按照本项
 
 ```
 CONFIG_SUBSYSTEM_HOSTNAME="linux"
-CONFIG_SUBSYSTEM_USER_CMDLINE="console=ttyPS0,115200 earlycon"
+CONFIG_SUBSYSTEM_USER_CMDLINE="console=ttyPS0,921600 earlycon"
 ```
 
 

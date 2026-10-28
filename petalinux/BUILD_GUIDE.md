@@ -63,7 +63,7 @@ petalinux-build
 关键菜单项，正常由 config 文件带入，此处仅供核对：
 
 ```
-DT Settings → Kernel Bootargs:        console=ttyPS0,115200 earlycon
+DT Settings → Kernel Bootargs:        console=ttyPS0,921600 earlycon
 Image Packaging → Root filesystem:    initramfs
 rootfs: python3 / packagegroup-core-buildessential / empty-root-password
 ```
@@ -122,7 +122,7 @@ sudo umount /mnt/boot
 
 ## 调试
 ```bash
-# 串口: COM口, 115200, 8N1
+# 串口: COM口, 921600, 8N1
 # 登录: root，密码为空
 
 # JTAG 调试:

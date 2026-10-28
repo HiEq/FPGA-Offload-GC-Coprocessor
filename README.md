@@ -1,4 +1,4 @@
-# FPGA Offload GC Coprocessor（FOGC²）
+# FPGA Offload GC Coprocessor（FOGCCC）
 
 [![Platform](https://img.shields.io/badge/Platform-Xilinx%20Zynq--7000%20XC7Z100-blue)](#1-结果)
 [![RTL](https://img.shields.io/badge/RTL-Verilog%202001-green)](#3-设计与接口)
@@ -9,7 +9,7 @@
 面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）。对象体驻留 DDR，引用关系整理为连续的 side table
 （每对象一个 u32 数组，0xFFFFFFFF 结尾）；标记与空闲对象扫描由 PL 完成，分配、引用更新与回收策略
 由 PS 侧软件负责。本仓库提供寄存器映射与驱动接口，采用 stop-the-world 方式，对象数上限 4096、
-图区上限 1 MB，当前未接入语言运行时，测量范围限于标记与空闲扫描两个阶段。
+图区上限 1 MiB，当前未接入语言运行时，测量范围限于标记与空闲扫描两个阶段。
 
 当前证据：位流 6D479244…、BOOT.BIN d20530bc…、image.ub c958eac9…（v4.13，2026-10-27）。
 原始日志在 tools/logs/（索引 [tools/logs/README.md](tools/logs/README.md)）；
@@ -25,14 +25,15 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 
 ## 1. 结果
 
-| 对比对象 | 测量条件 | 每对象 | 加速 |
+| 对比对象 | 测量条件 | 每对象 | 相对 FPGA |
 |---|---|---|---|
 | **FPGA 标记**（fpga_vs_c_vs_python.py）| 同一张图，4000 对象 | **171 ns** | — |
 | C，逐条读 DDR（未缓存）| 同一张图、同一 BFS | 541 ns | **3.2×** |
 | C，数据驻留 cache | 堆上的副本 | 164 ns | **1.0×** |
 | Python 脚本 BFS（逐条读 /dev/mem）| 同一张图 | 37.9 µs | **221×** |
 
-FPGA 列只含引擎时间（CYCLES / 100 MHz），不含构图与驱动开销。
+FPGA 列只含引擎时间（CYCLES / 100 MHz），不含构图与驱动开销；171 ns 以已标记的 3766 个
+对象为分母（645.4 µs / 4000 = 161 ns）。最后一列为相对 FPGA 的时间比，1.0× 表示与 FPGA 相当。
 四行来自同一张图（tests/fpga_vs_c_vs_python.py，v4.12 / PS 800 MHz）；逐项测量条件与证据见
 [docs/measurement.md](docs/measurement.md)。test_main 只查计数正确性。
 
@@ -144,10 +145,10 @@ gc_dirty_fifo 是标记引擎的第二工作源：写 0x440 推入一个 ID，�
 
 | 套件 | 结果 |
 |---|---|
-| 冷启动 D1..D6 / test_main | 0 / 3/3（同一次上电的日志；卡上当前二进制）|
+| 冷启动 D1..D6 / test_main | 0 / 3/3（证据为 v4.5 镜像；卡上当前为 v4.13）|
 | 阶段 2 / 阶段 3 | PHASE2_PASS、CONTRACT_RESULT OK、dirty 全套 OK、收尾 occ=0 |
 | fpga_vs_python.sh 4096 8 2 | 8/8 |
-| abort_test / abort_sweep / done_race | T1–T5 / 11/11 / P3 0/20 |
+| abort_test / abort_sweep / done_race | T1–T5 / 11/11 / P3 失配 0/20（20/20 正确）|
 | fpga_vs_c_vs_python.py（同一张图的四路对比）| THREE_WAY_RESULT OK |
 | tb_flush_data / tb_stale_ar_flush / tb_start_while_busy | PASS（负控对修复前 RTL 全部 FAIL）|
 
@@ -208,6 +209,8 @@ tests/     仓库契约测试
 | report/ | report/、docs/ | 大模型协作记录与设计报告；设计、测量、仿真、发布记录见 docs/ |
 
 tests/ 为仓库自身的契约测试（目录规范、提交信息、字面量基线），不属于上述结构。
+本仓库没有独立的 data/：测试数据由脚本运行时生成；board/ 对应 tools/ 与 tools/logs/。
+目录名统一小写；README、LICENSE、NOTICE、Makefile 与 BitBake 的 %.bbappend 属工具链约定，保留原样。
 
 完整目录说明见 [docs/build.md](docs/build.md)。调试：标记结果/周期/队列在 0x10/0x14/0x18/0x1C，
 对象图在 DDR 0x1E000000；内部信号可用 ILA（vivado/build.tcl 加 system_ila）。

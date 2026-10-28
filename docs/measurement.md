@@ -1,7 +1,7 @@
 # 测量条件与证据
 
 主 [`README.md`](../README.md) 只给汇总表；逐组数据、测量条件与出处在这里。
-当前证据：`image.ub` `c958eac9…` / `BOOT.BIN` `d20530bc…`（v4.12，2026-10-27，PS 800 MHz）。
+当前证据：`image.ub` `c958eac9…` / `BOOT.BIN` `d20530bc…`（v4.13，镜像与 v4.12 相同；2026-10-27，PS 800 MHz）。
 
 ## 计数正确性（`test_main` Test 1）
 
@@ -12,7 +12,7 @@
 ## 同一张图的 FPGA / C / Python 对比（`tests/fpga_vs_c_vs_python.py`）
 
 同一张图依次执行 FPGA、C 未缓存、C 缓存、Python 四种实现；
-C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_v412_800mhz.log`（v4.12 / PS 800 MHz）。
+C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_v412_800mhz.log`（v4.13 镜像 / PS 800 MHz）。
 
 | 对象 | mkd | FPGA us | C-u us | C-c us | Py ms | Cu/HW | Cc/HW | Py/HW |
 | --: | --: | --: | --: | --: | --: | --: | --: | --: |
@@ -46,7 +46,7 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 
 | 阶段 | 时间 |
 | --- | --- |
-| 构图 + 写 DDR（Python 3.12，含 1 MB memset 与引用数组）| 102.2 ms / 图平均 |
+| 构图 + 写 DDR（Python 3.12，含 1 MiB memset 与引用数组）| 102.2 ms / 图平均 |
 | 同一张图的 Python BFS（oracle）| 43.8 ms / 图平均 |
 | 硬件标记（引擎）| 0.214 ms / 图平均 |
 

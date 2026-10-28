@@ -46,7 +46,7 @@ fpga_vs_c_vs_python.py。表中「命令」列记录产生该日志时的真实�
 | board_run_gc.log | tools/debug/run_board_suite.ps1 → sh run_gc.sh 4096 8 2（historical） | PASSED (all invariants): 8/8 | v4.5 证据；同一套件现入口 board_fpga_vs_python.log |
 | board_abort_test.log | python3 -u tests/abort_test.py | T1–T5 RESULT: PASS | README abort 契约 |
 | board_abort_sweep.log | python3 -u tests/abort_sweep.py | RESULT: PASS (11/11)（各相位 bitmap_bad=0）| README abort 相位 |
-| board_done_race.log | python3 -u tests/done_race_test.py | RESULT: PASS（P3 20/20；P1/P2 0/300）| AGENTS #9 / #18 |
+| board_done_race.log | python3 -u tests/done_race_test.py | RESULT: PASS（P3 失配 0/20，即 20/20 正确；P1/P2 0/300）| AGENTS #9 / #18 |
 | board_irq.log | cd ＜datadir＞ && sh tests/irq_drv_test.sh（**必须是重启后第一条命令**：done 必须为 0）| IRQ_DRIVEN_DONE_OK (before='0 1 44' after='1 0 44') | README 中断 / AGENTS #20 |
 | board_repeat.log | sh run_repeat.sh 10（historical） | 三组重复测量（不同种子 vs Python BFS / 不同图 vs C / 同种子 5 次）⇒ REPEAT_DONE | v4.5 证据；现入口 fpga_vs_python_repeat.sh |
 | board_freelist_n4096.log | python3 -u tests/freelist_n4096_test.py | 4096 边界全空闲 ⇒ FREELIST4096_RESULT OK | docs 阶段 2 / 工具测试索引 |

@@ -70,7 +70,7 @@ help:
 	@echo "  make python   编译共享库并运行Python测试"
 	@echo "  make clean    清理构建文件"
 	@echo ""
-	@echo "交叉编译: make CROSS=arm-linux-gnueabihf-"
+	@echo "交叉编译: source <sdk>/environment-setup-cortexa9t2hf-neon-amd-linux-gnueabi && make"
 
 # 刷新卡目录：脚本副本走 make_card.ps1（AGENTS §10：一个文件一个家），二进制由本目标拷贝
 card: all
