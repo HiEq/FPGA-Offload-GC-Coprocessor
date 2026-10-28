@@ -75,17 +75,17 @@ sh fpga_vs_python.sh 2048 5 3
 
 期望：`PASSED (all invariants): trials/trials`，并输出相对同一进程内 Python BFS 参照的加速比。
 
-### 3. FPGA vs C（同图、同 BFS）
+### 3. FPGA vs C（同一张图、同一 BFS）
 
 ```sh
 sh fpga_vs_c.sh            # 运行 bin/test_main 并把输出写入 logs/
 ```
 
-`fpga_vs_c.sh` 调用 `bin/test_main` 直接访问器件并执行图遍历，只与 C 实现对比计数；需要 root。Python 参照由 `fpga_vs_python.sh`（上节）给出，数据表与口径见 [`measurement.md`](measurement.md)。
+`fpga_vs_c.sh` 调用 `bin/test_main` 直接访问器件并执行图遍历，只与 C 实现对比计数；需要 root。Python 参照由 `fpga_vs_python.sh`（上节）给出，数据表与测量条件见 [`measurement.md`](measurement.md)。
 
-分工：`test_main` 校验正确性（FPGA 计数 == C）；`fpga_vs_python.sh` 校验可靠性；`fpga_vs_c_vs_python.py` 给出同图性能对比。
+分工：`test_main` 校验正确性（FPGA 计数 == C）；`fpga_vs_python.sh` 校验可靠性；`fpga_vs_c_vs_python.py` 给出同一张图的性能对比。
 
-### 4. 同图性能对比（FPGA / C 未缓存 / C 缓存 / Python）
+### 4. 同一张图的性能对比（FPGA / C 未缓存 / C 缓存 / Python）
 
 ```sh
 cd /run/media/USERDATA-mmcblk0p2 && python3 tests/fpga_vs_c_vs_python.py

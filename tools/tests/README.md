@@ -9,7 +9,7 @@
 | `side_table_test.py` | 功能（板级） | Phase 1/2：用 `gc.get_referents`（`tp_traverse`）构建真实 解释器容器图；mark 后按 FREE_COUNT/FREE_DATA 校验 free 集合；`--neg` 注入故障 |
 | `irq_drv_test.sh` | 功能（验收级） | 中断端到端：`done` → GIC SPI 61 → 内核 handler |
 | `fpga_vs_c_vs_python.py` | 性能（板级） | 同一张图依次跑 FPGA / C 未缓存 / C 缓存 / Python，四个计数必须相等；C 计时在 C 内完成 |
-| `abort_test.py` | 功能（板级） | `CTRL[3]` abort：T1 基线 / T2 控制组（不写 abort 必须跑完）/ T3 abort 后 `DONE` 必须始终为 0 / T4 同图恢复 / T5 **换一张不同规模的图**（危险路径：上一轮残留会被多标） |
+| `abort_test.py` | 功能（板级） | `CTRL[3]` abort：T1 基线 / T2 控制组（不写 abort 必须跑完）/ T3 abort 后 `DONE` 必须始终为 0 / T4 同一张图恢复 / T5 **换一张不同规模的图**（危险路径：上一轮残留会被多标） |
 | `abort_sweep.py` | 功能（板级） | abort **相位扫描**：0–480 µs 逐点打断（位图清零 / 根处理 / 头部读 / 引用读 / 收尾），每个相位都必须停住并精确恢复；`--delays 3,3,3` 可重复同一相位 |
 | `done_race_test.py` | 功能（板级） | `START` 是 posted write 的 stale-DONE 竞态（AGENTS gap 9）+ 连续换图跑（P3 用驱动同样的"读回 + `usleep(1)` + 轮询"顺序，每轮必须返回本轮自己的 `L`） |
 | `freelist_contract_test.py` | 契约（板级） | Phase 2 free-list 软件契约负控：**A** 扫描期间读位图探针 = 扫描器自己的字（free 结果仍精确）/ **B** `DONE` 后不等 `STATUS[5]` 就读 `FREE_COUNT` = 残值（天真正软件会漏 free）/ **C** 文档流程精确 / **D** 扫描中写 `START` 重跑后结果精确、`STATUS=0x10` |
@@ -20,7 +20,7 @@
 | `dirty_api_test.py` | 功能（板级） | 通过 **C 驱动 + ctypes 绑定**（`fogccc.py`/`libfogccc.so`）驱动阶段 3A：全标记 → 增量 epoch（roots=0、不 flush）标记数恰为 `closure(live,pushed)-live`、`pushed==popped==drained` → 256 深 FIFO 压满（`pushed==256`/`ovf=1`）→ `dirty_flush()` 清零。`--neg`（固定 tag 直写 `0x440`）必须被抓成 FAIL |
 | `dirty_overflow_test.py` | 功能（板级） | Phase 3A 溢出契约：并发中把 256 深 FIFO 压满（热容器种子撑住引擎 + 主线程一条推送洪流），断言 `occ=256`/`ovf=1`/并发被采样到；**负控**：忽略溢出标志继续增量 ⇒ `marked != oracle`（漏标，证明退回全标记是必须的）；**契约**：`bm_keep=0` + `CTRL[5]` 全标记 ⇒ `marked==oracle`、free=未标记、`STATUS=0`、flush 清掉粘滞位 |
 | `dirty_leftover_test.py` | 功能（板级） | 全标记必须与 `CTRL[5]` 脏集 flush 同发：先留 2 条屏障记录再跑 `./bin/test_main` —— 旧二进制 ⇒ `q_tail=10 != marked=9` 失败，修好的二进制 ⇒ `ALL PASS`（负控与验证一体的定向用例，见 AGENTS #18）|
-| `dirty_state.py` | 探针（板级） | 打印脏 FIFO 状态（`occ/ovf/tag/drained/pushed/popped` + `VERSION`），`--flush` 只**武装**（下一次全标记 `START` 才生效）；`run_phase3_board.ps1` 收尾用它核查 `occ=0` |
+| `dirty_state.py` | 探针（板级） | 打印脏 FIFO 状态（`occ/ovf/tag/drained/pushed/popped` + `VERSION`），`--flush` 只**预置**（arm；下一次全标记 `START` 才生效）；`run_phase3_board.ps1` 收尾用它核查 `occ=0` |
 | `regs_aww_board_test.py` | 功能（板级） | AGENTS #20 的 B2：15 轮"清场 → 推 K 条（每个对象 ref_count=0，故标记集应恰为推力集）→ 全标记 epoch"，逐轮报 `loss`/多余标记。断言**只针对丢记录**（漏重扫不安全，多标安全）；第 0 轮作"重启后第一次 DPUSH"窗口，只报告不断言。用法：重启后立刻跑 |
 
 ## 用法

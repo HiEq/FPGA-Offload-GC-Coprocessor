@@ -29,7 +29,7 @@ tests/
   ctrl_spill_test.py CTRL 写重投递的溢出防护验证
   dirty_api_test.py  阶段 3A C 驱动 + ctypes 绑定验收（含 --neg）
   fpga_vs_c_vs_python.py
-                    FPGA / C 未缓存 / C 缓存 / Python 四路同图对比
+                    FPGA / C 未缓存 / C 缓存 / Python 四路，同一张图
   side_table_test.py / barrier_verify_test.py / regs_aww_board_test.py
                     side table、屏障验证、寄存器写投递（A/B）
   py_bfs.py         Python BFS oracle（fpga_vs_python.sh 用）
