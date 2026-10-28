@@ -196,8 +196,8 @@ class MagicVersionTest(unittest.TestCase):
         self.assertEqual((rtl_magic, rtl_version), (magic, version))
 
         readme = read("README.md")
-        doc_magic = parse_hex(re.search(r"(?m)^\|\s*0x30\s*\|.*?`(0x[0-9A-Fa-f_]+)`", readme).group(1))
-        doc_version = parse_hex(re.search(r"(?m)^\|\s*0x34\s*\|.*?`(0x[0-9A-Fa-f_]+)`", readme).group(1))
+        doc_magic = parse_hex(re.search(r"(?m)^\|\s*0x30\s*\|.*?`?(0x[0-9A-Fa-f_]+)`?", readme).group(1))
+        doc_version = parse_hex(re.search(r"(?m)^\|\s*0x34\s*\|.*?`?(0x[0-9A-Fa-f_]+)`?", readme).group(1))
         self.assertEqual((doc_magic, doc_version), (magic, version))
 
     def test_negative_control_version_bump_is_detected(self):
@@ -225,7 +225,7 @@ class DesignParametersTest(unittest.TestCase):
         documented = {
             name: int(value)
             for name, value in re.findall(
-                r"(?m)^\|\s*`([A-Z]+)`\s*\|\s*\*\*(\d+)\*\*", read("README.md")
+                r"(?m)^\|\s*`?([A-Z]+)`?\s*\|\s*\*\*(\d+)\*\*", read("README.md")
             )
         }
         for name, value in params.items():
