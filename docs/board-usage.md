@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | 板卡控制台 | 双击 `tools\fogccc.bat` | 显示开机日志并进入登录 shell，键盘输入直通板卡；进入 shell 后以宿主时间执行一次 `date -s` |
 | 查看串口日志 | `tools\log.bat` | 追加查看 `tools\logs\serial.log` |
-| 运行 GC 基准测试 | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动以 root 登录（先试空密码，再试 `root`）、挂载 `/mnt/userdata`、执行 `run_gc.sh`；必须同时出现 `PASSED (all invariants): n/n` 与 `RUN_GC_RC=0` 才判定通过（最长约 7 分钟）|
+| 运行 GC 基准测试 | `powershell -ExecutionPolicy Bypass -File tools\serial_run_gc.ps1` | 自动以 root 登录（先试空密码，再试 `root`）、挂载 `/mnt/userdata`、执行 `fpga_vs_python.sh`；必须同时出现 `PASSED (all invariants): n/n` 与 `RUN_GC_RC=0` 才判定通过（最长约 7 分钟）|
 | 分块推送文件 | `... tools\serial_push_chunked.ps1 -Src <file> -Dest <path>` | 关闭回显、按提示符同步、分块传输并逐块校验 md5；逐行经 shell 传输，约 2 KB/s，仅适用于小文件 |
 | 断点续传文件 | `... tools\serial_push_resume.ps1 -Src <file> -Dest <path>` | 每个分块写入卡上 `parts/` 并记录进度；掉线或断电后重新执行同一命令即从断点继续（43 MB 的 `image.ub` 约 90 分钟）|
 | 生成二进制清单 | `... tools\make_manifest.ps1` | 重新生成 `artifacts/SHA256SUMS`；CI 使用 `-Check` 校验二进制与清单一致 |
@@ -62,9 +62,9 @@ VERDICT: IRQ_DRIVEN_DONE_OK  (before='0 1' after='<N> 0')
 ### 2. FPGA vs Python
 
 ```sh
-sh run_gc.sh                 # 默认 maxN=4096 trials=8 avg_refs=2
-sh run_gc.sh 512 2 1         # 小规模快速验证
-sh run_gc.sh 2048 5 3
+sh fpga_vs_python.sh                 # 默认 maxN=4096 trials=8 avg_refs=2
+sh fpga_vs_python.sh 512 2 1         # 小规模快速验证
+sh fpga_vs_python.sh 2048 5 3
 ```
 
 | 参数 | 含义 | 默认 |
@@ -78,12 +78,12 @@ sh run_gc.sh 2048 5 3
 ### 3. FPGA vs C（同图、同 BFS）
 
 ```sh
-./bin/test_main
+sh fpga_vs_c.sh            # 运行 bin/test_main 并把输出写入 logs/
 ```
 
-`test_main` 直接访问器件并执行图遍历，只与 C 实现对比计数；需要 root。Python 参照由 `run_gc.sh`（上节）给出，数据表与口径见 [`measurement.md`](measurement.md)。
+`fpga_vs_c.sh` 调用 `bin/test_main` 直接访问器件并执行图遍历，只与 C 实现对比计数；需要 root。Python 参照由 `fpga_vs_python.sh`（上节）给出，数据表与口径见 [`measurement.md`](measurement.md)。
 
-分工：`test_main` 校验正确性（FPGA 计数 == C）；`run_gc.sh` 校验可靠性；`fpga_vs_c_vs_python.py` 给出同图性能对比。
+分工：`test_main` 校验正确性（FPGA 计数 == C）；`fpga_vs_python.sh` 校验可靠性；`fpga_vs_c_vs_python.py` 给出同图性能对比。
 
 ### 4. 同图性能对比（FPGA / C 未缓存 / C 缓存 / Python）
 
@@ -98,7 +98,7 @@ FPGA us 只含引擎时间，C 的时间在 C 内计时，Python 列是量级参
 ### 5. 重复性测试
 
 ```sh
-sh run_repeat.sh 10          # 默认 10 次
+sh fpga_vs_python_repeat.sh 10          # 默认 10 次
 ```
 
 两组：不同种子 vs Python 参照、同种子 5 次；末行 `REPEAT_DONE`。
@@ -134,13 +134,13 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 
 ### 8. 常见问题
 
-- `sh: run_gc.sh: No such file or directory` → 当前目录不是数据分区；先
+- `sh: fpga_vs_python.sh: No such file or directory` → 当前目录不是数据分区；先
   `cd /run/media/USERDATA-mmcblk0p2`，或改用绝对路径
 - `./bin/test_main: No such file or directory` → 分区没挂到该路径（`/mnt/userdata` 是空目录）；
   换 `/run/media/USERDATA-mmcblk0p2` 或先跑 `mount_data.sh`
 - `insmod: already loaded` → 先 `rmmod fogccc_irq`
 - 打不开 `/dev/mem` → 必须是 root
 - 没有 `IRQ_DRIVEN_DONE_OK` → 确认 PL 比特流已加载，且测试时 PL 处于 `done=0`（刚上电）
-- `run_gc.sh` 找不到 `fpga_vs_python.py` → 脚本按自身目录找文件，整个目录要一起放在 `/mnt/userdata`
+- `fpga_vs_python.sh` 找不到 `fpga_vs_python.py` → 脚本按自身目录找文件，整个目录要一起放在 `/mnt/userdata`
 - 某个 `tests/*.py` 报 `ModuleNotFoundError`（旧模块名未更新）→ 卡上 `tests/` 是**整套**副本，
   只推了部分文件。用 `tools\push_tests.ps1` 整批同步（`serial_phase2.ps1` 与 `run_phase3_board.ps1` 已内置该步骤）
