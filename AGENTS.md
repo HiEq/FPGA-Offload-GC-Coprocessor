@@ -636,7 +636,7 @@ Compilation is the starting gun. The reward is "I predicted it" or "I caught it.
 
 ### 10.1 Documentation style
 
-The concrete rules reviewers keep asking for are listed in `skill/pitfalls/doc-style.md` (formal wording, one idea per sentence, no block quotes in body text, traceable numbers, noun column headers). Apply them to every document.
+The concrete rules reviewers keep asking for live in the competition package (`skill/pitfalls/doc-style.md`, submitted outside this repository): formal wording, one idea per sentence, no block quotes in body text, traceable numbers, noun column headers. Apply them to every document.
 
 README and code comments record only what is needed to rebuild, rerun and re-verify:
 
