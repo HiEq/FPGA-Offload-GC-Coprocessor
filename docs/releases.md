@@ -284,7 +284,7 @@ GitHub Latest 指向 v4.13（800 MHz）。v4.7（667 MHz）保留为正式版；
 
 **变更内容**
 
-- Phase 3A/3B：脏集 FIFO、并发增量标记、`CTRL[4]=BM_KEEP`、`CTRL[5]=DIRTY_FLUSH`（预置式）、id 级回执。
+- Phase 3A/3B：脏集 FIFO、并发增量标记、`CTRL[4]=BM_KEEP`、`CTRL[5]=DIRTY_FLUSH`（预置式）、按 id 回执。
 
 **验证结果**
 
@@ -292,7 +292,7 @@ GitHub Latest 指向 v4.13（800 MHz）。v4.7（667 MHz）保留为正式版；
 
 **已知限制**
 
-- 平台的 AW/W 错配（AGENTS #20）在当时仅有软件侧的 id 回执与按效果验收作为缓解；根因见 v4.4/v4.5。
+- 平台的 AW/W 错配（AGENTS #20）在当时仅有软件侧的 按 id 回执与按效果校验作为缓解；根因见 v4.4/v4.5。
 - 推送计数不精确（重复投递 + 4 位 tag），该行为在语义上是安全的。
 
 ---

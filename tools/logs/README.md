@@ -57,7 +57,7 @@ fpga_vs_c_vs_python.py。表中「命令」列记录产生该日志时的真实�
 | board_phase3_dirty_set_boot_neg_20261023.log | tests/dirty_set_test.py 作**重启后第一个**测试 | A occ=3 pushed=3 但 marked=2（id 0 的记录没进位图）⇒ DIRTY_SET_RESULT FAIL；暖机后同一脚本 occ=4 marked=6 ⇒ 「AW/W 乱配 ⇒ 伪造/丢失 DIRTY_PUSH」的复现件 | AGENTS #20（**开放**）|
 | board_phase3_dirty_concurrent_plain_neg.log | 同上加 --plain-push（旧的不带回执推送）| **负控**：冷窗口那条记录丢失后表现为推送计数偏短或 marked != oracle，与带回执的正证形成对照 | AGENTS #20（并发路径 A/B）|
 | board_dirty_concurrent_plain.log | dirty_concurrent_test.py --plain-push（暖机）| DIRTY_CONCURRENT_RESULT OK；暖机期不丢，冷窗口的确定性 A/B 见 board_regs_aww 两行 | AGENTS #20 |
-| board_phase3_dirty_concurrent.log | 同上 第 5 步（mutator 走 id 级回执）| DIRTY_CONCURRENT_RESULT OK；ack: retries=0 giveups=0（本轮没有触发重试）；live_pushes 29/100 | docs 阶段 3B / AGENTS #20 |
+| board_phase3_dirty_concurrent.log | 同上 第 5 步（mutator 走 按 id 回执）| DIRTY_CONCURRENT_RESULT OK；ack: retries=0 giveups=0（本轮没有触发重试）；live_pushes 29/100 | docs 阶段 3B / AGENTS #20 |
 | board_phase3_dirty_overflow.log | 同上 第 6 步 | DIRTY_OVERFLOW_RESULT OK | docs 溢出契约 |
 | board_phase3_ctrl_spill.log | 同上 第 7 步 tests/ctrl_spill_test.py | CTRL_SPILL_RESULT OK | docs 写路径防护 |
 | board_phase3_freelist_contract.log | 同上 第 3 步 | CONTRACT_RESULT OK | docs 阶段 2 契约 |
@@ -89,7 +89,7 @@ fpga_vs_c_vs_python.py。表中「命令」列记录产生该日志时的真实�
 | xsim_handover_neg_20261024.log | tools/debug/neg_handover.ps1（把 gc_top.v/gc_axi_read.v 换回修复前）| **负控**：三个 TB 全部 [FAIL] —— stale data survived abort: d0=0x22222222 / stale beat visible: 0xccccdddd(×2) / timeout after duplicate START; state=14 q=26 | AGENTS #21 |
 | board_regs_aww_acked.log | regs_aww_board_test.py --acked，重启后第一个跑 | 冷轮 loss=[] forged=[]（命令写标记后不再丢）⇒ 暖轮 loss 0/14、多标 0/14 ⇒ REGS_AWW_RESULT OK | AGENTS #20/#23 |
 | board_regs_aww.log | 同一脚本 --plain，重启后第一个跑（A/B 对照）| 冷轮 loss=[] forged=[]（旧版这里是 loss=[8]）；暖轮 loss 0/14、多标 0/14 ⇒ REGS_AWW_RESULT OK | AGENTS #20/#23 |
-| board_regs_aww_verify_effect.log | 同脚本 --verify-effect，重启后第一个跑 | round 0 verify=OK（**不再触发回退**）；暖轮 14/14 无需回退 ⇒ VERIFY_EFFECT_RESULT OK | AGENTS #20（F1 按效果验收）|
+| board_regs_aww_verify_effect.log | 同脚本 --verify-effect，重启后第一个跑 | round 0 verify=OK（**不再触发回退**）；暖轮 14/14 无需回退 ⇒ VERIFY_EFFECT_RESULT OK | AGENTS #20（F1 按效果校验）|
 | board_regs_aww_verified.log | 同脚本 --verified（标签回查 + 重试），重启后第一个跑 | retries=0 giveups=0 却仍 loss=[8]（3 次启动 3 次）⇒ **标签回查不足以证明 id 落地**（伪造记录可复用同一个 4 位 tag）；暖轮仍 loss 0/14 | AGENTS #20（A 侧负结果）|
 | board_regs_aww_probe_forge_20261023.log | 同上脚本的早期版本 | 每轮都多标 id 0（其 WDATA=0 来自位图探测写）⇒ 暖机期也会发生 AW/W 错配，方向是**多标**（安全）| AGENTS #20（暖机侧证据）|
 | xsim_regs_aww_20261025.log | sim\run_regs_aww_tb.bat | gc_regs 的 AW/W 契约：配对写正确 / 重复投递只算一次 / 无 AW 时不消费 W（P1–P3）+ **P4/P6 负控**（无标记的 W 不产生记录、不触发 START）+ P5 回执 ⇒ PASS | AGENTS #20/#23 |
