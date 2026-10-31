@@ -11,7 +11,7 @@
 
 ## 同一张图的 FPGA / C / Python 对比（`tests/fpga_vs_c_vs_python.py`）
 
-同一张图依次执行 FPGA、C 未缓存、C 缓存、Python 四种实现；
+同一张图依次执行 FPGA、C（非预取）、C（缓存友好）、Python 四种实现；
 C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/board_v412_800mhz.log`（v4.13 镜像 / PS 800 MHz）。
 
 | 对象 | mkd | FPGA us | C-u us | C-c us | Py ms | Cu/HW | Cc/HW | Py/HW |
@@ -34,13 +34,13 @@ C 侧时间在 C 内计时，cached 的拷贝不计入。出处 `tools/logs/boar
 | DDR（非缓存） | 一次 DDR 往返，无重叠 | 同样往返，8 笔未完成读 + 对象头预取 |
 | CPU cache | L1/L2 命中，几纳秒 | 仍走 AXI HP 到 DDR |
 
-硬件相对**未缓存** C 占优（500–4000 对象为 2.1–3.2×），相对缓存驻留的 C 为 0.5–1.0×；小图（10–100 对象）受固定开销限制反而更慢。“图超出 LLC 后引擎占优”仍是未实测的假设。
+硬件相对**非预取** C 占优（500–4000 对象为 2.1–3.2×），相对缓存驻留的 C 为 0.5–1.0×；小图（10–100 对象）受固定开销限制反而更慢。“图超出 LLC 后引擎占优”仍是未实测的假设。
 
 ## 测量条件
 
 - `FPGA us` = `CYCLES` / 100 MHz：只含引擎时间，不含构图、写对象头、清队列轮询、驱动 `usleep`。
-- `C us`：同一张图、同一 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**未缓存**访问。
-- C（缓存）：同一 BFS 运行在堆副本上的上限参照（`fpga_vs_c_vs_python.py` 的 C-c 列）。
+- `C us`：同一张图、同一 BFS 的 C 实现，与引擎同阶段；图在 DDR、驱动不做 cache 维护，即**非预取**访问（无软件预取）。
+- C（缓存友好）：同一 BFS 运行在堆副本上的上限参照（`fpga_vs_c_vs_python.py` 的 C-c 列）。
 - `py_bfs.py`：Python 字节码 BFS（逐条读 `/dev/mem`），只作量级参照（17–221×）。
 
 **范围与边界**：全部数据为 4096 对象 / 1 MiB 图、单层 DDR，无规模扫描，也未区分 L1/LLC/OCM；
