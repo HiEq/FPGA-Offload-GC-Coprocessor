@@ -1,4 +1,4 @@
-# 设计细节：架构、脏边增量标记、AXI 清理、中断
+# 设计细节：架构、脏引用增量标记、AXI 清理、中断
 
 主 [`README.md`](../README.md) 只保留寄存器映射、关键参数与对象图布局；展开说明在这里。
 
@@ -29,7 +29,7 @@
 第 1 步与回收动作由调用者负责；本仓库不接入任何语言运行时。读写路径见
 `csrc/fpga_gc.c`、`python/fogccc.py`。
 
-## 脏边与增量标记（Phase 3A/3B）
+## 脏引用与增量标记（Phase 3A/3B）
 
 `gc_dirty_fifo` 是引擎的第二工作源：写 `0x440` 推入一个对象 ID。
 
@@ -57,10 +57,10 @@
 因此迟到的 store 副本至多提前预置下一次全标记，不会清除当前 epoch 的记录。
 清 FIFO 而不动位图时使用 `CLEAR_Q`，不使用 flush。
 
-**确认一条记录真的进了 FIFO**：`DIRTY_STAT[31:20]` 是最后接受的 ID，与 `[19:16]` 的 tag 组成 id 级回执。
+**确认一条记录真的进了 FIFO**：`DIRTY_STAT[31:20]` 是最后接受的 ID，与 `[19:16]` 的 tag 组成 按 id 回执。
 `dirty_push_acked()` / `fpga_gc_dirty_push_acked()` 写一条、回读 tag+id，不匹配换 tag 重试；
 重试用尽或溢出位被置 ⇒ 返回 0，调用者退回全标记。
-`barrier_verify()` / `fpga_gc_read_mark()` 按效果验收：全标 ⇒ 未发现漏标；有未标 ⇒ 退回全标记。
+`barrier_verify()` / `fpga_gc_read_mark()` 按效果校验：全标 ⇒ 未发现漏标；有未标 ⇒ 退回全标记。
 后者是**必要非充分**检查：epoch 之前已标记的目标无法反映本次是否重扫。
 
 **溢出路径**：忽略 `0x444[9]` 继续增量会漏标（`dirty_overflow_test.py` 的负控）；
