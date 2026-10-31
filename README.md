@@ -28,8 +28,8 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 | 对比对象 | 测量条件 | 每对象 | FPGA 加速比 |
 |---|---|---|---|
 | **FPGA 标记**（fpga_vs_c_vs_python.py）| 同一张图，4000 对象 | **171 ns** | — |
-| C，逐条读 DDR（未缓存）| 同一张图、同一 BFS | 541 ns | **≈3.2×** |
-| C，数据驻留 cache | 堆上的副本 | 164 ns | **≈1.0×** |
+| C，非预取（逐条读 DDR）| 同一张图、同一 BFS | 541 ns | **≈3.2×** |
+| C，缓存友好（堆副本）| 堆上的副本 | 164 ns | **≈1.0×** |
 | Python 脚本 BFS（逐条读 /dev/mem）| 同一张图 | 37.9 µs | **≈220×** |
 
 FPGA 列只含引擎时间（CYCLES / 100 MHz），不含构图与驱动开销；171 ns 以已标记的 3766 个
@@ -64,9 +64,9 @@ SDK_ENV=<sdk> ./csrc/build_c_bins.sh      # test_main / libfogccc.so
 ```sh
 cd /run/media/USERDATA-mmcblk0p2
 sh fpga_vs_c.sh                     # test_main 3 项（FPGA vs C 计数）
-sh fpga_vs_python.sh 4096 8 2       # 8 轮随机图，判据 PASSED (all invariants): 8/8
+sh fpga_vs_python.sh 4096 8 2       # 8 张随机图，判据 PASSED (all invariants): 8/8
 sh fpga_vs_python_repeat.sh 10      # 10 个种子 + 固定种子 5 次，判据 REPEAT_DONE
-python3 tests/fpga_vs_c_vs_python.py  # 同一张图：FPGA / C 未缓存 / C 缓存 / Python
+python3 tests/fpga_vs_c_vs_python.py  # 同一张图：FPGA / C（非预取）/ C（缓存友好）/ Python
 ```
 
 宿主回归：
