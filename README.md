@@ -188,8 +188,6 @@ vivado/    BD + 综合/实现脚本
 petalinux/ 镜像配方与构建脚本
 tools/     串口与上板脚本、测试、日志
 artifacts/ 卡上产物与二进制清单（BOOT.BIN/image.ub 不入库）
-skill/     技能包
-report/    大模型协作记录（设计报告本地定稿后入库）
 docs/      构建、上板、测量、仿真、设计细节
 tests/     仓库契约测试
 ```
@@ -205,8 +203,6 @@ tests/     仓库契约测试
 | build/ | vivado/、petalinux/、Makefile | 位流与镜像的构建脚本、综合与实现报告 |
 | board/ | tools/、tools/logs/ | 串口与上板脚本、逐次实测日志 |
 | data/ | artifacts/ | 卡上产物、二进制清单与校验值 |
-| skill/ | skill/ | 技能包，索引见 skill/README.md |
-| report/ | report/、docs/ | 大模型协作记录；设计报告本地定稿后随批次入库；设计、测量、仿真、发布记录见 docs/ |
 
 tests/ 为仓库自身的契约测试（目录规范、提交信息、字面量基线），不属于上述结构。
 本仓库没有独立的 data/：测试数据由脚本运行时生成；board/ 对应 tools/ 与 tools/logs/。

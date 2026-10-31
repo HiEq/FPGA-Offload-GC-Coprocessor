@@ -16,7 +16,9 @@ In:    serial@e0000000
 Out:   serial@e0000000
 Err:   serial@e0000000
 Net:   No ethernet found.
-Hit any key to stop autoboot:  2 Hit any key to stop autoboot: 1[KHit any key to stop autoboot: 0[K
+Hit any key to stop autoboot:  2 
+Hit any key to stop autoboot: 1[K
+Hit any key to stop autoboot: 0[K
 switch to partitions #0, OK
 mmc0 is current device
 Scanning mmc 0:1...
@@ -229,105 +231,152 @@ systemd[1]: System time advanced to timestamp on /var/lib/systemd/timesync/clock
 systemd[1]: Detected architecture arm.
 
 [0;1;39mWelcome to [0m[38;2;23;147;209mArch Linux ARM[0m[0;1;39m![0m
-
+
+
 systemd[1]: Hostname set to <zynq7100>.
-]3008;start=90b59803ae864ae2b45b925c4ae55852;user=root;hostname=zynq7100;machineid=50e28c1e31e742f0be5da604281b3352;bootid=1c2a8af71a41490ebb5c75b098ae7e07;pid=1;pidfdid=2;comm=systemd;type=boot\systemd[1]: bpf-restrict-fs: BPF LSM hook not enabled in the kernel, BPF LSM not supported.
+]3008;start=90b59803ae864ae2b45b925c4ae55852;user=root;hostname=zynq7100;machineid=<redacted>;bootid=<redacted>;pid=1;pidfdid=2;comm=systemd;type=boot\systemd[1]: bpf-restrict-fs: BPF LSM hook not enabled in the kernel, BPF LSM not supported.
 systemd[1]: Queued start job for default target Graphical Interface.
 systemd[1]: Created slice Slice /system/dirmngr.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/dirmngr[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/dirmngr[0m.
+
 systemd[1]: Created slice Slice /system/getty.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/getty[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/getty[0m.
+
 systemd[1]: Created slice Slice /system/gpg-agent.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent[0m.
+
 systemd[1]: Created slice Slice /system/gpg-agent-browser.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent-browser[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent-browser[0m.
+
 systemd[1]: Created slice Slice /system/gpg-agent-extra.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent-extra[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent-extra[0m.
+
 systemd[1]: Created slice Slice /system/gpg-agent-ssh.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent-ssh[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/gpg-agent-ssh[0m.
+
 systemd[1]: Created slice Slice /system/keyboxd.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/keyboxd[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/keyboxd[0m.
+
 systemd[1]: Created slice Slice /system/modprobe.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/modprobe[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/modprobe[0m.
+
 systemd[1]: Created slice Slice /system/serial-getty.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/serial-getty[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/serial-getty[0m.
+
 systemd[1]: Created slice Slice /system/systemd-fsck.
-[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/systemd-fsck[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mSlice /system/systemd-fsck[0m.
+
 systemd[1]: Created slice User and Session Slice.
-[[0;32m  OK  [0m] Created slice [0;1;39mUser and Session Slice[0m.
+[[0;32m  OK  [0m] Created slice [0;1;39mUser and Session Slice[0m.
+
 systemd[1]: Started Dispatch Password Requests to Console Directory Watch.
-[[0;32m  OK  [0m] Started [0;1;39mDispatch Password Requests to Console Directory Watch[0m.
+[[0;32m  OK  [0m] Started [0;1;39mDispatch Password Requests to Console Directory Watch[0m.
+
 systemd[1]: Started Forward Password Requests to Wall Directory Watch.
-[[0;32m  OK  [0m] Started [0;1;39mForward Password Requests to Wall Directory Watch[0m.
+[[0;32m  OK  [0m] Started [0;1;39mForward Password Requests to Wall Directory Watch[0m.
+
 systemd[1]: Arbitrary Executable File Formats File System Automount Point skipped, unmet condition check ConditionPathExists=/proc/sys/fs/binfmt_misc
 systemd[1]: Expecting device /dev/mmcblk0p1...
-         Expecting device [0;1;39m/dev/mmcblk0p1[0m...
+         Expecting device [0;1;39m/dev/mmcblk0p1[0m...
+
 systemd[1]: Expecting device /dev/mmcblk0p2...
-         Expecting device [0;1;39m/dev/mmcblk0p2[0m...
+         Expecting device [0;1;39m/dev/mmcblk0p2[0m...
+
 systemd[1]: Expecting device /dev/mmcblk0p4...
-         Expecting device [0;1;39m/dev/mmcblk0p4[0m...
+         Expecting device [0;1;39m/dev/mmcblk0p4[0m...
+
 systemd[1]: Expecting device /dev/ttyPS0...
-         Expecting device [0;1;39m/dev/ttyPS0[0m...
+         Expecting device [0;1;39m/dev/ttyPS0[0m...
+
 systemd[1]: Reached target Image Downloads.
-[[0;32m  OK  [0m] Reached target [0;1;39mImage Downloads[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mImage Downloads[0m.
+
 systemd[1]: Reached target Local Integrity Protected Volumes.
-[[0;32m  OK  [0m] Reached target [0;1;39mLocal Integrity Protected Volumes[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mLocal Integrity Protected Volumes[0m.
+
 systemd[1]: Reached target Path Units.
-[[0;32m  OK  [0m] Reached target [0;1;39mPath Units[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mPath Units[0m.
+
 systemd[1]: Reached target Remote File Systems.
-[[0;32m  OK  [0m] Reached target [0;1;39mRemote File Systems[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mRemote File Systems[0m.
+
 systemd[1]: Reached target Slice Units.
-[[0;32m  OK  [0m] Reached target [0;1;39mSlice Units[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mSlice Units[0m.
+
 systemd[1]: Reached target Swaps.
-[[0;32m  OK  [0m] Reached target [0;1;39mSwaps[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mSwaps[0m.
+
 systemd[1]: Reached target Local Verity Protected Volumes.
-[[0;32m  OK  [0m] Reached target [0;1;39mLocal Verity Protected Volumes[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mLocal Verity Protected Volumes[0m.
+
 systemd[1]: Listening on Device-mapper event daemon FIFOs.
-[[0;32m  OK  [0m] Listening on [0;1;39mDevice-mapper event daemon FIFOs[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mDevice-mapper event daemon FIFOs[0m.
+
 systemd[1]: Listening on Query the User Interactively for a Password.
-[[0;32m  OK  [0m] Listening on [0;1;39mQuery the User Interactively for a Password[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mQuery the User Interactively for a Password[0m.
+
 systemd[1]: Listening on Process Core Dump Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mProcess Core Dump Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mProcess Core Dump Socket[0m.
+
 systemd[1]: Listening on Credential Encryption/Decryption.
-[[0;32m  OK  [0m] Listening on [0;1;39mCredential Encryption/Decryption[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mCredential Encryption/Decryption[0m.
+
 systemd[1]: Listening on Factory Reset Management.
-[[0;32m  OK  [0m] Listening on [0;1;39mFactory Reset Management[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mFactory Reset Management[0m.
+
 systemd[1]: Listening on Hostname Service Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mHostname Service Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mHostname Service Socket[0m.
+
 systemd[1]: Listening on Journal Socket (/dev/log).
-[[0;32m  OK  [0m] Listening on [0;1;39mJournal Socket (/dev/log)[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mJournal Socket (/dev/log)[0m.
+
 systemd[1]: Listening on Journal Sockets.
-[[0;32m  OK  [0m] Listening on [0;1;39mJournal Sockets[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mJournal Sockets[0m.
+
 systemd[1]: Listening on Console Output Muting Service Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mConsole Output Muting Service Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mConsole Output Muting Service Socket[0m.
+
 systemd[1]: systemd-networkd-varlink-metrics.socket: Socket service systemd-networkd.service not loaded, refusing.
 systemd[1]: Failed to listen on Network Management Metrics Varlink Socket.
-[[0;1;31mFAILED[0m] Failed to listen on [0;1;39mNetwork Management Metrics Varlink Socket[0m.
-See 'systemctl status systemd-networkd-varlink-metrics.socket' for details.
+[[0;1;31mFAILED[0m] Failed to listen on [0;1;39mNetwork Management Metrics Varlink Socket[0m.
+
+See 'systemctl status systemd-networkd-varlink-metrics.socket' for details.
+
 systemd[1]: systemd-networkd-varlink.socket: Socket service systemd-networkd.service not loaded, refusing.
 systemd[1]: Failed to listen on Network Management Varlink Socket.
-[[0;1;31mFAILED[0m] Failed to listen on [0;1;39mNetwork Management Varlink Socket[0m.
-See 'systemctl status systemd-networkd-varlink.socket' for details.
+[[0;1;31mFAILED[0m] Failed to listen on [0;1;39mNetwork Management Varlink Socket[0m.
+
+See 'systemctl status systemd-networkd-varlink.socket' for details.
+
 systemd[1]: TPM PCR Measurements skipped, unmet condition check ConditionSecurity=measured-os
 systemd[1]: Make TPM PCR Policy skipped, unmet condition check ConditionSecurity=measured-uki
 systemd[1]: Listening on Disk Repartitioning Service Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mDisk Repartitioning Service Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mDisk Repartitioning Service Socket[0m.
+
 systemd[1]: Listening on Resolve Monitor Varlink Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mResolve Monitor Varlink Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mResolve Monitor Varlink Socket[0m.
+
 systemd[1]: Listening on Resolve Service Varlink Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mResolve Service Varlink Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mResolve Service Varlink Socket[0m.
+
 systemd[1]: Listening on Simple Block Device Backed Storage Provider.
-[[0;32m  OK  [0m] Listening on [0;1;39mSimple Block Device Backed Storage Provider[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mSimple Block Device Backed Storage Provider[0m.
+
 systemd[1]: Listening on Simple File System Backed Storage Provider.
-[[0;32m  OK  [0m] Listening on [0;1;39mSimple File System Backed Storage Provider[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mSimple File System Backed Storage Provider[0m.
+
 systemd[1]: Listening on udev Control Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mudev Control Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mudev Control Socket[0m.
+
 systemd[1]: Listening on udev Kernel Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mudev Kernel Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mudev Kernel Socket[0m.
+
 systemd[1]: Listening on udev Varlink Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mudev Varlink Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mudev Varlink Socket[0m.
+
 systemd[1]: Listening on User Database Manager Socket.
-[[0;32m  OK  [0m] Listening on [0;1;39mUser Database Manager Socket[0m.
+[[0;32m  OK  [0m] Listening on [0;1;39mUser Database Manager Socket[0m.
+
 systemd[1]: Huge Pages File System skipped, unmet condition check ConditionPathExists=/sys/kernel/mm/hugepages
 systemd[1]: POSIX Message Queue File System skipped, unmet condition check ConditionPathExists=/proc/sys/fs/mqueue
 systemd[1]: Kernel Debug File System skipped, unmet condition check ConditionPathExists=/sys/kernel/debug
@@ -335,132 +384,228 @@ systemd[1]: Kernel Trace File System skipped, unmet condition check ConditionPat
 systemd[1]: tmp.mount: Directory /tmp to mount over is not empty, mounting anyway.
 systemd[1]: tmp.mount: x-systemd.graceful-option=usrquota specified, but option is not available, suppressing.
 systemd[1]: Mounting Temporary Directory /tmp...
-         Mounting [0;1;39mTemporary Directory /tmp[0m...
+         Mounting [0;1;39mTemporary Directory /tmp[0m...
+
 systemd[1]: Create List of Static Device Nodes skipped, unmet condition check ConditionFileNotEmpty=/lib/modules/6.18.10-xilinx-g4f7afe14f724/modules.devname
 systemd[1]: Load Kernel Module configfs skipped, unmet condition check ConditionKernelModuleLoaded=!configfs
 systemd[1]: Mounting Kernel Configuration File System...
-         Mounting [0;1;39mKernel Configuration File System[0m...
+         Mounting [0;1;39mKernel Configuration File System[0m...
+
 systemd[1]: Load Kernel Module drm skipped, unmet condition check ConditionKernelModuleLoaded=!drm
 systemd[1]: Starting Load Kernel Module fuse...
-         Starting [0;1;39mLoad Kernel Module fuse[0m...
+         Starting [0;1;39mLoad Kernel Module fuse[0m...
+
 systemd[1]: File System Check on Root Device skipped, unmet condition check ConditionPathIsReadWrite=!/
 systemd[1]: Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
 systemd[1]: systemd-journald.service: unit configures an IP firewall, but the local system does not support BPF/cgroup firewalling.
 systemd[1]: systemd-journald.service: (This warning is only shown for the first unit using IP firewalling.)
 systemd[1]: Starting Journal Service...
-         Starting [0;1;39mJournal Service[0m...
+         Starting [0;1;39mJournal Service[0m...
+
 systemd[1]: Starting Load Kernel Modules...
-         Starting [0;1;39mLoad Kernel Modules[0m...
+         Starting [0;1;39mLoad Kernel Modules[0m...
+
 systemd[1]: Starting Generate Network Units from Kernel Command Line...
-         Starting [0;1;39mGenerate Network Units from Kernel Command Line[0m...
+         Starting [0;1;39mGenerate Network Units from Kernel Command Line[0m...
+
 systemd[1]: TPM PCR Machine ID Measurement skipped, unmet condition check ConditionSecurity=measured-os
 systemd[1]: TPM PCR OS Separator skipped, unmet condition check ConditionSecurity=measured-os
 systemd[1]: Starting Remount Root and Kernel File Systems...
-         Starting [0;1;39mRemount Root and Kernel File Systems[0m...
+         Starting [0;1;39mRemount Root and Kernel File Systems[0m...
+
 systemd[1]: Starting Create Static Device Nodes in /dev gracefully...
-         Starting [0;1;39mCreate Static Device Nodes in /dev gracefully[0m...
+         Starting [0;1;39mCreate Static Device Nodes in /dev gracefully[0m...
+
 systemd[1]: Early TPM SRK Setup skipped, unmet condition check ConditionSecurity=measured-os
 systemd[1]: TPM PCR NvPCR Initialization Separator skipped, unmet condition check ConditionPathExists=/etc/initrd-release
 systemd[1]: Reached target Local Encrypted Volumes.
-[[0;32m  OK  [0m] Reached target [0;1;39mLocal Encrypted Volumes[0m.
+[[0;32m  OK  [0m] Reached target [0;1;39mLocal Encrypted Volumes[0m.
+
 systemd[1]: TPM NvPCR Product ID Measurement skipped, unmet condition check ConditionSecurity=measured-os
 EXT4-fs (mmcblk0p3): re-mounted 8fdab594-d803-4d26-9da5-4c6734b88ab6.
 systemd[1]: Starting Load udev Rules from Credentials...
-         Starting [0;1;39mLoad udev Rules from Credentials[0m...
+         Starting [0;1;39mLoad udev Rules from Credentials[0m...
+
 systemd-journald[77]: Collecting audit messages is disabled.
 systemd[1]: Starting Coldplug All udev Devices...
-         Starting [0;1;39mColdplug All udev Devices[0m...
+         Starting [0;1;39mColdplug All udev Devices[0m...
+
 systemd[1]: Started Journal Service.
-[[0;32m  OK  [0m] Started [0;1;39mJournal Service[0m.
-[[0;32m  OK  [0m] Mounted [0;1;39mTemporary Directory /tmp[0m.
-[[0;32m  OK  [0m] Mounted [0;1;39mKernel Configuration File System[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mLoad Kernel Module fuse[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mLoad Kernel Modules[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mGenerate Network Units from Kernel Command Line[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mRemount Root and Kernel File Systems[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mLoad udev Rules from Credentials[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mPreparation for Network[0m.
-[[0;1;31mFAILED[0m] Failed to listen on [0;1;39mNetwork Management Resolve Hook Socket[0m.
-See 'systemctl status systemd-networkd-resolve-hook.socket' for details.
-         Starting [0;1;39mFlush Journal to Persistent Storage[0m...
-         Starting [0;1;39mLoad/Save OS Random Seed[0m...
-         Starting [0;1;39mApply Kernel Variables[0m...
-         Starting [0;1;39mUser Database Manager[0m...
+[[0;32m  OK  [0m] Started [0;1;39mJournal Service[0m.
+
+[[0;32m  OK  [0m] Mounted [0;1;39mTemporary Directory /tmp[0m.
+
+[[0;32m  OK  [0m] Mounted [0;1;39mKernel Configuration File System[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mLoad Kernel Module fuse[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mLoad Kernel Modules[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mGenerate Network Units from Kernel Command Line[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mRemount Root and Kernel File Systems[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mLoad udev Rules from Credentials[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mPreparation for Network[0m.
+
+[[0;1;31mFAILED[0m] Failed to listen on [0;1;39mNetwork Management Resolve Hook Socket[0m.
+
+See 'systemctl status systemd-networkd-resolve-hook.socket' for details.
+
+         Starting [0;1;39mFlush Journal to Persistent Storage[0m...
+
+         Starting [0;1;39mLoad/Save OS Random Seed[0m...
+
+         Starting [0;1;39mApply Kernel Variables[0m...
+
+         Starting [0;1;39mUser Database Manager[0m...
+
 systemd-journald[77]: Received client request to flush runtime journal.
 systemd-journald[77]: File /var/log/journal/50e28c1e31e742f0be5da604281b3352/system.journal corrupted or uncleanly shut down, renaming and replacing.
-[[0;32m  OK  [0m] Finished [0;1;39mApply Kernel Variables[0m.
-[[0;32m  OK  [0m] Started [0;1;39mUser Database Manager[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mFlush Journal to Persistent Storage[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mCreate Static Device Nodes in /dev gracefully[0m.
-         Starting [0;1;39mJournal Log Access Socket[0m...
-         Starting [0;1;39mNetwork Name Resolution[0m...
-         Starting [0;1;39mNetwork Time Synchronization[0m...
-         Starting [0;1;39mCreate Static Device Nodes in /dev[0m...
-[[0;32m  OK  [0m] Finished [0;1;39mColdplug All udev Devices[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mJournal Log Access Socket[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mCreate Static Device Nodes in /dev[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mPreparation for Local File Systems[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mDisk Image Download Service Socket[0m.
+[[0;32m  OK  [0m] Finished [0;1;39mApply Kernel Variables[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mUser Database Manager[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mFlush Journal to Persistent Storage[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mCreate Static Device Nodes in /dev gracefully[0m.
+
+         Starting [0;1;39mJournal Log Access Socket[0m...
+
+         Starting [0;1;39mNetwork Name Resolution[0m...
+
+         Starting [0;1;39mNetwork Time Synchronization[0m...
+
+         Starting [0;1;39mCreate Static Device Nodes in /dev[0m...
+
+[[0;32m  OK  [0m] Finished [0;1;39mColdplug All udev Devices[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mJournal Log Access Socket[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mCreate Static Device Nodes in /dev[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mPreparation for Local File Systems[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mDisk Image Download Service Socket[0m.
+
 random: crng init done
-         Starting [0;1;39mRule-based Manager for Device Events and Files[0m...
-[[0;32m  OK  [0m] Finished [0;1;39mLoad/Save OS Random Seed[0m.
-[[0;32m  OK  [0m] Started [0;1;39mNetwork Time Synchronization[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mSystem Time Set[0m.
-[[0;32m  OK  [0m] Started [0;1;39mNetwork Name Resolution[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mHost and Network Name Lookups[0m.
-[[0;32m  OK  [0m] Started [0;1;39mRule-based Manager for Device Events and Files[0m.
-[[0;32m  OK  [0m] Found device [0;1;39m/dev/ttyPS0[0m.
-[[0;32m  OK  [0m] Found device [0;1;39m/dev/mmcblk0p1[0m.
-[[0;32m  OK  [0m] Found device [0;1;39m/dev/mmcblk0p2[0m.
-[[0;32m  OK  [0m] Found device [0;1;39m/dev/mmcblk0p4[0m.
-         Mounting [0;1;39m/mnt/share[0m...
-         Mounting [0;1;39m/mnt/userdata[0m...
-         Starting [0;1;39mFile System Check on /dev/mmcblk0p1[0m...
+         Starting [0;1;39mRule-based Manager for Device Events and Files[0m...
+
+[[0;32m  OK  [0m] Finished [0;1;39mLoad/Save OS Random Seed[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mNetwork Time Synchronization[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mSystem Time Set[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mNetwork Name Resolution[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mHost and Network Name Lookups[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mRule-based Manager for Device Events and Files[0m.
+
+[[0;32m  OK  [0m] Found device [0;1;39m/dev/ttyPS0[0m.
+
+[[0;32m  OK  [0m] Found device [0;1;39m/dev/mmcblk0p1[0m.
+
+[[0;32m  OK  [0m] Found device [0;1;39m/dev/mmcblk0p2[0m.
+
+[[0;32m  OK  [0m] Found device [0;1;39m/dev/mmcblk0p4[0m.
+
+         Mounting [0;1;39m/mnt/share[0m...
+
+         Mounting [0;1;39m/mnt/userdata[0m...
+
+         Starting [0;1;39mFile System Check on /dev/mmcblk0p1[0m...
+
 FAT-fs (mmcblk0p2): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
-         Starting [0;1;39mVirtual Console Setup[0m...
+         Starting [0;1;39mVirtual Console Setup[0m...
+
 FAT-fs (mmcblk0p4): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
-[[0;32m  OK  [0m] Mounted [0;1;39m/mnt/share[0m.
-[[0;32m  OK  [0m] Mounted [0;1;39m/mnt/userdata[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mFile System Check on /dev/mmcblk0p1[0m.
-         Mounting [0;1;39m/boot[0m...
-[[0;32m  OK  [0m] Finished [0;1;39mVirtual Console Setup[0m.
-[[0;32m  OK  [0m] Mounted [0;1;39m/boot[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mLocal File Systems[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mBoot Loader Control Service Socket[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mSystem Extension Image Management[0m.
-         Starting [0;1;39mCreate System Files and Directories[0m...
-         Starting [0;1;39mLoad JSON user/group Records from Credentials[0m...
-[[0;32m  OK  [0m] Finished [0;1;39mLoad JSON user/group Records from Credentials[0m.
-[[0;32m  OK  [0m] Finished [0;1;39mCreate System Files and Directories[0m.
-         Starting [0;1;39mRecord System Boot/Shutdown in UTMP[0m...
-[[0;32m  OK  [0m] Finished [0;1;39mRecord System Boot/Shutdown in UTMP[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mSystem Initialization[0m.
-[[0;32m  OK  [0m] Started [0;1;39mRefresh existing PGP keys of archlinux-keyring regularly[0m.
-[[0;32m  OK  [0m] Started [0;1;39mDaily man-db regeneration[0m.
-[[0;32m  OK  [0m] Started [0;1;39mDaily verification of password and group files[0m.
-[[0;32m  OK  [0m] Started [0;1;39mDaily Cleanup of Temporary Directories[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mTimer Units[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mD-Bus System Message Bus Socket[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mOpenSSH Server Socket???temd-ssh-generator, AF_UNIX Local)[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mUser Login Management Varlink Socket[0m.
-[[0;32m  OK  [0m] Listening on [0;1;39mVirtual Machine and C???tainer Registration Service Socket[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mSocket Units[0m.
-         Starting [0;1;39mD-Bus System Message Bus[0m...
-[[0;32m  OK  [0m] Started [0;1;39mD-Bus System Message Bus[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mBasic System[0m.
-         Starting [0;1;39mOpenSSH Daemon[0m...
-         Starting [0;1;39mUser Login Management[0m...
-         Starting [0;1;39mPermit User Sessions[0m...
-[[0;32m  OK  [0m] Finished [0;1;39mPermit User Sessions[0m.
-[[0;32m  OK  [0m] Started [0;1;39mGetty on tty1[0m.
-[[0;32m  OK  [0m] Started [0;1;39mSerial Getty on ttyPS0[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mLogin Prompts[0m.
-[[0;32m  OK  [0m] Started [0;1;39mOpenSSH Daemon[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mSSH Access Available[0m.
-[[0;32m  OK  [0m] Started [0;1;39mUser Login Management[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mMulti-User System[0m.
-[[0;32m  OK  [0m] Reached target [0;1;39mGraphical Interface[0m.
-[!p]104\[0m[?7h[1G[0J7[32766;32766H[6n8[!p]104\[0m[?7h[1G[0J7[32766;32766H[6n8]3008;start=e577863d2303427caacc01a5e5aaefde;user=root;hostname=zynq7100;machineid=50e28c1e31e742f0be5da604281b3352;bootid=1c2a8af71a41490ebb5c75b098ae7e07;pid=157;pidfdid=158;comm=(agetty);servicename=serial-getty@ttyPS0.service;invocationid=0aa48ac418a7461f911718068bc5f20b;type=service\P+q6E616D65\
+[[0;32m  OK  [0m] Mounted [0;1;39m/mnt/share[0m.
+
+[[0;32m  OK  [0m] Mounted [0;1;39m/mnt/userdata[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mFile System Check on /dev/mmcblk0p1[0m.
+
+         Mounting [0;1;39m/boot[0m...
+
+[[0;32m  OK  [0m] Finished [0;1;39mVirtual Console Setup[0m.
+
+[[0;32m  OK  [0m] Mounted [0;1;39m/boot[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mLocal File Systems[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mBoot Loader Control Service Socket[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mSystem Extension Image Management[0m.
+
+         Starting [0;1;39mCreate System Files and Directories[0m...
+
+         Starting [0;1;39mLoad JSON user/group Records from Credentials[0m...
+
+[[0;32m  OK  [0m] Finished [0;1;39mLoad JSON user/group Records from Credentials[0m.
+
+[[0;32m  OK  [0m] Finished [0;1;39mCreate System Files and Directories[0m.
+
+         Starting [0;1;39mRecord System Boot/Shutdown in UTMP[0m...
+
+[[0;32m  OK  [0m] Finished [0;1;39mRecord System Boot/Shutdown in UTMP[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mSystem Initialization[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mRefresh existing PGP keys of archlinux-keyring regularly[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mDaily man-db regeneration[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mDaily verification of password and group files[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mDaily Cleanup of Temporary Directories[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mTimer Units[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mD-Bus System Message Bus Socket[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mOpenSSH Server Socket???temd-ssh-generator, AF_UNIX Local)[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mUser Login Management Varlink Socket[0m.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mVirtual Machine and C???tainer Registration Service Socket[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mSocket Units[0m.
+
+         Starting [0;1;39mD-Bus System Message Bus[0m...
+
+[[0;32m  OK  [0m] Started [0;1;39mD-Bus System Message Bus[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mBasic System[0m.
+
+         Starting [0;1;39mOpenSSH Daemon[0m...
+
+         Starting [0;1;39mUser Login Management[0m...
+
+         Starting [0;1;39mPermit User Sessions[0m...
+
+[[0;32m  OK  [0m] Finished [0;1;39mPermit User Sessions[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mGetty on tty1[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mSerial Getty on ttyPS0[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mLogin Prompts[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mOpenSSH Daemon[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mSSH Access Available[0m.
+
+[[0;32m  OK  [0m] Started [0;1;39mUser Login Management[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mMulti-User System[0m.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mGraphical Interface[0m.
+
+[!p]104\[0m[?7h[1G[0J7[32766;32766H[6n8[!p]104\[0m[?7h[1G[0J7[32766;32766H[6n8]3008;start=e577863d2303427caacc01a5e5aaefde;user=root;hostname=zynq7100;machineid=<redacted>;bootid=<redacted>;pid=157;pidfdid=158;comm=(agetty);servicename=serial-getty@ttyPS0.service;invocationid=<redacted>;type=service\P+q6E616D65\
+
                    -`
                   .o+`
                  `ooo/

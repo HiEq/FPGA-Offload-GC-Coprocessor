@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 #if defined(CONFIG_MICROBLAZE)
 #include <configs/microblaze-generic.h>
 #define CONFIG_SYS_BOOTM_LEN 0xF000000

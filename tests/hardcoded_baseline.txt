@@ -13,7 +13,6 @@
 1 magic rtl/gc_freelist.v
 6 magic rtl/gc_mark_engine.v
 27 magic rtl/gc_regs.v
-4 magic skill/scripts/verify_bootbin.py
 1 hostpath tools/debug/README.md
 5 magic tools/debug/board_cmd.ps1
 3 magic tools/debug/cold_cycle.ps1
