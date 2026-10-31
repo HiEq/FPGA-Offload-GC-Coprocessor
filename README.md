@@ -37,6 +37,10 @@ FPGA 列只含引擎时间（CYCLES / 100 MHz），不含构图与驱动开销�
 四行来自同一张图（tests/fpga_vs_c_vs_python.py，v4.12 / PS 800 MHz）；逐项测量条件与证据见
 [docs/measurement.md](docs/measurement.md)。test_main 只查计数正确性。
 
+**范围**：所有结果来自 4096 对象 / 1 MiB 图、单层 DDR；没有规模扫描，也没有 L1/LLC/OCM 分级。
+1 MiB 工作集接近 L2、TLB 全命中，是 CPU 最有利的区间，因此“超出 LLC 才有优势”是延迟推理的
+假设而不是已测结论；只计标记阶段，构图本身约为标记的 15×。
+
 **实现范围**：stop-the-world，写 START、轮询 DONE。对象图由 csrc/fpga_gc.c /
 python/fogccc.py 按「对象头 + 引用数组」布局构造；**未接入**任何语言运行时的 gc 模块。
 
