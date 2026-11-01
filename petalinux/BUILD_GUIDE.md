@@ -11,9 +11,14 @@
 - PetaLinux 2026.1 安装在 `~/xilinx/petalinux`
 - Vivado 2026.1 已编译 bitstream
 
-## lf 二进制（不入库）
+## lf 文件管理器（可选）
 
-project-spec/meta-user/recipes-core/images/files/lf 是 5.6 MB 的静态 ARM 二进制，超过仓库单文件 1 MiB 上限，因此**不入库**。构建前从上游 lf r42 的 lf-linux-arm.tar.gz 解出 lf 放到该路径（lfrc 很小，已入库）。缺这个文件时 rootfs 后处理会直接失败并提示路径。
+`lf` r42 是板载串口 shell 里的文件浏览器（MIT，上游 `gokcehan/lf`），与 GC 功能无关，
+测试脚本也不调用它。**仓库不带这个 5.6 MB 的第三方二进制**：
+
+- `files/lf` 不存在时，构建跳过安装并打印一条告警，产物镜像没有 `lf`，其余功能不变；
+- 想重建出与发布镜像一致的体验，从上游取 `lf-linux-arm.tar.gz`（r42），把 `lf` 放到
+  `petalinux/project-spec/meta-user/recipes-core/images/files/lf`，脚本会自动安装。
 
 ## 一条命令构建
 
