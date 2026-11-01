@@ -30,6 +30,8 @@ GitHub Latest 指向 v4.13（800 MHz）。v4.7（667 MHz）保留为正式版；
 
 **变更内容**
 
+- Release 资产补齐：`card-userdata.zip` 用重命名后的脚本重打（Release 页此前一直是
+  v4.8 的旧资产，内含 `run_gc.sh` / `gc_test.py` / `three_way.py`），`SHA256SUMS.release` 同步。
 - 板上测试脚本按内容重命名：`gc_test.py` → `fpga_vs_python.py`、`three_way.py` → `fpga_vs_c_vs_python.py`、`run_test_main.sh` → `fpga_vs_c.sh`；引用同步更新。
 - 三项测试运行结束自动写日志：包装脚本写 `logs/fpga_vs_python_run_<时间>.log`、`logs/fpga_vs_python_repeat_<时间>.log`、`logs/fpga_vs_c_<时间>.log`；单次 `fpga_vs_python.py` 写 `logs/fpga_vs_python_<时间>.log`。
 - 文档更新到 800 MHz 基准：`measurement.md` 同一张图的对比表与端到端成本、`performance-history.md` 提升幅度统一为 v1 → 当前（5.9×）、`README.md` 结果表。
