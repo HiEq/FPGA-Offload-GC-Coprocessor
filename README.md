@@ -173,7 +173,7 @@ BOOT 与 USERDATA 根目录。
 | BOOT.BIN | 18,582,724 B | d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd |
 | image.ub | 47,762,547 B | c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f |
 | card-boot.zip | 5,176 B | 6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a |
-| card-userdata.zip | 94,305 B | 7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c |
+| card-userdata.zip | 96,325 B | 805a76e2ba8fc34e018e8b0f1f1e9f7ebabc2d2a5fa522dd0a3594f33162c27f |
 
 校验：四个资产与 SHA256SUMS.release 同目录，执行 `sha256sum -c SHA256SUMS.release`。
 各版本变更与限制见 [docs/releases.md](docs/releases.md)，卡布局与上电见
