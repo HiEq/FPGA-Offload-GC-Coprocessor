@@ -4,18 +4,21 @@ IMAGE_INSTALL:append = " byobu tmux htop vim-tiny glibc-binary-localedata-en-us 
 FOGCCC_FILES := "${THISDIR}/files"
 
 # 串口 getty 用 921600（Petalinux 的 SERIAL baud 选项不驱动 sysvinit-inittab），
-# 登录时先问终端尺寸再启动 byobu，并把静态 lf 二进制和配置塞进 initramfs
-# （FOGCCC 是 initramfs，没有可持久化的根）。
+# 登录时先问终端尺寸再启动 byobu（FOGCCC 是 initramfs，没有可持久化的根）。
+# lf 是可选组件：files/lf 存在就装，不存在就跳过。
 ROOTFS_POSTPROCESS_COMMAND += "fogccc_postprocess; "
 
 fogccc_postprocess() {
-    # files/lf 不入库（5.6 MB，超过单文件 1 MiB 的上限）
-    test -f ${FOGCCC_FILES}/lf || bbfatal "lf missing: put lf r42 (lf-linux-arm) at ${FOGCCC_FILES}/lf"
     sed -i 's/start_getty 115200 ttyPS0/start_getty 921600 ttyPS0/' ${IMAGE_ROOTFS}/etc/inittab
+    # files/lf 是 5.6 MB 的第三方二进制，不随仓库提供；有就装，没有就跳过。
     install -d ${IMAGE_ROOTFS}/usr/bin
-    install -m 0755 ${FOGCCC_FILES}/lf ${IMAGE_ROOTFS}/usr/bin/lf
-    install -d ${IMAGE_ROOTFS}/home/root/.config/lf
-    install -m 0644 ${FOGCCC_FILES}/lfrc ${IMAGE_ROOTFS}/home/root/.config/lf/lfrc
+    if [ -f ${FOGCCC_FILES}/lf ]; then
+        install -m 0755 ${FOGCCC_FILES}/lf ${IMAGE_ROOTFS}/usr/bin/lf
+        install -d ${IMAGE_ROOTFS}/home/root/.config/lf
+        install -m 0644 ${FOGCCC_FILES}/lfrc ${IMAGE_ROOTFS}/home/root/.config/lf/lfrc
+    else
+        bbwarn "fogccc: lf not bundled, the rebuilt image has no lf (tests do not use it)"
+    fi
 
     # 终端尺寸：只保留一个查询者——99-byobu.sh 在启动 byobu 之前调用它。
     # 镜像自带的 /usr/bin/tty-size 是同一脚本的旧副本；两者各发一次 CSI 18 t，
