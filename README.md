@@ -5,22 +5,36 @@
 [![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](docs/build.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
+[![Release](https://img.shields.io/badge/release-v4.14-blue)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v4.14)
 
-<img src="docs/images/zynq7100-render.jpg" width="760" alt="XC7Z100 载板 3D 渲染（示意）">
+<p align="center"><img src="docs/images/zynq7100-render.jpg" width="720" alt="XC7Z100 载板 3D 渲染（示意）"></p>
 
-面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）。三个构件：**语义解耦旁表**把对象体与引用关系分开，对象体留在 DDR，引用整理为连续旁表；**多流乱序访存协处理器**用两条 AXI HP 读流并发预取对象头与引用；**扁平化数据流标记引擎**把根集、广度优先队列与脏引用汇入同一条取数—判位—入队流水。
+**面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）**
+
+| 构件 | 作用 |
+|---|---|
+| 语义解耦旁表 | 对象体留在 DDR，引用关系整理为连续旁表，标记只读旁表 |
+| 多流乱序访存协处理器 | 两条 AXI HP 读流并发预取对象头与引用，合计 8 笔未完成读 |
+| 扁平化数据流标记引擎 | 根集、广度优先队列与脏引用汇入同一条取数—判位—入队流水 |
 
 标记与空闲扫描由 PL 完成，建图、启动与回收决策由 PS 负责；对象数上限 4096、图区上限 1 MiB，当前未接入语言运行时，回收采用全局暂停方式。当前发布 v4.14（2026-11-04，位流 md5 6D479244…）。
 
-原始日志在 [tools/logs/README.md](tools/logs/README.md)，测量口径见 [docs/measurement.md](docs/measurement.md)，设计与构建细节见 [docs/](docs/README.md)。CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
+| 文档 | 内容 |
+| --- | --- |
+| [构建与目录](docs/build.md) | 工具链、构建步骤、仓库布局 |
+| [上板与串口](docs/board-usage.md) | 烧录、卡布局、板上测试 |
+| [测量口径](docs/measurement.md) | 测量条件、规模扫描、证据边界 |
+| [设计与协议](docs/design-details.md) | 旁表、读通路、脏引用协议 |
+| [证据日志](tools/logs/README.md) | 逐条命令、位流与镜像哈希 |
 
-Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与接口](#3-设计与接口) ·
-[证据](#4-证据) · [发布](#5-发布) · [目录](#6-目录) · [License](#7-license)
+CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
+
+---
 
 ## 1. 结果
 
 | 对比对象 | 测量条件 | 每对象 | FPGA 加速比 |
-|---|---|---|---|
+|---|:---|---:|---:|
 | **FPGA 标记**（fpga_vs_c_vs_python.py）| 同一张图，4000 对象 | **171 ns** | — |
 | C，非预取（逐条读 DDR）| 同一张图、同一 BFS | 541 ns | **≈3.2×** |
 | C，缓存友好（堆副本）| 堆上的副本 | 164 ns | **≈1.0×** |
@@ -30,14 +44,14 @@ FPGA 列只计标记引擎时间（周期计数 / 100 MHz），不含建图与�
 
 C/DMA 建图把 4000 对象的建图从 102.2 ms 降到 2.0–5.4 ms，端到端 2.7–6.0 ms（17–38×）；命令、脚本与逐条日志见 [tools/build_routes/README.md](tools/build_routes/README.md)。
 
+---
+
 ## 2. 快速开始
 
-```powershell
+```bash
 # 位流（PC）
 vivado -mode batch -source vivado/build.tcl
-```
 
-```bash
 # 板上二进制（PC，PetaLinux SDK）
 SDK_ENV=<sdk> ./csrc/build_c_bins.sh
 SDK_ENV=<sdk> ./csrc/build_routes/build_c.sh
@@ -48,14 +62,14 @@ SDK_ENV=<sdk> KERNEL_BUILD=<linux build dir> ./csrc/build_routes/build_dma.sh
 # 板上自检（USERDATA 根目录）
 sh fpga_vs_python.sh 4096 8 2
 sh fpga_build_routes.sh
-```
 
-```bash
 # 宿主回归
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
 完整构建、烧录、串口与上板步骤见 [docs/build.md](docs/build.md)、[docs/board-usage.md](docs/board-usage.md)。
+
+---
 
 ## 3. 设计与接口
 
@@ -103,6 +117,8 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契�
 | 时钟 | **FCLK0 = 100MHz** | 单时钟域，无 CDC |
 | 位图 / 队列 | 4096×32 / 4096×12 | 128 Kb / 48 Kb |
 
+---
+
 ## 4. 证据
 
 | 项目 | 结果 |
@@ -112,6 +128,8 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契�
 | 仿真 | 定向测试台全部通过；负控对修复前 RTL 失败 |
 
 逐条日志、命令与判据见 [tools/logs/README.md](tools/logs/README.md)；仿真用例矩阵见 [docs/simulation.md](docs/simulation.md)。
+
+---
 
 ## 5. 发布
 
@@ -125,6 +143,8 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契�
 | card-userdata.zip | 139,184 B | c3fa49376d0e75c60c939c8e3200b1961090f99476af452e53f2440fe3e38fd2 |
 
 校验：四个资产与 SHA256SUMS.release 同目录，执行 `sha256sum -c SHA256SUMS.release`。各版本变更与限制见 [docs/releases.md](docs/releases.md)，卡布局与上电见 [docs/board-usage.md](docs/board-usage.md)。
+
+---
 
 ## 6. 目录
 
@@ -140,6 +160,8 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契�
 | data/ | artifacts/ | 卡上产物、二进制清单与校验值 |
 
 tests/ 为仓库自身的契约测试（目录规范、提交信息、字面量基线），不属于上述结构。完整目录说明见 [docs/build.md](docs/build.md)。
+
+---
 
 ## 7. License
 
