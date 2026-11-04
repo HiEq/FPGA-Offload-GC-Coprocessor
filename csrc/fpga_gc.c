@@ -71,7 +71,8 @@ int fpga_gc_init(fpga_gc_t *dev) {
 
     printf("[FOGCCC] Initialized:\n");
     printf("  AXI-Lite regs @ 0x%08X\n", (unsigned)FPGA_BASE_ADDR);
-    printf("  Graph DDR     @ 0x%08X (1MB)\n", dev->graph_paddr);
+    printf("  Graph DDR     @ 0x%08X (%u KiB)\n", dev->graph_paddr,
+           (unsigned)(GRAPH_MAP_SIZE / 1024));
     printf("  MAGIC/VERSION : 0x%08X / 0x%08X\n",
            (unsigned)FOGCCC_MAGIC, (unsigned)FOGCCC_VERSION);
     return 0;
@@ -109,8 +110,8 @@ void fpga_gc_close(fpga_gc_t *dev) {
 //   [ref0][ref1]...[0xFFFFFFFF]
 // ============================================================
 int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
-    if (n <= 0 || n > 4096) {
-        printf("ERROR: invalid object count %d (1~4096, hardware limit)\n", n);
+    if (n <= 0 || n > 65536) {
+        printf("ERROR: invalid object count %d (1~65536, hardware limit)\n", n);
         return -1;
     }
 
@@ -295,7 +296,7 @@ void fpga_gc_dirty_push(fpga_gc_t *dev, uint32_t obj_id) {
         dev->dirty_tag_valid = 1u;
     }
     dev->dirty_tag = (dev->dirty_tag + 1u) & 0xFu;
-    dev->regs[REG_DIRTY_PUSH / 4] = GC_PUSH_MARK | (dev->dirty_tag << 12) | (obj_id & 0xFFFu);
+    dev->regs[REG_DIRTY_PUSH / 4] = GC_PUSH_MARK | (dev->dirty_tag << 16) | (obj_id & 0xFFFFu);
 }
 
 int fpga_gc_dirty_push_acked(fpga_gc_t *dev, uint32_t obj_id, int retries) {
@@ -560,9 +561,9 @@ uint32_t fpga_gc_sw_mark_cached(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 // 读取单个对象的标记状态
 // ============================================================
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
-    // Bitmap probe: object x is bit (x % 32) of word x.
+    // Bitmap probe: packed layout, word (id >> 5), bit (id & 31).
     // The probe port is muxed to the register while the engine is idle.
-    if (obj_id >= 4096)
+    if (obj_id >= 65536u)
         return 0;
     (void)fpga_gc_wait_freeidle(dev, 10000);
     if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
@@ -570,14 +571,14 @@ uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
     /* Verify the probe address: a mispaired W beat here would probe the wrong
      * object, and barrier_verify() would then miss a container that was never
      * re-scanned.  reg_wr_verified() also flushes the posted write. */
-    if (reg_wr_verified(dev, REG_BM_ADDR, obj_id) != 0)
+    if (reg_wr_verified(dev, REG_BM_ADDR, obj_id >> 5) != 0)
         return 0xFFFFFFFF;
     uint32_t word = dev->regs[REG_BM_DATA / 4];
     return (word >> (obj_id & 31)) & 1U;
 }
 
 uint32_t fpga_gc_q_tail(fpga_gc_t *dev) {
-    return dev->regs[REG_Q_TAIL / 4] & 0xFFFU;
+    return dev->regs[REG_Q_TAIL / 4] & 0xFFFFu;
 }
 
 int fpga_gc_wait_idle(fpga_gc_t *dev, int timeout_us) {
@@ -604,14 +605,14 @@ uint32_t fpga_gc_free_count(fpga_gc_t *dev) {
 
 uint32_t fpga_gc_free_pop(fpga_gc_t *dev) {
     /* Reading FREE_DATA pops one id from the PL free-list. */
-    return dev->regs[REG_FREE_DATA / 4] & 0xFFFU;
+    return dev->regs[REG_FREE_DATA / 4] & 0xFFFFu;
 }
 
 // ============================================================
 // Dump the bitmap (probe loop, one register round trip per object)
 // ============================================================
 void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
-    if (n > 4096) n = 4096;
+    if (n > 65536) n = 65536;
     printf("Bitmap readback (%d objects):\n", n);
     for (int i = 0; i < n; i++) {
         if (i % 64 == 0) printf("  [%4d] ", i);

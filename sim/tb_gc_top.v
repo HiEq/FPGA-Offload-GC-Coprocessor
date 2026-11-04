@@ -304,7 +304,7 @@ module tb_gc_top;
     integer     dtag = 0;
     task push_dirty(input [11:0] id);
         begin
-            dpush_wr({16'h0, dtag[3:0], id});
+            dpush_wr((32'h0 | (dtag[3:0] << 16)) | {20'h0, id});
             dtag = (dtag + 1) & 4'hF;
         end
     endtask
@@ -540,7 +540,7 @@ module tb_gc_top;
         // 位图映射: 对象 x → mem[x] 的第 (x%32) 位
         got = 0;
         for (i = 0; i < N; i = i + 1) begin
-            bitv = (dut.u_bitmap.mem[i] >> (i % 32)) & 32'h1;
+            bitv = (dut.u_bitmap.mem[i >> 5] >> (i % 32)) & 32'h1;
             if (bitv !== expb[i]) begin
                 if (errors < 20)
                     $display("[TB][FAIL] object %0d bitmap=%0d expected=%0d", i, bitv, expb[i]);
@@ -552,7 +552,7 @@ module tb_gc_top;
 
         // 孤岛必须全 0 (多标记检测)
         for (i = N-ISLAND; i < N; i = i + 1) begin
-            bitv = (dut.u_bitmap.mem[i] >> (i % 32)) & 32'h1;
+            bitv = (dut.u_bitmap.mem[i >> 5] >> (i % 32)) & 32'h1;
             if (bitv) begin
                 $display("[TB][FAIL] island object %0d marked", i);
                 errors = errors + 1;
@@ -738,21 +738,21 @@ module tb_gc_top;
             i = i + 1;
             axil_rd(R_STATUS, rd_val);
         end
-        axil_wr(R_BMADDR, 32'd60);
+        axil_wr(R_BMADDR, 32'd1);          // id 60 -> word 1, bit 28
         axil_rd(R_BMDATA, rd_val);
-        $display("[TB] T6 probe[60]=%h (bit28=%0d) bram=%h", rd_val, rd_val[28], dut.u_bitmap.mem[60]);
+        $display("[TB] T6 probe[id60]=%h (bit28=%0d) bram=%h", rd_val, rd_val[28], dut.u_bitmap.mem[1]);
         if (rd_val[28] !== 1'b1) begin
-            $display("[TB][FAIL] T6 BM_DATA[60] bit28 != 1 (probe did not see the bit)");
+            $display("[TB][FAIL] T6 BM_DATA[id60] bit28 != 1 (probe did not see the bit)");
             errors = errors + 1;
         end
-        if (rd_val !== dut.u_bitmap.mem[60]) begin
-            $display("[TB][FAIL] T6 probe %h != bram %h", rd_val, dut.u_bitmap.mem[60]);
+        if (rd_val !== dut.u_bitmap.mem[1]) begin
+            $display("[TB][FAIL] T6 probe %h != bram %h", rd_val, dut.u_bitmap.mem[1]);
             errors = errors + 1;
         end
-        axil_wr(R_BMADDR, 32'd61);
+        axil_wr(R_BMADDR, 32'd2);          // ids 64..95, untouched by this case
         axil_rd(R_BMDATA, rd_val);
         if (rd_val !== 32'h0) begin
-            $display("[TB][FAIL] T6 BM_DATA[61]=%h, expect 0", rd_val);
+            $display("[TB][FAIL] T6 BM_DATA[word2]=%h, expect 0", rd_val);
             errors = errors + 1;
         end
         $display("[TB] T6 bitmap probe OK");
@@ -971,7 +971,7 @@ module tb_gc_top;
             integer i, hb, cnt, bad;
             cnt = 0; bad = 0;
             for (i = 0; i < 64; i = i + 1) begin
-                axil_wr(R_BMADDR, i);
+                axil_wr(R_BMADDR, i >> 5);        // packed: word = id>>5
                 axil_rd(R_BMDATA, rd_val);
                 hb = (rd_val >> (i & 31)) & 1;
                 if (hb) cnt = cnt + 1;
@@ -1227,8 +1227,8 @@ module tb_gc_top;
         dirty_flush_now;
         repeat (50) @(negedge clk);
         axil_rd(R_DSTAT, rd_val);                // current hardware tag
-        dpush_wr({16'h0, (rd_val[19:16] + 4'd1), 12'd7});
-        dpush_wr({16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // duplicate delivery
+        dpush_wr(((rd_val[19:16] + 4'd1) << 16) | 32'd7);
+        dpush_wr(((rd_val[19:16] + 4'd1) << 16) | 32'd7);  // duplicate delivery
         axil_rd(R_DPUSHED, rd_val);
         $display("[TB] T-DIRTY-TAG duplicate delivery: pushed=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
@@ -1240,7 +1240,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-DIRTY-TAG occupancy=%0d != 1", rd_val[8:0]);
             errors = errors + 1;
         end
-        dpush_wr({16'h0, (rd_val[19:16] + 4'd1), 12'd7});  // changed tag -> accepted
+        dpush_wr(((rd_val[19:16] + 4'd1) << 16) | 32'd7);  // changed tag -> accepted
         axil_rd(R_DPUSHED, rd_val);
         $display("[TB] T-DIRTY-TAG changed tag: pushed=%0d (expect 2)", rd_val);
         if (rd_val !== 32'd2) begin
@@ -1345,7 +1345,7 @@ module tb_gc_top;
                 begin : t_race_bm
                     integer i2, hb;
                     hb = 0;
-                    axil_wr(R_BMADDR, 32'd60);
+                    axil_wr(R_BMADDR, 32'd1);   // id 60 -> word 1
                     axil_rd(R_BMDATA, rd_val);
                     hb = (rd_val >> (60 & 31)) & 1;
                     $display("[TB] T-DIRTY-RACE remark (rc2=%0d) obj60 marked=%0d (expect 1: arm-and-consume keeps it)", rc2, hb);
@@ -1366,8 +1366,8 @@ module tb_gc_top;
         $display("[TB] T-ID magic=%h (expect 47434343)", rd_val);
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
-        $display("[TB] T-ID version=%h (expect 00040300)", rd_val);
-        if (rd_val !== 32'h0004_0301) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        $display("[TB] T-ID version=%h (expect 00050000)", rd_val);
+        if (rd_val !== 32'h0005_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
@@ -1747,9 +1747,9 @@ module tb_gc_top;
             errors = errors + 1;
         end
         axil_rd(R_QTAIL, rd_val);
-        $display("[TB] T-STAR q_tail=%0d (expect 0: 4096 pushes wrap the 12-bit pointer)", rd_val);
-        if (rd_val !== 32'd0) begin
-            $display("[TB][FAIL] T-STAR q_tail=%0d (4096 & 0xFFF = 0)", rd_val);
+        $display("[TB] T-STAR q_tail=%0d (expect 4096: 16-bit pointer)", rd_val);
+        if (rd_val !== 32'd4096) begin
+            $display("[TB][FAIL] T-STAR q_tail=%0d (expect 4096)", rd_val);
             errors = errors + 1;
         end
         axil_rd(R_STATUS, rd_val);

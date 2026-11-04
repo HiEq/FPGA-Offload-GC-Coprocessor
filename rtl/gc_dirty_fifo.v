@@ -22,11 +22,11 @@ module gc_dirty_fifo (
     input  wire        rst_n,
 
     input  wire        push,
-    input  wire [11:0] push_id,
+    input  wire [15:0] push_id,
     input  wire        flush,        // 1-cycle: clear contents + overflow
 
     input  wire        pop,          // 1-cycle: the engine consumed one id
-    output wire [11:0] id,           // head id (combinational)
+    output wire [15:0] id,           // head id (combinational)
     output wire [8:0]  count,
     output reg  [15:0] pushed = 16'd0, // accepted since the last flush (R: 0x44C)
     output reg  [15:0] popped = 16'd0, // consumed since the last flush (R: 0x450)
@@ -40,7 +40,7 @@ module gc_dirty_fifo (
     localparam [8:0]   DEPTH9 = DEPTH[8:0];
 
     (* ram_style = "distributed" *)
-    reg [11:0]   mem [0:DEPTH-1];
+    reg [15:0]   mem [0:DEPTH-1];
     reg [AW-1:0] wptr = 8'd0;
     reg [AW-1:0] rptr = 8'd0;
     reg [8:0]    cnt  = 9'd0;
@@ -70,7 +70,6 @@ module gc_dirty_fifo (
             popped   <= 16'd0;
         end else begin
             if (do_push) begin
-                mem[wptr] <= push_id;
                 wptr      <= wptr + 8'd1;
                 pushed    <= pushed + 16'd1;
             end else if (push) begin
@@ -88,6 +87,13 @@ module gc_dirty_fifo (
                 default: cnt <= cnt;
             endcase
         end
+    end
+
+    // Clock-only write port: an async-reset block would force this array into
+    // flip-flops (256 x 16 = 4096 FFs) instead of distributed RAM.
+    always @(posedge clk) begin
+        if (do_push)
+            mem[wptr] <= push_id;
     end
 
 endmodule

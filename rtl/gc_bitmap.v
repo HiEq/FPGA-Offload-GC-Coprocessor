@@ -1,20 +1,22 @@
-// gc_bitmap.v — 标记位图 (简单双口 BRAM, 读/写地址独立)
+// gc_bitmap.v - mark bitmap (simple dual-port BRAM, independent R/W addresses)
 //
-// 映射: 对象 x 的状态 = mem[x] 的第 (x%32) 位
-//   与 gc_test.py / fpga_gc.c 一致
+// Packed layout (P1 64K): object x = bit (x % 32) of word mem[x / 32].
+// The read port bypasses a same-cycle write to the same word (write-first),
+// so a read-modify-write never observes stale data when a write and a read
+// land on one address in the same cycle.
 module gc_bitmap (
     input  wire        clk,
 
-    input  wire [11:0] waddr,
+    input  wire [10:0] waddr,
     input  wire [31:0] din,
     input  wire        we,
 
-    input  wire [11:0] raddr,
+    input  wire [10:0] raddr,
     output reg  [31:0] dout
 );
 
     (* ram_style = "block" *)
-    reg [31:0] mem [0:4095];
+    reg [31:0] mem [0:2047];
 
     always @(posedge clk) begin
         if (we)
@@ -22,7 +24,10 @@ module gc_bitmap (
     end
 
     always @(posedge clk) begin
-        dout <= mem[raddr];
+        if (we && (waddr == raddr))
+            dout <= din;        // write-first bypass: same-word hazard
+        else
+            dout <= mem[raddr];
     end
 
 endmodule

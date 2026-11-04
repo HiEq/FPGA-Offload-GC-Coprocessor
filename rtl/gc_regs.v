@@ -36,27 +36,27 @@ module gc_regs (
     input  wire        reg_done,
     input  wire [31:0] reg_marked_count,
     input  wire [31:0] reg_cycles,
-    input  wire [11:0] q_head,
-    input  wire [11:0] q_tail,
+    input  wire [15:0] q_head,
+    input  wire [15:0] q_tail,
 
     input  wire        err_ovf,       // 队列溢出
     input  wire        err_rd,        // AXI 读响应错误
     input  wire        err_ref,       // 引用流失步
-    input  wire        err_hdr,       // 对象头非法 (ref_count > 4096)
+    input  wire        err_hdr,       // 对象头非法 (ref_count > 65536)
     input  wire        reg_idle,      // engine_idle: state == S_IDLE
 
-    output reg  [11:0] reg_bm_addr,   // 0x24: 探针地址
+    output reg  [10:0] reg_bm_addr,   // 0x24: 探针地址
     input  wire [31:0] reg_bm_data,   // 0x28: 探针数据
 
     // Phase 2 free-list: 0x38 count, 0x3C pop data
     input  wire [31:0] reg_free_count,
-    input  wire [11:0] reg_free_data,
+    input  wire [15:0] reg_free_data,
     input  wire        reg_free_busy,
     output reg         reg_free_pop,
 
     // Phase 3A dirty set: 0x44 push/occupancy, 0x48 status, 0x4C drained
     output reg         reg_dirty_push,        // 1-cycle: push WDATA[11:0]
-    output reg  [11:0] reg_dirty_push_id,
+    output reg  [15:0] reg_dirty_push_id,
     output reg         reg_dirty_flush,       // 1-cycle: clear FIFO + overflow
     output reg         reg_bm_keep,           // level: keep the bitmap (incremental epoch)
     input  wire [8:0]  dirty_count,
@@ -113,7 +113,7 @@ module gc_regs (
             reg_bm_keep    <= 1'b0;
             reg_dirty_push <= 1'b0;
             reg_dirty_flush<= 1'b0;
-            reg_bm_addr    <= 12'h0;
+            reg_bm_addr    <= 11'h0;
             root_wr_addr   <= 8'h0;
             root_wr_data   <= 32'h0;
             root_we        <= 1'b0;
@@ -152,17 +152,17 @@ module gc_regs (
                         // push fires only when the tag WDATA[15:12] CHANGES; the
                         // duplicate delivery of the same write is ignored.  The tag
                         // is robust to any multiplicity of redelivery.
-                        if (WDATA[15:12] != dirty_tag) begin
+                        if (WDATA[19:16] != dirty_tag) begin
                             reg_dirty_push    <= 1'b1;
-                            reg_dirty_push_id <= WDATA[11:0];
+                            reg_dirty_push_id <= WDATA[15:0];
                             dirty_last_id     <= WDATA[11:0];   // id 级回执 (AGENTS #20)
-                            dirty_tag         <= WDATA[15:12];
+                            dirty_tag         <= WDATA[19:16];
                         end
                     end
                     12'h004: reg_obj_base   <= (reg_obj_base   & ~wmask) | (WDATA & wmask);
                     12'h008: reg_obj_count  <= (reg_obj_count  & ~wmask) | (WDATA & wmask);
                     12'h00C: reg_root_count <= (reg_root_count & ~wmask) | (WDATA & wmask);
-                    12'h024: reg_bm_addr    <= (reg_bm_addr & ~wmask[11:0]) | (WDATA[11:0] & wmask[11:0]);
+                    12'h024: reg_bm_addr    <= (reg_bm_addr & ~wmask[10:0]) | (WDATA[10:0] & wmask[10:0]);
                     default: begin
                         if ((awaddr_r >= ROOT_AREA_LO) && (awaddr_r < ROOT_AREA_HI)) begin
                             root_wr_addr <= awaddr_r[9:2] - 8'h10;   // (addr>>2) - 16
@@ -209,16 +209,16 @@ module gc_regs (
                     12'h00C: RDATA <= reg_root_count;
                     12'h010: RDATA <= reg_marked_count;
                     12'h014: RDATA <= reg_cycles;
-                    12'h018: RDATA <= {20'h0, q_head};
-                    12'h01C: RDATA <= {20'h0, q_tail};
+                    12'h018: RDATA <= {16'h0, q_head};
+                    12'h01C: RDATA <= {16'h0, q_tail};
                     12'h020: RDATA <= {26'h0, reg_free_busy, reg_idle, err_hdr, err_ref, err_rd, err_ovf};
-                    12'h024: RDATA <= {20'h0, reg_bm_addr};
+                    12'h024: RDATA <= {21'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
                     12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic
-                    12'h034: RDATA <= 32'h0004_0301;  // v4.5: root-list read-back + command-write markers
+                    12'h034: RDATA <= 32'h0005_0000;  // P1 64K: 16-bit ids, packed bitmap
                     12'h038: RDATA <= reg_free_count;
                     12'h03C: begin
-                        RDATA        <= {20'h0, reg_free_data};
+                        RDATA        <= {16'h0, reg_free_data};
                         reg_free_pop <= 1'b1;
                     end
                     12'h440: RDATA <= {23'h0, dirty_count};                    // dirty FIFO occupancy

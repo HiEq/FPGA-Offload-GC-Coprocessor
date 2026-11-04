@@ -168,18 +168,18 @@ module gc_top (
     end
 
     wire        w_q_push, w_q_pop;
-    wire [11:0] w_q_push_data, w_q_push_addr;
+    wire [15:0] w_q_push_data, w_q_push_addr;
     wire        w_q_pop_ack;
-    wire [11:0] w_q_pop_id;
-    wire [11:0] w_q_head, w_q_tail;
+    wire [15:0] w_q_pop_id;
+    wire [15:0] w_q_head, w_q_tail;
     wire        w_q_empty;
     wire        w_q_full;
-    wire [12:0] w_q_count;
+    wire [16:0] w_q_count;
     wire        w_err_ovf, w_err_ref, w_err_hdr;
 
-    wire [11:0] w_bm_raddr_eng, w_bm_waddr;
-    wire [11:0] w_bm_raddr_eff;
-    wire [11:0] w_regs_bm_addr;
+    wire [10:0] w_bm_raddr_eng, w_bm_waddr;
+    wire [10:0] w_bm_raddr_eff;
+    wire [10:0] w_regs_bm_addr;
     wire [31:0] w_bm_wdata;
     wire [31:0] w_bm_rdata;
     reg  [31:0] w_bm_probe_r = 32'h0;
@@ -187,15 +187,15 @@ module gc_top (
     wire        w_engine_idle;
 
     // Phase 2 free-list
-    wire [11:0] w_free_bm_raddr;
+    wire [10:0] w_free_bm_raddr;
     wire [31:0] w_free_count;
-    wire [11:0] w_free_data;
+    wire [15:0] w_free_data;
     wire        w_free_pop;
     wire        w_free_busy;
 
     // Phase 3A dirty set
     wire        w_dirty_push, w_dirty_flush, w_bm_keep;
-    wire [11:0] w_dirty_push_id, w_dirty_id;
+    wire [15:0] w_dirty_push_id, w_dirty_id;
     wire [8:0]  w_dirty_count;
     wire        w_dirty_empty, w_dirty_full, w_dirty_ovf, w_dirty_pop;
     wire [31:0] w_dirty_drained;

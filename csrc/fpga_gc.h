@@ -17,7 +17,7 @@
 #define FPGA_BASE_ADDR   0x43C00000UL  // AXI-Lite GP0 基地址
 #define GRAPH_DDR_ADDR   0x1E000000UL  // 对象图存放的DDR物理地址
 #define MAP_SIZE         4096          // 寄存器映射大小 (4KB)
-#define GRAPH_MAP_SIZE   0x100000      // 对象图映射大小 (1MB)
+#define GRAPH_MAP_SIZE   0x400000      // 对象图映射大小 (4MB, P1 64K)
 
 // ==================== 寄存器偏移 ====================
 #define REG_CTRL         0x00   // 控制
@@ -30,7 +30,7 @@
 #define REG_Q_TAIL       0x1C   // 队列尾指针 (只读)
 #define REG_ROOT_LIST    0x40   // 根集数组起始
 #define REG_STATUS       0x20   // [0]=queue overflow [1]=AXI read error [2]=ref desync [3]=bad header
-#define REG_BM_ADDR      0x24   // bitmap probe address (0..4095)
+#define REG_BM_ADDR      0x24   // bitmap probe word address (id>>5, 0..2047)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
 #define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
 #define REG_VERSION      0x34   // fixed 0x0004_0301 (v4.5: root read-back + command markers)
@@ -43,13 +43,13 @@
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00040301u
+#define FOGCCC_VERSION   0x00050000u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
 #define STATUS_RDERR     (1U << 1)   // AXI read response error
 #define STATUS_REFDESYNC (1U << 2)   // consumed more refs than issued
-#define STATUS_HDR       (1U << 3)   // ref_count > 4096 (corrupt header)
+#define STATUS_HDR       (1U << 3)   // ref_count > 65536 (corrupt header)
 #define STATUS_IDLE      (1U << 4)   // engine FSM is in S_IDLE
 #define STATUS_FREEBUSY  (1U << 5)   // Phase 2 free-list scanner owns the bitmap
 

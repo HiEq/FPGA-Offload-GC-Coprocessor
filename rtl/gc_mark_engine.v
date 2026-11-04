@@ -20,25 +20,25 @@ module gc_mark_engine (
     input  wire [31:0] root_rd_data,
 
     output reg         q_push = 1'b0,
-    output reg  [11:0] q_push_data = 12'd0,
-    output reg  [11:0] q_push_addr = 12'd0,
+    output reg  [15:0] q_push_data = 16'd0,
+    output reg  [15:0] q_push_addr = 16'd0,
     output reg         q_pop = 1'b0,
     input  wire        q_pop_ack,
-    input  wire [11:0] q_pop_id,
-    input  wire [11:0] q_tail,
+    input  wire [15:0] q_pop_id,
+    input  wire [15:0] q_tail,
     input  wire        q_empty,
     input  wire        q_full,
 
     // ---- Phase 3A: 屏障脏集 (gc_dirty_fifo) ----
     input  wire        dirty_empty,
-    input  wire [11:0] dirty_id,
+    input  wire [15:0] dirty_id,
     input  wire        bm_keep,        // 1 = 保留位图 (增量 epoch)
     output reg         dirty_pop = 1'b0,       // 1-cycle: 消费一个脏 id
     output reg  [31:0] dirty_drained = 32'd0,  // 本 epoch 已消费条数 (start 清零)
 
-    output wire [11:0] bm_raddr,            // 读地址 (组合, 1拍后 bm_rdata 有效)
+    output wire [10:0] bm_raddr,            // 读地址 (组合, 1拍后 bm_rdata 有效)
     input  wire [31:0] bm_rdata,
-    output reg  [11:0] bm_waddr = 12'd0,    // 写地址
+    output reg  [10:0] bm_waddr = 11'd0,    // 写地址
     output reg  [31:0] bm_wdata = 32'd0,
     output reg         bm_we = 1'b0,
 
@@ -66,7 +66,7 @@ module gc_mark_engine (
     // 错误标志 (粘滞, 每次 start 清零)
     output reg         err_ovf = 1'b0,     // 队列写满, 对象没能入队 (#1)
     output reg         err_ref = 1'b0,     // 引用流失步: 消费数 > 发出数 (#4)
-    output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 4096
+    output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 65536
 
 
     output wire        engine_idle,
@@ -114,7 +114,7 @@ module gc_mark_engine (
     reg [4:0]  state = 5'd0;
 
     assign engine_idle = (state == S_IDLE);
-    reg [11:0] cur_obj = 12'd0;
+    reg [15:0] cur_obj = 16'd0;
     reg [31:0] ref_count = 32'd0;
     reg [31:0] ref_addr = 32'd0;
     reg [31:0] ref_push_idx = 32'd0;
@@ -123,19 +123,19 @@ module gc_mark_engine (
     reg [31:0] prev_ref = 32'hFFFFFFFF;   // 上一笔被标记的引用值 (挡住"相邻重复")
     reg        ref_stop = 1'b0;
     reg [31:0] root_idx = 32'd0;
-    reg [11:0] pending_obj = 12'd0;
-    reg [11:0] dirty_obj = 12'd0;       // Phase 3A: 正在处理的脏 id
+    reg [15:0] pending_obj = 16'd0;
+    reg [15:0] dirty_obj = 16'd0;       // Phase 3A: 正在处理的脏 id
     reg [31:0] cycles_r;
     reg [31:0] marked_r;
-    reg [11:0] clr_ptr;
-    reg [11:0] pf_obj = 12'd0;
+    reg [10:0] clr_ptr;
+    reg [15:0] pf_obj = 16'd0;
     reg        pf_valid = 1'b0;    // 已弹出且头命令已压入, 只等取回
     reg        pf_tried = 1'b0;    // 本对象已经发起过预取 (防重复弹队列)
 
     // 位图读地址: 组合输出, 和"取到引用值"同拍发出
-    assign bm_raddr = (state == S_REFS_LOOP) ? rd_data[11:0] :
-                      (state == S_ROOT_CHK)  ? pending_obj  :
-                      (state == S_DIRTY_RD)  ? dirty_id     : 12'd0;
+    assign bm_raddr = (state == S_REFS_LOOP) ? rd_data[15:5]    :
+                      (state == S_ROOT_CHK)  ? pending_obj[15:5] :
+                      (state == S_DIRTY_RD)  ? dirty_id[15:5]    : 11'd0;
 
     // 引用阶段结束: 本对象 ref_count 笔数据全部取回
     // 命令由 issuer 独立发射, 与消费解耦
@@ -151,7 +151,7 @@ module gc_mark_engine (
     // 独立状态机提前最多 PD 个对象读头, 结果放入 PD 深暂存环
     localparam integer PD = 4;                      // 暂存环深度 (2 的幂)
 
-    reg [11:0] pf_id [0:PD-1];
+    reg [15:0] pf_id [0:PD-1];
     reg [31:0] pf_rc [0:PD-1];
     reg [31:0] pf_ra [0:PD-1];
     reg [1:0]  pf_head = 2'd0;
@@ -166,7 +166,7 @@ module gc_mark_engine (
     reg [7:0] sc_tmo = 8'd0;      // SC_POP timeout (lost pop ack)
     localparam [2:0] SC_IDLE = 3'd0, SC_POP = 3'd1, SC_C1 = 3'd2, SC_C2 = 3'd3, SC_C3 = 3'd4;
     reg [2:0]  sc_state   = SC_IDLE;
-    reg [11:0] sc_obj     = 12'd0;
+    reg [15:0] sc_obj     = 16'd0;
     reg        hdr_second = 1'b0;
     reg        issue_ok   = 1'b0;
 
@@ -194,7 +194,7 @@ module gc_mark_engine (
     // 对象头合法性: ref_count 不可能超过对象上限 4096 (超过 = 头被写坏).
     // 头非法时拒绝并置 err_hdr
     wire [31:0] hdr_rc_raw = pf_rc[pf_fill_slot];
-    wire        hdr_rc_bad = (hdr_rc_raw > 32'd4096);
+    wire        hdr_rc_bad = (hdr_rc_raw > 32'd65536);
     wire [31:0] hdr_rc_ok  = hdr_rc_bad ? 32'd0 : hdr_rc_raw;
 
     // 出队事件: 最后一笔已握手, 或该描述符本来就没有引用
@@ -210,7 +210,7 @@ module gc_mark_engine (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             sc_state      <= SC_IDLE;
-            sc_obj        <= 12'd0;
+            sc_obj        <= 16'd0;
             q_pop         <= 1'b0;
             hdr_cmd_valid <= 1'b0;
             hdr_cmd_addr  <= 32'd0;
@@ -250,12 +250,12 @@ module gc_mark_engine (
                     end
                 end
                 SC_C1: begin
-                    hdr_cmd_addr  <= obj_base + {20'h0, sc_obj} * 32'd16 + 32'd4;
+                    hdr_cmd_addr  <= obj_base + {16'h0, sc_obj} * 32'd16 + 32'd4;
                     hdr_cmd_valid <= 1'b1;
                     sc_state      <= SC_C2;
                 end
                 SC_C2: if (hdr_cmd_ready) begin
-                    hdr_cmd_addr <= obj_base + {20'h0, sc_obj} * 32'd16 + 32'd8;
+                    hdr_cmd_addr <= obj_base + {16'h0, sc_obj} * 32'd16 + 32'd8;
                     sc_state     <= SC_C3;
                 end
                 SC_C3: if (hdr_cmd_ready) begin
@@ -350,7 +350,7 @@ module gc_mark_engine (
             cycles       <= 32'h0;
             cycles_r     <= 32'h0;
             marked_r     <= 32'h0;
-            cur_obj      <= 12'h0;
+            cur_obj      <= 16'h0;
             ref_count    <= 32'h0;
             ref_addr     <= 32'h0;
             ref_push_idx <= 32'h0;
@@ -359,18 +359,18 @@ module gc_mark_engine (
             prev_ref     <= 32'hFFFFFFFF;
             ref_stop     <= 1'b0;
             root_idx     <= 32'h0;
-            pending_obj  <= 12'h0;
-            clr_ptr      <= 12'h0;
-            pf_obj       <= 12'h0;
+            pending_obj  <= 16'h0;
+            clr_ptr      <= 11'h0;
+            pf_obj       <= 16'h0;
             pf_valid     <= 1'b0;
             pf_tried     <= 1'b0;
-            bm_waddr     <= 12'h0;
+            bm_waddr     <= 11'h0;
             q_push       <= 1'b0;
             bm_wdata     <= 32'h0;
             bm_we        <= 1'b0;
             root_rd_addr <= 8'h0;
-            q_push_data  <= 12'h0;
-            q_push_addr  <= 12'h0;
+            q_push_data  <= 16'h0;
+            q_push_addr  <= 16'h0;
         end else begin
             q_push   <= 1'b0;
             bm_we    <= 1'b0;
@@ -393,7 +393,7 @@ module gc_mark_engine (
                         done     <= 1'b0;
                         root_idx <= 32'h0;
                         q_clear  <= 1'b1;      // the run clears the object queue itself
-                        clr_ptr  <= 12'h0;
+                        clr_ptr  <= 11'h0;
                         err_ovf  <= 1'b0;
                         err_ref  <= 1'b0;
                         con_cnt  <= 32'd0;
@@ -408,10 +408,10 @@ module gc_mark_engine (
                     bm_waddr <= clr_ptr;
                     bm_wdata <= 32'h0;
                     bm_we    <= 1'b1;
-                    if (clr_ptr == 12'd4095)
+                    if (clr_ptr == 11'd2047)
                         state <= S_RD_ROOT;
                     else
-                        clr_ptr <= clr_ptr + 12'd1;
+                        clr_ptr <= clr_ptr + 11'd1;
                 end
 
                 S_RD_ROOT: begin
@@ -430,7 +430,7 @@ module gc_mark_engine (
 
                 S_ROOT_DATA: begin
                     if (root_rd_data < obj_count) begin
-                        pending_obj <= root_rd_data[11:0];
+                        pending_obj <= root_rd_data[15:0];
                         state       <= S_ROOT_CHK;      // #5: 先查位图, 去重后再标记
                     end else begin
                         root_idx <= root_idx + 32'd1;
@@ -452,8 +452,8 @@ module gc_mark_engine (
                         root_idx <= root_idx + 32'd1;
                         state    <= S_RD_ROOT;
                     end else begin
-                        bm_waddr <= pending_obj;
-                        bm_wdata <= 32'h1 << pending_obj[4:0];
+                        bm_waddr <= pending_obj[15:5];
+                        bm_wdata <= bm_rdata | (32'h1 << pending_obj[4:0]);
                         bm_we    <= 1'b1;
                         state    <= S_ROOT_PUSH;
                     end
@@ -528,10 +528,10 @@ module gc_mark_engine (
                     end else begin
                         if (!q_full) begin
                             prev_ref <= ref_val;
-                            bm_waddr <= ref_val[11:0];
-                            bm_wdata <= 32'h1 << ref_val[4:0];
+                            bm_waddr <= ref_val[15:5];
+                            bm_wdata <= bm_rdata | (32'h1 << ref_val[4:0]);
                             bm_we    <= 1'b1;
-                            q_push_data <= ref_val[11:0];
+                            q_push_data <= ref_val[15:0];
                             q_push_addr <= q_tail;
                             q_push      <= 1'b1;
                             marked_r    <= marked_r + 32'd1;
@@ -568,8 +568,8 @@ module gc_mark_engine (
                     end else begin
                         if (!bm_rdata[dirty_id[4:0]]) begin
                             // 未标记: 置位并计数 (与根路径一致)
-                            bm_waddr <= dirty_id;
-                            bm_wdata <= 32'h1 << dirty_id[4:0];
+                            bm_waddr <= dirty_id[15:5];
+                            bm_wdata <= bm_rdata | (32'h1 << dirty_id[4:0]);
                             bm_we    <= 1'b1;
                             marked_r <= marked_r + 32'd1;
                         end

@@ -7,25 +7,25 @@ module gc_queue (
     input  wire        rst_n,
     input  wire        clear,
 
-    input  wire [11:0] waddr,
-    input  wire [11:0] wdata,
+    input  wire [15:0] waddr,
+    input  wire [15:0] wdata,
     input  wire        we,
 
     input  wire        en,
-    output reg  [11:0] rdata,
+    output reg  [15:0] rdata,
     output reg         rvalid,
 
-    output reg  [11:0] head,
-    output reg  [11:0] tail,
+    output reg  [15:0] head,
+    output reg  [15:0] tail,
     output wire        empty,
     output wire        full,
-    output reg  [12:0] count
+    output reg  [16:0] count
 );
 
-    localparam integer DEPTH = 4096;
+    localparam integer DEPTH = 65536;
 
     (* ram_style = "block" *)
-    reg [11:0] mem [0:DEPTH-1];
+    reg [15:0] mem [0:DEPTH-1];
 
     always @(posedge clk) begin
         if (we)
@@ -36,30 +36,30 @@ module gc_queue (
         rdata <= mem[head];
     end
 
-    assign empty = (count == 13'd0);
-    assign full  = (count == DEPTH[12:0]);
+    assign empty = (count == 17'd0);
+    assign full  = (count == DEPTH[16:0]);
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            head   <= 12'd0;
-            tail   <= 12'd0;
+            head   <= 16'd0;
+            tail   <= 16'd0;
             rvalid <= 1'b0;
-            count  <= 13'd0;
+            count  <= 17'd0;
         end else if (clear) begin
-            head   <= 12'd0;
-            tail   <= 12'd0;
+            head   <= 16'd0;
+            tail   <= 16'd0;
             rvalid <= 1'b0;
-            count  <= 13'd0;
+            count  <= 17'd0;
         end else begin
             // 队列非空才给 rvalid
-            rvalid <= en && (count != 13'd0);
-            if (we && (count != DEPTH[12:0]))
-                tail <= waddr + 12'd1;
-            if (en && (count != 13'd0))
-                head <= head + 12'd1;
+            rvalid <= en && (count != 17'd0);
+            if (we && (count != DEPTH[16:0]))
+                tail <= waddr + 16'd1;
+            if (en && (count != 17'd0))
+                head <= head + 16'd1;
 
             // 同拍一写一读: 计数不变
-            case ({we && (count != DEPTH[12:0]), en && (count != 13'd0)})
+            case ({we && (count != DEPTH[16:0]), en && (count != 17'd0)})
                 2'b10:   count <= count + 13'd1;
                 2'b01:   count <= count - 13'd1;
                 default: count <= count;
