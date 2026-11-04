@@ -1,0 +1,26 @@
+# command: tools/build_routes/run_dma_build.ps1
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: 8f914cf   VERSION=0x00040301
+# date: 2026-11-04
+
+rmmod fogccc_dma 2>/dev/null; insmod /tmp/fogccc_dma.ko && chmod +x /tmp/verify_dma_build && /tmp/verify_dma_bui
+ld; echo DMA_RUN_RC=$?; rmmod fogccc_dma 2>/dev/null
+fogccc_dma: ready size=262144 src_phys=0x3f080000 dev=fogccc_dma
+
+FOGCCC DMA graph-build route check
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+
+DMA_INFO size=262144 src_phys=0x3f080000 dst=0x1e000000
+DMA_BUILD n=4000 avg_refs=3 reps=5 used=129824 build_median_ms=1.911 stage_median_ms=0.149 dma_median_ms=0.204 total_median_ms=2.254
+
+DMA_BUILD layout_bad=0
+  verify[dma] marked=3766 sw=3766 status=0x0 cycles=64532 bitmap_bad=0
+DMA_BUILD_SUMMARY total_median_ms=2.254 python_ref_ms=102.2 speedup_vs_python=45.3x
+
+DMA_BUILD_RESULT OK
+
+DMA_RUN_RC=0

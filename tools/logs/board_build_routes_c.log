@@ -1,0 +1,26 @@
+# command: tools/build_routes/run_c_build.ps1
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: 8f914cf   VERSION=0x00040301
+# date: 2026-11-04
+
+chmod +x /tmp/verify_c_build; /tmp/verify_c_build
+
+FOGCCC C graph-build route check
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+
+C_BUILD mode=direct n=4000 avg_refs=3 reps=5 median_ms=5.365 min_ms=5.326
+
+C_BUILD layout_direct_bad=0
+
+  verify[direct] marked=3766 sw=3766 status=0x0 cycles=64407 bitmap_bad=0
+
+C_BUILD mode=cached n=4000 avg_refs=3 reps=5 used=129824 median_total_ms=2.083 total_min_ms=2.031 copy_median_ms=0.127
+
+C_BUILD layout_cached_bad=0
+
+  verify[cached] marked=3766 sw=3766 status=0x0 cycles=64504 bitmap_bad=0
+C_BUILD_SUMMARY direct_median_ms=5.365 cached_median_ms=2.083 speedup=2.58x python_ref_ms=102.2 speedup_vs_python=49.1x
+C_BUILD_RESULT OK

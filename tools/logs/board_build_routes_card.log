@@ -1,0 +1,112 @@
+# command: cd /tmp/brtest && sh fpga_build_routes.sh
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: 8f914cf   VERSION=0x00040301
+# date: 2026-11-04
+
+cd /tmp/brtest && sh fpga_build_routes.sh
+============================================================
+ 1/4  C build: direct writes vs cached build + memcpy
+
+============================================================
+
+FOGCCC C graph-build route check
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+
+C_BUILD mode=direct n=4000 avg_refs=3 reps=5 median_ms=5.346 min_ms=5.319
+
+C_BUILD layout_direct_bad=0
+
+  verify[direct] marked=3766 sw=3766 status=0x0 cycles=64655 bitmap_bad=0
+
+C_BUILD mode=cached n=4000 avg_refs=3 reps=5 used=129824 median_total_ms=2.049 total_min_ms=2.034 copy_median_ms=0.134
+
+C_BUILD layout_cached_bad=0
+  verify[cached] marked=3766 sw=3766 status=0x0 cycles=64478 bitmap_bad=0
+C_BUILD_SUMMARY direct_median_ms=5.346 cached_median_ms=2.049 speedup=2.61x python_ref_ms=102.2 speedup_vs_python=49.9x
+C_BUILD_RESULT OK
+
+============================================================
+ 2/4  DMA build: cached C -> coherent staging -> PL330 DMA
+============================================================
+fogccc_dma: ready size=262144 src_phys=0x3f080000 dev=fogccc_dma
+
+FOGCCC DMA graph-build route check
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+
+DMA_INFO size=262144 src_phys=0x3f080000 dst=0x1e000000
+DMA_BUILD n=4000 avg_refs=3 reps=5 used=129824 build_median_ms=1.910 stage_median_ms=0.139 dma_median_ms=0.200 total_median_ms=2.255
+
+DMA_BUILD layout_bad=0
+
+  verify[dma] marked=3766 sw=3766 status=0x0 cycles=64619 bitmap_bad=0
+DMA_BUILD_SUMMARY total_median_ms=2.255 python_ref_ms=102.2 speedup_vs_python=45.3x
+DMA_BUILD_RESULT OK
+============================================================
+ 3/4  Four-way test, graph built by C
+============================================================
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+  objects   mkd  build ms     HW us    C-u us    C-c us     Py ms    Cu/HW  Cc/HW  Py/HW    e2e ms  verdict
+ ----------------------------------------------------------------------------------------------------------------
+
+       10     9     0.563      44.0       6.2       2.8     0.764    0.1x    0.1x     17x     0.607  OK
+
+       50    47     0.603      48.7      25.4       7.4     1.930    0.5x    0.2x     40x     0.651  OK
+
+      100    96     0.682      57.0      51.9      12.2     3.683    0.9x    0.2x     65x     0.739  OK
+
+      500   474     1.135     114.0     243.0      58.9    17.790    2.1x    0.5x    156x     1.249  OK
+
+     1000   945     1.696     184.4     520.5     124.4    35.767    2.8x    0.7x    194x     1.880  OK
+
+     2000  1882     2.793     339.1    1006.3     277.6    70.332    3.0x    0.8x    207x     3.132  OK
+
+     4000  3766     4.983     646.0    2042.9     611.6   142.741    3.2x    0.9x    221x     5.629  OK
+ C build = fpga_gc_build_graph() (direct uncached writes);
+ HW us = engine cycles only; C-u/C-c/Py are the same four-way references.
+ e2e ms = C build_ms + HW_us/1000 (no PS init/poll overhead).
+ N=4000: c_build=4.983 ms  hw=0.646 ms  e2e=5.629 ms  paper_python_e2e=102.845 ms  speedup=18.3x
+THREE_WAY_RESULT OK
+C_FOUR_WAY_RESULT OK
+============================================================
+ 4/4  Four-way test, graph built by DMA
+
+============================================================
+fogccc_dma: ready size=262144 src_phys=0x3f080000 dev=fogccc_dma
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+  objects   mkd  build ms     HW us    C-u us    C-c us    Py ms  Cu/HW  Cc/HW  Py/HW    e2e ms  verdict
+ ----------------------------------------------------------------------------------------------------------------
+
+       10     9     0.571      44.0       6.3       3.0     0.725    0.1x    0.1x     16x     0.615  OK
+
+       50    47     0.611      48.7      25.8       7.3     1.964    0.5x    0.2x     40x     0.660  OK
+
+      100    96     0.680      57.0      53.0      13.5     3.723    0.9x    0.2x     65x     0.737  OK
+
+      500   474     1.114     113.7     246.4      57.6    17.848    2.2x    0.5x    157x     1.228  OK
+
+     1000   945     1.712     185.0     485.1     125.1    35.789    2.6x    0.7x    193x     1.897  OK
+
+     2000  1882     2.832     340.3    1008.1     268.4    70.159    3.0x    0.8x    206x     3.172  OK
+
+     4000  3766     5.152     644.9    2024.7     610.7   142.366    3.1x    0.9x    221x     5.797  OK
+ DMA build = cached C graph (srand 42) + coherent staging + PL330 DMA;
+ HW us = engine cycles only; C-u/C-c/Py are the same four-way references.
+ e2e ms = DMA build total_ms + HW_us/1000 (no PS init/poll overhead).
+ N=4000: dma_build=5.152 ms  hw=0.645 ms  e2e=5.797 ms  paper_python_e2e=102.845 ms  speedup=17.7x
+THREE_WAY_RESULT OK
+DMA_FOUR_WAY_RESULT OK
+BUILD_ROUTES_DONE
