@@ -39,6 +39,14 @@ vivado -mode batch -source vivado/build.tcl
 wsl -e bash <repo>/petalinux/build_fogccc2.sh
 ```
 
+只构建 `image.ub`、不打包 `BOOT.BIN` 时：
+
+```bash
+wsl -e bash <repo>/petalinux/build_fogccc2.sh --skip-boot
+```
+
+此时不需要 `artifacts/zynq_fsbl.elf`。脚本仍会产出并拷贝 `image.ub`、`system.dtb`、`boot.scr`，只跳过 `petalinux-package boot` 与 `BOOT.BIN` 拷贝（已有的 `artifacts/BOOT.BIN` 不会被更新）。在 WSL 里直接运行时也可以用 `SKIP_BOOT=1 bash <repo>/petalinux/build_fogccc2.sh`。需要 `BOOT.BIN` 时再按下节使用厂商 FSBL 打包。
+
 脚本依次做：
 
 1. 若 `~/xilinx/fogccc2_linux` 不存在 → `petalinux-create` 建工程，把
@@ -47,7 +55,7 @@ wsl -e bash <repo>/petalinux/build_fogccc2.sh
 3. 校验手工配置没被冲掉（initramfs / earlycon / 空密码 / python3 /
    `pl_graph` reserved-memory / 层路径能解析）；
 4. `petalinux-build`（首次约 1–3 小时）；
-5. `petalinux-package boot`，产物拷到 `artifacts/`。
+5. 有厂商 FSBL 时 `petalinux-package boot` 打包 `BOOT.BIN`，并把 `image.ub`、`system.dtb`、`boot.scr`（以及 `BOOT.BIN`）拷到 `artifacts/`；`SKIP_BOOT=1` 时跳过打包与 `BOOT.BIN` 拷贝。
 
 > 无需手工进入 menuconfig；上述 config 文件即菜单选项的结果。
 
