@@ -6,12 +6,11 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
 [![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
 
-面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）。对象体驻留 DDR，引用关系整理为连续的 side table
-（每对象一个 u32 数组，0xFFFFFFFF 结尾）；标记与空闲对象扫描由 PL 完成，分配、引用更新与回收策略
-由 PS 侧软件负责。本仓库提供寄存器映射与驱动接口，采用 stop-the-world 方式，对象数上限 4096、
-图区上限 1 MiB，当前未接入语言运行时，测量范围限于标记与空闲扫描两个阶段。
+面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）。设计由三个构件组成：**语义解耦旁表**把对象体与引用关系分开，对象体留在 DDR，引用关系整理为连续旁表；**多流乱序访存协处理器**用两条独立读流并发预取对象头与引用，同流保序、跨流可乱序返回；**扁平化数据流标记引擎**把根集、广度优先队列与脏引用汇入同一条取数—判位—入队流水。
 
-当前证据：位流 6D479244…、BOOT.BIN d20530bc…、image.ub c958eac9…（v4.13，2026-10-27）。
+标记与空闲对象扫描由 PL 完成，分配、引用更新与回收策略由 PS 侧软件负责。本仓库提供寄存器映射、驱动接口与上板验证；回收采用全局暂停方式，对象数上限 4096、图区上限 1 MiB，当前未接入语言运行时，测量范围限于标记与空闲扫描两个阶段。
+
+当前证据：位流 6D479244…、BOOT.BIN d20530bc…、image.ub c958eac9…（v4.14，2026-11-04）。
 原始日志在 tools/logs/（索引 [tools/logs/README.md](tools/logs/README.md)）；
 测量条件与证据边界见 [docs/measurement.md](docs/measurement.md)。
 CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、PetaLinux 或上板。
@@ -32,7 +31,7 @@ Contents: [结果](#1-结果) · [快速开始](#2-快速开始) · [设计与�
 | C，缓存友好（堆副本）| 堆上的副本 | 164 ns | **≈1.0×** |
 | Python 脚本 BFS（逐条读 /dev/mem）| 同一张图 | 37.9 µs | **≈220×** |
 
-FPGA 列只含引擎时间（CYCLES / 100 MHz），不含建图与驱动开销；171 ns 以已标记的 3766 个
+FPGA 列只含标记引擎时间（周期计数 / 100 MHz），不含建图与驱动开销；171 ns 以已标记的 3766 个
 对象为分母（645.4 µs / 4000 = 161 ns）。最后一列为 FPGA 加速比（该实现时间 / FPGA 时间），1.0× 表示与 FPGA 相当；同一张图重复运行时 Python 列的比值在 215×–222× 之间，表里取归档的一次。
 四行来自同一张图（tests/fpga_vs_c_vs_python.py，v4.12 / PS 800 MHz）；逐项测量条件与证据见
 [docs/measurement.md](docs/measurement.md)。test_main 只查计数正确性。
@@ -41,7 +40,7 @@ FPGA 列只含引擎时间（CYCLES / 100 MHz），不含建图与驱动开销�
 1 MiB 工作集接近 L2、TLB 全命中，是 CPU 最有利的区间，因此“超出 LLC 才有优势”是延迟推理的
 假设而不是已测结论；只计标记阶段，建图本身约为标记的 15×。
 
-**实现范围**：stop-the-world，写 START、轮询 DONE。对象图由 csrc/fpga_gc.c /
+**实现范围**：全局暂停，写 START、轮询 DONE。旁表由 csrc/fpga_gc.c /
 python/fogccc.py 按「对象头 + 引用数组」布局构造；**未接入**任何语言运行时的 gc 模块。
 
 ### 建图路径（C / DMA）
@@ -98,6 +97,16 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 
 ## 3. 设计与接口
 
+### 三个构件
+
+| 构件 | 作用 | 实现 |
+|---|---|---|
+| 语义解耦旁表 | 对象体与引用关系分离，标记只读旁表 | 每对象 16 B 对象头 + 连续 u32 引用数组（0xFFFFFFFF 结尾）|
+| 多流乱序访存协处理器 | 隐藏 DDR 延迟 | 引用流与对象头流两条 AXI 读流，合计 8 个未完成读 |
+| 扁平化数据流标记引擎 | 单条流水完成标记 | 根集、广度优先队列、脏引用 FIFO 共用取数—判位—入队 |
+
+对象体不被标记过程修改；PS 侧只负责建图、写寄存器与回收策略。
+
 ### 寄存器映射
 
 | 偏移 | 名称 | R/W | 说明 |
@@ -110,19 +119,19 @@ powershell -File tools/reproduce_all.ps1             # 六组 xsim + 清单 + PS
 | 0x14 | CYCLES | R | 硬件周期计数 |
 | 0x18 | Q_HEAD | R | 队列头指针 |
 | 0x1C | Q_TAIL | R | 队列尾指针 |
-| 0x20 | STATUS | R | [0] 队列溢出 · [1] AXI 读错误 · [2] 引用失步 · [3] 坏对象头 · [4] 引擎 idle · [5] free-list 扫描 busy |
+| 0x20 | STATUS | R | [0] 队列溢出 · [1] AXI 读错误 · [2] 引用失步 · [3] 坏对象头 · [4] 引擎空闲 · [5] 空闲链表扫描忙 |
 | 0x24 | BM_ADDR | R/W | 位图探针地址（0–4095，引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据（2 拍延迟；读后勿改 BM_ADDR）|
 | 0x30 | MAGIC | R | 固定 0x47434343（"GCCC"）|
 | 0x34 | VERSION | R | 固定 0x0004_0301（v4.5 起）|
-| 0x38 | FREE_COUNT | R | 未标记对象数（mark 完成后扫描，扫描期 STATUS[5]=1）|
+| 0x38 | FREE_COUNT | R | 未标记对象数（标记完成后扫描，扫描期 STATUS[5]=1）|
 | 0x3C | FREE_DATA | R | 读一次弹出一个 free 对象 ID |
 | 0x40+ | ROOT_LIST | R/W | 根集 ID 数组（0x40–0x43F，最多 256 个）；读回用于写后校验 |
 | 0x440 | DIRTY_PUSH | W/R | **W** 0xA5400000 \| (tag<<12) \| id（标记符 = WDATA[31:20]），tag 每次推送必须变化；**R** 当前 FIFO 占用 |
 | 0x444 | DIRTY_STAT | R | [8:0] 占用 · [9] 溢出（粘滞）· [10] 待处理 · [19:16] 最后接受的 tag · [31:20] 最后接受的 id |
-| 0x448 | DIRTY_DRAINED | R | 本 epoch 已消费条数（每次 start 清零）|
-| 0x44C | DIRTY_PUSHED | R | 自上次 flush 以来接受的条数 |
-| 0x450 | DIRTY_POPPED | R | 自上次 flush 以来 pop 的条数 |
+| 0x448 | DIRTY_DRAINED | R | 本轮已消费条数（每次 start 清零）|
+| 0x44C | DIRTY_PUSHED | R | 自上次清空以来接受的条数 |
+| 0x450 | DIRTY_POPPED | R | 自上次清空以来弹出的条数 |
 
 CTRL[5] 与 DIRTY_* 的契约见 [docs/design-details.md](docs/design-details.md)；
 DIRTY_PUSH 用 0x440（根表止于 0x43F）。
@@ -141,7 +150,7 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）。
 | 时钟 | **FCLK0 = 100MHz** | 单时钟域，无 CDC |
 | 位图 / 队列 | 4096×32 / 4096×12 | 128 Kb / 48 Kb |
 
-### 对象图格式
+### 语义解耦旁表
 
 ```
 @ obj_base + k*16:                @ ref_addr:
@@ -153,20 +162,23 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）。
 └──────────────────────┘
 ```
 
-引擎读对象头取 ref_count 与 ref_addr，再按 ref_addr + j*4 读第 j 个引用。
+旁表由对象头数组与引用数组组成：对象头 16 B 一个，记录对象 ID、出度与引用数组地址；引用数组以 0xFFFFFFFF 结尾。标记引擎先读对象头取 ref_count 与 ref_addr，再按 ref_addr + j*4 读第 j 个引用；对象体只在软件分配与回收时访问。
 
-### 脏引用与增量标记
+### 多流乱序访存协处理器
 
-gc_dirty_fifo 是标记引擎的第二工作源：写 0x440 推入一个 ID，未标则置位并计数，
-已标则强制重扫（不计数），S_DONE 额外要求 FIFO 为空。满 256 丢弃并置溢出位，
-软件见溢出退回全标记。epoch 为「全标记 → 增量（mutator 可并发推送）→ remark 收口」。
-协议、屏障顺序、回执与并发证据见 [docs/design-details.md](docs/design-details.md)。
+读通路按流 ID 分成两条：0 为引用，1 为对象头。同一流内保序，跨流可乱序返回；每条流各有命令 FIFO 与数据 FIFO（深 80），合计最多 8 个未完成读。对象头预取环深 4，引用描述符队列深 8；DDR 延迟由预取覆盖，标记流水不等待单条返回。
+
+### 扁平化数据流标记引擎
+
+引擎没有微码，也没有递归栈：根集、广度优先队列与脏引用 FIFO 是同一取数—判位—入队流水的三个入口。取到对象头后按引用数组展开；目标未标记则置位并计数，已标记则跳过；队列满时置溢出位，不做静默丢弃。
+
+脏引用 FIFO 是第二工作源：写 0x440 推入一个 ID，未标记则置位并计数，已标记则强制重扫但不计数；结束条件要求队列与 FIFO 同时为空。回收按「全量标记 → 增量标记（应用线程可并发推送）→ 收口重标」三轮进行；FIFO 满 256 时丢弃并置溢出位，软件见溢出退回全量标记。协议、屏障顺序、回执与并发证据见 [docs/design-details.md](docs/design-details.md)。
 
 ## 4. 证据
 
 | 套件 | 结果 |
 |---|---|
-| 冷启动 D1..D6 / test_main | 0 / 3/3（证据为 v4.5 镜像；卡上当前为 v4.13）|
+| 冷启动 D1..D6 / test_main | 0 / 3/3（证据为 v4.5 镜像；卡上当前为 v4.14，镜像同 v4.13）|
 | 阶段 2 / 阶段 3 | PHASE2_PASS、CONTRACT_RESULT OK、dirty 全套 OK、收尾 occ=0 |
 | fpga_vs_python.sh 4096 8 2 | 8/8 |
 | abort_test / abort_sweep / done_race | T1–T5 / 11/11 / P3 失配 0/20（20/20 正确）|
@@ -182,9 +194,9 @@ gc_dirty_fifo 是标记引擎的第二工作源：写 0x440 推入一个 ID，�
 
 ## 5. 发布
 
-当前发布 v4.14（GitHub Latest，800 MHz）。v4.13 为上一个正式版；v4.1–v4.12 为 Pre-release
-历史快照。v4.14 新增 C/DMA 建图验证源码、脚本与日志，BOOT.BIN 与 image.ub 与 v4.13 相同；
-card-userdata.zip 相应增加三个程序和 `fogccc_dma.ko`。
+当前发布 v4.14（GitHub Latest，800 MHz）。v4.7（667 MHz）为另一个正式版；其余版本为 Pre-release
+历史快照。v4.14 新增 C/DMA 建图验证源码、脚本与日志，标记引擎与镜像未变，BOOT.BIN 与 image.ub
+与 v4.13 相同；card-userdata.zip 相应增加三个程序和 fogccc_dma.ko。
 
 BOOT.BIN 与 image.ub 不入库，随 Release 发布（再分发限制见 [NOTICE](NOTICE)）。
 BOOT.BIN、image.ub 放 BOOT 分区根目录；card-boot.zip 与 card-userdata.zip 分别解压到
@@ -205,11 +217,11 @@ vermagic=6.18.10-xilinx-g4f7afe14f724 配对。
 ## 6. 目录与调试
 
 ```
-rtl/       顶层 + 寄存器 + BFS 引擎 + 位图/队列/free-list/脏 FIFO + AXI 读
-sim/       自检 testbench、定向 TB、AXI 协议检查器
-csrc/      驱动、test_main、Python BFS 参照、build_routes/（C/DMA 建图）
-driver/    IRQ_F2P 内核模块、fogccc_dma/（建图 staging）
-python/    ctypes 绑定
+rtl/       顶层、寄存器、扁平化标记引擎、位图/队列/空闲链表/脏引用 FIFO、多流读通路
+sim/       自检与定向测试台、AXI 协议检查器
+csrc/      驱动、test_main、Python 广度优先参照、build_routes/（C/DMA 建图）
+driver/    IRQ_F2P 内核模块、fogccc_dma/（建图暂存）
+python/    Python 绑定（ctypes）
 vivado/    BD + 综合/实现脚本
 petalinux/ 镜像配方与构建脚本
 tools/     串口与上板脚本、测试、build_routes/、日志
