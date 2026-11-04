@@ -22,6 +22,7 @@ BINARY_ALLOWED = {
     "artifacts/userdata/bin/dma_build_one",
     "artifacts/userdata/ko/fogccc_dma.ko",
     "docs/images/zynq7100-render.jpg",
+    "docs/images/block.png",
 }
 MAX_TRACKED_BYTES = 1 << 20
 
