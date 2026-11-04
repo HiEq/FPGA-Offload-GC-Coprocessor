@@ -5,8 +5,9 @@
 # 前置:
 #   - Vivado 已产出  <工程根>\vivado\fogccc_proj\system.xsa 和 system_wrapper.bit
 #   - artifacts/zynq_fsbl.elf 存在 (厂商 FSBL; 不入库, 见 NOTICE)
+#     只构建 image.ub 时不需要它: 设置 SKIP_BOOT=1 跳过 BOOT.BIN 打包
 #   - fogccc2_linux 不存在时, 本脚本会用仓库里的 project-spec 骨架创建它, 配置包括:
-#       kernel cmdline = console=ttyPS0,115200 earlycon
+#       kernel cmdline = console=ttyPS0,921600 earlycon
 #       rootfs = initramfs, hostname = linux, empty-root-password
 #       device-tree 里 reserved-memory pl_graph@1e000000
 #
@@ -23,9 +24,18 @@ XSA="$ROOT/vivado/fogccc_proj/system.xsa"
 BIT="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
 FSBL="$ROOT/artifacts/zynq_fsbl.elf"
 OUT="$ROOT/artifacts"
+SKIP_BOOT="${SKIP_BOOT:-0}"
+if [ "${1:-}" = "--skip-boot" ]; then
+    SKIP_BOOT=1
+fi
 
 echo "=== Step 0: 检查输入文件 ==="
-ls -la "$XSA" "$BIT" "$FSBL"
+ls -la "$XSA" "$BIT"
+if [ "$SKIP_BOOT" = "1" ]; then
+    echo "SKIP_BOOT=1: 只构建 image.ub，不打包 BOOT.BIN，跳过厂商 FSBL 检查"
+else
+    ls -la "$FSBL"
+fi
 
 echo "=== Step 1: 载入 PetaLinux 2026.1 环境 ==="
 source "$PLNX_ROOT/petalinux/settings.sh"
@@ -88,16 +98,22 @@ date
 petalinux-build 2>&1 | tee "$PLNX_ROOT/fogccc2_build.log"
 date
 echo "=== 构建产物时间戳 ==="
-ls -la images/linux/image.ub images/linux/system.dtb images/linux/BOOT.BIN
+ls -la images/linux/image.ub images/linux/system.dtb
 
-echo "=== Step 4: 打包 BOOT.BIN (显式带新比特流) ==="
-petalinux-package boot --fsbl "$FSBL" --fpga "$BIT" --u-boot --force
+if [ "$SKIP_BOOT" = "1" ]; then
+    echo "=== Step 4: SKIP_BOOT=1，跳过 BOOT.BIN 打包 ==="
+else
+    echo "=== Step 4: 打包 BOOT.BIN (显式带新比特流) ==="
+    petalinux-package boot --fsbl "$FSBL" --fpga "$BIT" --u-boot --force
+fi
 
 echo "=== Step 5: 拷贝启动文件到 FOGCCC2/artifacts ==="
-cp -v images/linux/BOOT.BIN "$OUT/BOOT.BIN"
 cp -v images/linux/image.ub "$OUT/image.ub"
 cp -v images/linux/boot.scr "$OUT/boot.scr"
 cp -v images/linux/system.dtb "$OUT/system.dtb"
+if [ "$SKIP_BOOT" != "1" ]; then
+    cp -v images/linux/BOOT.BIN "$OUT/BOOT.BIN"
+fi
 
 echo "=== Step 6: 校验 DT 里的 reserved-memory / cmdline ==="
 dtc -I dtb -O dts images/linux/system.dtb 2>/dev/null | grep -A3 "pl_graph" || \
@@ -106,4 +122,7 @@ strings images/linux/image.ub | grep -m1 "earlycon" || true
 
 echo ""
 echo "=== DONE ==="
-ls -la "$OUT/BOOT.BIN" "$OUT/image.ub"
+ls -la "$OUT/image.ub" "$OUT/system.dtb"
+if [ "$SKIP_BOOT" != "1" ]; then
+    ls -la "$OUT/BOOT.BIN"
+fi
