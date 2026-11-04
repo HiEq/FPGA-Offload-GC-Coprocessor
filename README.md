@@ -24,6 +24,10 @@
 | 多流乱序访存协处理器 | 两条 AXI HP 读流并发预取对象头与引用，合计 8 笔未完成读 |
 | 扁平化数据流标记引擎 | 根集、广度优先队列与脏引用汇入同一条取数—判位—入队流水 |
 
+系统由 PS 侧软件与 PL 侧标记引擎组成，数据通路如下。
+
+<p align="center"><img src="docs/images/block.png" width="760" alt="FOGCCC 系统架构"></p>
+
 标记与空闲扫描由 PL 完成，建图、启动与回收决策由 PS 负责；对象数上限 4096、图区上限 1 MiB，当前未接入语言运行时，回收采用全局暂停方式。当前发布 v4.14（2026-11-04，位流 md5 6D479244…）。
 
 | 文档 | 内容 |
@@ -82,7 +86,10 @@ python -m unittest discover -s tests -p "test_*.py"
 
 三个构件的分工见开头与 [docs/design-details.md](docs/design-details.md)；这里只列软件可见的寄存器与关键参数。
 
-### 寄存器映射
+<details>
+<summary><b>寄存器映射与关键参数（点击展开）</b></summary>
+
+**寄存器映射**
 
 | 偏移 | 名称 | R/W | 说明 |
 |------|------|-----|------|
@@ -110,7 +117,7 @@ python -m unittest discover -s tests -p "test_*.py"
 
 DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契约见 [docs/design-details.md](docs/design-details.md)。
 
-### 关键参数
+**关键参数**
 
 | 参数 | 值 | 说明 |
 | --- | --- | --- |
@@ -123,6 +130,8 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契�
 | 流 ID | **0 = 引用, 1 = 对象头** | 同 ID 保序，异 ID 互不阻塞 |
 | 时钟 | **FCLK0 = 100MHz** | 单时钟域，无 CDC |
 | 位图 / 队列 | 4096×32 / 4096×12 | 128 Kb / 48 Kb |
+
+</details>
 
 ---
 
@@ -142,12 +151,17 @@ DIRTY_PUSH 用 0x440（根表止于 0x43F）；CTRL[5] 与 DIRTY_* 的完整契�
 
 当前发布 v4.14（GitHub Latest，800 MHz）。v4.7（667 MHz）为另一个正式版，其余版本为 Pre-release 历史快照。BOOT.BIN 与 image.ub 不入库，随 Release 发布（再分发限制见 [NOTICE](NOTICE)）；两个 zip 分别解压到 BOOT 与 USERDATA 根目录。
 
+<details>
+<summary><b>SHA256（点击展开）</b></summary>
+
 | 资产 | 大小 | SHA256 |
 | --- | --- | --- |
 | BOOT.BIN | 18,582,724 B | d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd |
 | image.ub | 47,762,547 B | c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f |
 | card-boot.zip | 5,176 B | 6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a |
 | card-userdata.zip | 139,184 B | c3fa49376d0e75c60c939c8e3200b1961090f99476af452e53f2440fe3e38fd2 |
+
+</details>
 
 校验：四个资产与 SHA256SUMS.release 同目录，执行 `sha256sum -c SHA256SUMS.release`。各版本变更与限制见 [docs/releases.md](docs/releases.md)，卡布局与上电见 [docs/board-usage.md](docs/board-usage.md)。
 
