@@ -1,15 +1,22 @@
-# FPGA Offload GC Coprocessor（FOGCCC）
+<h1 align="center">FPGA Offload GC Coprocessor（FOGCCC）</h1>
 
-[![Platform](https://img.shields.io/badge/Platform-Xilinx%20Zynq--7000%20XC7Z100-blue)](#1-结果)
-[![RTL](https://img.shields.io/badge/RTL-Verilog%202001-green)](#3-设计与接口)
-[![Vivado](https://img.shields.io/badge/Vivado-2026.1-orange)](docs/build.md)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](#7-license)
-[![CI](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml)
-[![Release](https://img.shields.io/badge/release-v4.14-blue)](https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v4.14)
+<p align="center">
+  <a href="#1-结果"><img src="https://img.shields.io/badge/Platform-Xilinx%20Zynq--7000%20XC7Z100-blue" alt="Platform"></a>
+  <a href="#3-设计与接口"><img src="https://img.shields.io/badge/RTL-Verilog%202001-green" alt="RTL"></a>
+  <a href="docs/build.md"><img src="https://img.shields.io/badge/Vivado-2026.1-orange" alt="Vivado"></a>
+  <a href="#7-license"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License"></a>
+  <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml"><img src="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v4.14"><img src="https://img.shields.io/badge/release-v4.14-blue" alt="Release"></a>
+</p>
 
-<p align="center"><img src="docs/images/zynq7100-render.jpg" width="720" alt="XC7Z100 载板 3D 渲染（示意）"></p>
+<p align="center">
+  <img src="docs/images/zynq7100-render.jpg" width="720" alt="XC7Z100 载板 3D 渲染（示意）">
+</p>
 
-**面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）**
+<p align="center">
+  <b>面向托管堆的 FPGA GC 协处理器（Zynq-7000 原型）</b><br>
+  <sub>语义解耦旁表 · 多流乱序访存协处理器 · 扁平化数据流标记引擎</sub>
+</p>
 
 | 构件 | 作用 |
 |---|---|
