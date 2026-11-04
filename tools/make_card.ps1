@@ -15,6 +15,9 @@ Copy-Item (Join-Path $root 'csrc\py_bfs.py') (Join-Path $dst 'tests\py_bfs.py') 
 Copy-Item (Join-Path $root 'tools\tests\irq_drv_test.sh') (Join-Path $dst 'tests\irq_drv_test.sh') -Force
 Copy-Item (Join-Path $root 'tools\tests\fpga_vs_c.sh') (Join-Path $dst 'fpga_vs_c.sh') -Force
 Copy-Item (Join-Path $root 'python\fogccc.py') (Join-Path $dst 'py\fogccc.py') -Force
+Copy-Item (Join-Path $root 'tools\tests\four_way_c_build.py') (Join-Path $dst 'tests\four_way_c_build.py') -Force
+Copy-Item (Join-Path $root 'tools\tests\four_way_dma_build.py') (Join-Path $dst 'tests\four_way_dma_build.py') -Force
+Copy-Item (Join-Path $root 'tools\build_routes\fpga_build_routes.sh') (Join-Path $dst 'fpga_build_routes.sh') -Force
 
 Get-ChildItem $dst -Recurse -Directory -Filter '__pycache__' |
     Remove-Item -Recurse -Force

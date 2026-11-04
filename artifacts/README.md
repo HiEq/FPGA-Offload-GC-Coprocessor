@@ -28,10 +28,14 @@ serial_push_resume.ps1 也会自己 mkdir + mount）。两条路径是同一个�
 | fpga_vs_python.sh | 主测试入口（8 轮），需同级 fpga_vs_python.py |
 | fpga_vs_python_repeat.sh | 重复测量（多个种子 + 固定种子 5 次）|
 | fpga_vs_c.sh | FPGA vs C 计数对比，调用 bin/test_main |
+| fpga_build_routes.sh | C/DMA 建图验证入口（C 验证、DMA 验证、两组四路对比）|
 | fpga_vs_python.py | GC 测试主体，--seed 可复现 |
 | README.txt | 卡上目录说明 |
 | bin/test_main | 板级 C 测试套件 |
+| bin/verify_c_build / bin/verify_dma_build | C 直接/缓存建图与 PL330 DMA 建图验证 |
+| bin/dma_build_one | 四路对比用的单图 DMA 构建工具 |
 | ko/fogccc-irq.ko | IRQ_F2P[0] 内核模块，由 PetaLinux 构建产出；不入库，随 card-userdata.zip 发布（vermagic 与已发布的 image.ub 严格配对）|
+| ko/fogccc_dma.ko | 建图 staging 模块（/dev/fogccc_dma，256 KiB coherent buffer），按同一内核构建 |
 | tests/side_table_test.py | 容器图（真解释器 tp_traverse 边界）→「对象头+引用数组」的板级对照 |
 | tests/irq_drv_test.sh | 中断驱动端到端验证 |
 | tests/abort_test.py | CTRL[3] abort 的五段验收（基线/控制组/打断/同一张图恢复/换图恢复） |
@@ -42,6 +46,7 @@ serial_push_resume.ps1 也会自己 mkdir + mount）。两条路径是同一个�
 | tests/ctrl_spill_test.py | CTRL 写重投递的溢出防护验证 |
 | tests/dirty_api_test.py | 阶段 3A 的 C 驱动 + ctypes 绑定接口验收（含 --neg 反向验证） |
 | tests/py_bfs.py | Python BFS 参照（独立 oracle，fpga_vs_python.sh 用） |
+| tests/four_way_c_build.py / tests/four_way_dma_build.py | 四路对比的建图变体（C 建图 / DMA 建图），增加 build_ms 与 e2e_ms 列 |
 | py/fogccc.py + py/libfogccc.so | Python ctypes 绑定，含 STATUS 与位图探针 |
 
 日志不在本目录，三个 fpga_vs_*.sh 入口各自写入卡上 logs/＜脚本名＞_＜时间＞.log。
@@ -65,7 +70,8 @@ serial_push_resume.ps1 也会自己 mkdir + mount）。两条路径是同一个�
 - USERDATA 必须为 FAT32；内核未启用 exFAT。
 - image.ub 非位级可复现（gzip 时间戳），以功能验证为准。
 
-两个随卡二进制（`bin/test_main`、py/libfogccc.so）的 SHA256 记录在 artifacts/SHA256SUMS。
+六个随卡二进制的 SHA256 记录在 artifacts/SHA256SUMS（`bin/` 四个程序与 `py/libfogccc.so`、
+`ko/fogccc_dma.ko`）。
 
 用 `tools/make_manifest.ps1` 重新生成；CI 执行 -Check，二进制改了但 manifest 没更新会直接失败。
 

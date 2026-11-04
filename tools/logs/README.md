@@ -25,6 +25,8 @@
 2026-10-24：镜像由板端串口写入（本机工具，不入库；回读 sha256 一致），断电上电后落在 fogccclinux 完成复验与全套回归。
 board_phase3_dirty_api.log 与 board_dirty_api.log 记录的是同一脚本、同一镜像，已删除前者。
 2026-10-25：v4.5 镜像（根集可读回 + 写后校验）通过真实断电上电完成全链复验，启动文本见 board_coldboot_20261025_v45.raw.log；board_coldboot_20261025.raw.log（v4.4）与 10-24 的两份（v4.3）保留作对照。
+2026-11-04：C/DMA 建图验证在 v4.13 镜像（BOOT d20530bc… / image.ub c958eac9…）上跑完，
+只新建图路径，不改标记基线；日志 board_build_routes_*。
 
 v4.13 起测试脚本按内容改名：run_gc.sh → fpga_vs_python.sh、run_repeat.sh →
 fpga_vs_python_repeat.sh、gc_test.py → fpga_vs_python.py、three_way.py →
@@ -93,6 +95,11 @@ fpga_vs_c_vs_python.py。表中「命令」列记录产生该日志时的真实�
 | board_regs_aww_verified.log | 同脚本 --verified（标签回查 + 重试），重启后第一个跑 | retries=0 giveups=0 却仍 loss=[8]（3 次启动 3 次）⇒ **标签回查不足以证明 id 落地**（伪造记录可复用同一个 4 位 tag）；暖轮仍 loss 0/14 | AGENTS #20（A 侧负结果）|
 | board_regs_aww_probe_forge_20261023.log | 同上脚本的早期版本 | 每轮都多标 id 0（其 WDATA=0 来自位图探测写）⇒ 暖机期也会发生 AW/W 错配，方向是**多标**（安全）| AGENTS #20（暖机侧证据）|
 | xsim_regs_aww_20261025.log | sim\run_regs_aww_tb.bat | gc_regs 的 AW/W 契约：配对写正确 / 重复投递只算一次 / 无 AW 时不消费 W（P1–P3）+ **P4/P6 负控**（无标记的 W 不产生记录、不触发 START）+ P5 回执 ⇒ PASS | AGENTS #20/#23 |
+| board_build_routes_c.log | tools/build_routes/run_c_build.ps1 | C_BUILD_RESULT OK；direct 5.365 ms、cached 2.083 ms；marked=3766 bitmap_bad=0 | README §1/§4 |
+| board_build_routes_dma.log | tools/build_routes/run_dma_build.ps1 | DMA_BUILD_RESULT OK；build 1.911 + staging 0.149 + DMA 0.204 ms（total 2.254 ms）；marked=3766 bitmap_bad=0 | README §1/§4 |
+| board_build_routes_four_way_c.log | python3 tests/four_way_c_build.py | C_FOUR_WAY_RESULT OK；4000 对象 C 建图 4.966 ms、FPGA 646.0 us、端到端 5.612 ms | README §1 |
+| board_build_routes_four_way_dma.log | python3 tests/four_way_dma_build.py | DMA_FOUR_WAY_RESULT OK；DMA 建图 5.172 ms、FPGA 645.1 us、端到端 5.817 ms | README §1 |
+| board_build_routes_card.log | sh fpga_build_routes.sh（实际 USERDATA）| 两项验证 + 两组四路全 OK；BUILD_ROUTES_DONE、CARD_RUN_RC=0 | README §2/§4 |
 | xsim_freelist_20261022.log | 已退役的独立 tb_freelist 台架 | 273 errors（台架期望过期，非 RTL 缺口）；台架源与 runner 已移除 | 退役说明 |
 
 **测量条件**：2026-10-22 起不再保留解释器计时方式的日志（AGENTS #10）。本目录只有

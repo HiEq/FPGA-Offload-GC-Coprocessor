@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v4.14 | 2026-11-04 | C/DMA 建图验证（源码、脚本、卡上分发与证据日志），镜像同 v4.13 | `v4.14` |
 | v4.13 | 2026-10-27 | 文档与测试脚本整理（重命名、自动日志、800 MHz 数据），镜像同 v4.12 | `v4.13` |
 | v4.12 | 2026-10-27 | vim-tiny 取代 busybox vi、lf 用 vim 打开、CPU 百分比统一 | `9ff18a0` |
 | v4.11 | 2026-10-27 | 去掉 tmux DA2 应答乱码、Byobu 欢迎语、修好 lf 打开文件 | `c71ed5f` |
@@ -22,7 +23,32 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.13（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.12 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版只有两个：v4.7 与 v4.13。
+GitHub Latest 指向 v4.14（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.13 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版为 v4.7 与 v4.14。
+
+---
+
+## v4.14
+
+**变更内容**
+
+- 新增 C/DMA 建图验证：`csrc/build_routes/`（`verify_c_build.c`、`verify_dma_build.c`、`dma_build_one.c`、`build_c.sh`、`build_dma.sh`）、`driver/fogccc_dma/`（`/dev/fogccc_dma`，256 KiB coherent staging + PL330 mem-to-mem ioctl）、`tools/build_routes/`（串口入口、截图控制台、卡上入口）、`tools/tests/four_way_c_build.py` / `four_way_dma_build.py`。
+- 卡上分发：`fpga_build_routes.sh`、`bin/verify_c_build`、`bin/verify_dma_build`、`bin/dma_build_one`、`ko/fogccc_dma.ko`、两个四路脚本；`tools/make_card.ps1`、`tools/make_manifest.ps1`、`tools/make_release_zips.ps1` 同步，`SHA256SUMS` 增加三个程序与一个模块。
+- 文档：`README.md` 增加建图路径结果表与入口，`board-usage.md`、`build.md`、`artifacts/README.md`、`tools/logs/README.md` 同步；`tools/logs/` 新增五份建图日志。
+- 不改 RTL，不改标记基线，也不改 Python BFS 的测量口径；`BOOT.BIN` 与 `image.ub` 与 v4.13 相同。
+
+**验证结果**
+
+- 板级（v4.13 镜像，PS 800 MHz，PL 100 MHz）：`C_BUILD_RESULT OK`（direct 5.365 ms、cached 2.083 ms）、`DMA_BUILD_RESULT OK`（build 1.911 + staging 0.149 + DMA 0.204 = 2.254 ms）；两者均 `marked=3766`、`status=0x0`、`bitmap_bad=0`（`tools/logs/board_build_routes_c.log`、`board_build_routes_dma.log`）。
+- 四路对比：`C_FOUR_WAY_RESULT OK`（4000 对象建图 4.966 ms、FPGA 646.0 µs、端到端 5.612 ms）、`DMA_FOUR_WAY_RESULT OK`（建图 5.172 ms、FPGA 645.1 µs、端到端 5.817 ms）；四个标记计数一致（`board_build_routes_four_way_c.log`、`board_build_routes_four_way_dma.log`）。
+- 卡上实际 USERDATA：`sh fpga_build_routes.sh` 顺序跑完四项，`BUILD_ROUTES_DONE`、`CARD_RUN_RC=0`（`board_build_routes_card.log`）。
+- 仓库契约测试 61/61。
+
+**已知限制**
+
+- 端到端只含“建图 + 标记”，不含驱动、轮询与回读；完整进程级加速比未测量。
+- DMA 是 PS PL330 mem-to-mem，不是 PL AXI DMA；`fogccc_dma.ko` 绑定内核 `6.18.10-xilinx-g4f7afe14f724`，换镜像后需重建。
+- 建图只测 4000 对象单图；更大规模与缓存层级未测。
+- C 缓存路径在卡上复跑时受 cache 状态影响（C-c 可低至 548.1 µs），不影响建图结论。
 
 ---
 

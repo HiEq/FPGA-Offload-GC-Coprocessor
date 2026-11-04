@@ -44,6 +44,20 @@ FPGA 列只含引擎时间（CYCLES / 100 MHz），不含建图与驱动开销�
 **实现范围**：stop-the-world，写 START、轮询 DONE。对象图由 csrc/fpga_gc.c /
 python/fogccc.py 按「对象头 + 引用数组」布局构造；**未接入**任何语言运行时的 gc 模块。
 
+### 建图路径（C / DMA）
+
+标记阶段之外，建图也可以由 C 或 DMA 完成。同一张 4000 对象图、`avg_refs=3`：
+
+| 建图路径 | 建图 | 端到端（+0.645 ms 标记）| 相对 Python 建图 102.85 ms |
+|---|---|---|---|
+| C 直接写 `/dev/mem` | 4.97–5.38 ms | 5.61–6.03 ms | 17–18× |
+| C 缓存构建 + 一次 `memcpy` | 2.04–2.08 ms | 2.69–2.73 ms | 38× |
+| PS PL330 DMA（coherent staging）| 2.25–5.35 ms | 2.90–6.00 ms | 17–36× |
+
+端到端只含“建图 + 标记”，不含驱动、轮询与回读；DMA 是 **PS → PL330 mem-to-mem**，
+不是 PL AXI DMA。四路表中的 FPGA / C / Python 标记基线不变。命令与日志见
+[tools/build_routes/README.md](tools/build_routes/README.md)。
+
 ## 2. 快速开始
 
 ```powershell
@@ -54,6 +68,8 @@ vivado -mode batch -source vivado/build.tcl
 ```bash
 # 板上二进制（PC，PetaLinux SDK）
 SDK_ENV=<sdk> ./csrc/build_c_bins.sh      # test_main / libfogccc.so
+SDK_ENV=<sdk> ./csrc/build_routes/build_c.sh                     # C/DMA 建图三个程序
+SDK_ENV=<sdk> KERNEL_BUILD=<linux build dir> ./csrc/build_routes/build_dma.sh  # fogccc_dma.ko
 ```
 
 卡布局、烧录与上电步骤见 [docs/board-usage.md](docs/board-usage.md)；平台规格、工具链版本、
@@ -67,6 +83,7 @@ sh fpga_vs_c.sh                     # test_main 3 项（FPGA vs C 计数）
 sh fpga_vs_python.sh 4096 8 2       # 8 张随机图，判据 PASSED (all invariants): 8/8
 sh fpga_vs_python_repeat.sh 10      # 10 个种子 + 固定种子 5 次，判据 REPEAT_DONE
 python3 tests/fpga_vs_c_vs_python.py  # 同一张图：FPGA / C（非预取）/ C（缓存友好）/ Python
+sh fpga_build_routes.sh             # C/DMA 建图验证 + 两组四路对比，判据 BUILD_ROUTES_DONE
 ```
 
 宿主回归：
@@ -154,15 +171,20 @@ gc_dirty_fifo 是标记引擎的第二工作源：写 0x440 推入一个 ID，�
 | fpga_vs_python.sh 4096 8 2 | 8/8 |
 | abort_test / abort_sweep / done_race | T1–T5 / 11/11 / P3 失配 0/20（20/20 正确）|
 | fpga_vs_c_vs_python.py（同一张图的四路对比）| THREE_WAY_RESULT OK |
+| 建图路径 C / DMA（4000 对象）| C_BUILD_RESULT OK、DMA_BUILD_RESULT OK、C/DMA_FOUR_WAY_RESULT OK、卡上 BUILD_ROUTES_DONE |
 | tb_flush_data / tb_stale_ar_flush / tb_start_while_busy | PASS（负控对修复前 RTL 全部 FAIL）|
 
 日志索引与逐条出处：[tools/logs/README.md](tools/logs/README.md)。
+建图日志：`tools/logs/board_build_routes_c.log`、`tools/logs/board_build_routes_dma.log`、
+`tools/logs/board_build_routes_four_way_c.log`、`tools/logs/board_build_routes_four_way_dma.log`、
+`tools/logs/board_build_routes_card.log`。
 仿真用例矩阵：[docs/simulation.md](docs/simulation.md)。
 
 ## 5. 发布
 
-当前发布 v4.13（GitHub Latest，800 MHz）。v4.7（667 MHz）为上一个正式版；v4.1–v4.6、
-v4.8–v4.12 为 Pre-release 历史快照。v4.13 只改文档与测试脚本，镜像与 v4.12 相同。
+当前发布 v4.14（GitHub Latest，800 MHz）。v4.13 为上一个正式版；v4.1–v4.12 为 Pre-release
+历史快照。v4.14 新增 C/DMA 建图验证源码、脚本与日志，BOOT.BIN 与 image.ub 与 v4.13 相同；
+card-userdata.zip 相应增加三个程序和 `fogccc_dma.ko`。
 
 BOOT.BIN 与 image.ub 不入库，随 Release 发布（再分发限制见 [NOTICE](NOTICE)）。
 BOOT.BIN、image.ub 放 BOOT 分区根目录；card-boot.zip 与 card-userdata.zip 分别解压到
@@ -173,7 +195,7 @@ BOOT 与 USERDATA 根目录。
 | BOOT.BIN | 18,582,724 B | d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd |
 | image.ub | 47,762,547 B | c958eac9970c3a4ddeb333a98922169801b484c706bbd77cf6bc8cbfd29c329f |
 | card-boot.zip | 5,176 B | 6844e8612cafca02cee44696ca6948ee345e1a2d2d11e7aaf77eac6a99764e6a |
-| card-userdata.zip | 94,305 B | 7a5ba950097bf0b4c87ff73819c647f3913dbb755a7c8f0685c9286426002f9c |
+| card-userdata.zip | 139,184 B | c3fa49376d0e75c60c939c8e3200b1961090f99476af452e53f2440fe3e38fd2 |
 
 校验：四个资产与 SHA256SUMS.release 同目录，执行 `sha256sum -c SHA256SUMS.release`。
 各版本变更与限制见 [docs/releases.md](docs/releases.md)，卡布局与上电见
@@ -185,12 +207,12 @@ vermagic=6.18.10-xilinx-g4f7afe14f724 配对。
 ```
 rtl/       顶层 + 寄存器 + BFS 引擎 + 位图/队列/free-list/脏 FIFO + AXI 读
 sim/       自检 testbench、定向 TB、AXI 协议检查器
-csrc/      驱动、test_main、Python BFS 参照
-driver/    IRQ_F2P 内核模块
+csrc/      驱动、test_main、Python BFS 参照、build_routes/（C/DMA 建图）
+driver/    IRQ_F2P 内核模块、fogccc_dma/（建图 staging）
 python/    ctypes 绑定
 vivado/    BD + 综合/实现脚本
 petalinux/ 镜像配方与构建脚本
-tools/     串口与上板脚本、测试、日志
+tools/     串口与上板脚本、测试、build_routes/、日志
 artifacts/ 卡上产物与二进制清单（BOOT.BIN/image.ub 不入库）
 docs/      构建、上板、测量、仿真、设计细节
 tests/     仓库契约测试
@@ -202,7 +224,7 @@ tests/     仓库契约测试
 | 指南推荐 | 本仓库 | 内容 |
 | --- | --- | --- |
 | README.md | README.md | 项目简介与复现步骤 |
-| src/ | rtl/、csrc/、driver/、python/ | PL 源码、C 驱动与 test_main、内核模块、ctypes 绑定 |
+| src/ | rtl/、csrc/、driver/、python/ | PL 源码、C 驱动与 test_main、C/DMA 建图验证、内核模块、ctypes 绑定 |
 | sim/ | sim/ | 自检 testbench、定向用例、AXI 协议检查器 |
 | build/ | vivado/、petalinux/、Makefile | 位流与镜像的构建脚本、综合与实现报告 |
 | board/ | tools/、tools/logs/ | 串口与上板脚本、逐次实测日志 |
