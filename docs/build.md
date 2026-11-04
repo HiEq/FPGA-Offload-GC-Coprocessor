@@ -40,7 +40,10 @@ cd vivado && vivado -mode batch -source build.tcl
 
 # 板上二进制（PC）
 SDK_ENV=<sdk> ./csrc/build_c_bins.sh    # test_main / libfogccc.so
+SDK_ENV=<sdk> ./csrc/build_routes/build_c.sh    # verify_c_build / verify_dma_build / dma_build_one
+SDK_ENV=<sdk> KERNEL_BUILD=<linux build dir> ./csrc/build_routes/build_dma.sh   # fogccc_dma.ko
 powershell -File tools/make_manifest.ps1
+powershell -File tools/make_release_zips.ps1
 ```
 
 约束：
@@ -50,6 +53,7 @@ powershell -File tools/make_manifest.ps1
 2. 产物须为 ARM：`file libfogccc.so` 含 `ARM, EABI5`。
 3. SDK sysroot 与发布镜像同为 glibc 2.39。
 4. Python 只用标准库（`ctypes`、`mmap`、`struct`、`time`、`random`、`sys`）。
+5. `fogccc_dma.ko` 必须与板卡内核 `6.18.10-xilinx-g4f7afe14f724` 的构建树匹配；换镜像后重建。
 
 `tools/vivado_affinity.ps1` 可在构建期间调整 Vivado 子进程的 CPU 亲和性与优先级；按命令行里的
 运行目录识别 synth/place/route 阶段，vivado 退出后自行结束。
@@ -61,12 +65,14 @@ rtl/          gc_top / gc_regs / gc_mark_engine / gc_bitmap / gc_queue /
               gc_freelist / gc_dirty_fifo / gc_axi_read
 sim/          tb_gc_top、定向 TB（axi_read / runstart / cmdfifo / regs_aww / hand-over）、
               axi_proto_check.v、run_*.bat|sh
-csrc/         fpga_gc.[ch]、test_main.c、py_bfs.py、build_c_bins.sh
+csrc/         fpga_gc.[ch]、test_main.c、py_bfs.py、build_c_bins.sh、
+              build_routes/（C/DMA 建图源码与 build_c.sh / build_dma.sh）
 python/       fogccc.py（ctypes 绑定）
 vivado/       build.tcl（BD + 综合 + 实现 + XSA）、build_rtl_only.tcl
 tools/        serial_*.ps1、push_tests.ps1、make_manifest/card/release_*、
-              reproduce_all.ps1、tests/（板上测试）、debug/（调试脚本）、logs/（证据）
-driver/       fogccc_irq.c + PetaLinux 模块 recipe
+              reproduce_all.ps1、tests/（板上测试）、build_routes/（C/DMA 建图入口）、
+              debug/（调试脚本）、logs/（证据）
+driver/       fogccc_irq.c + PetaLinux 模块 recipe、fogccc_dma/（建图 staging 模块）
 petalinux/    工程骨架与构建脚本（BUILD_GUIDE.md）
 artifacts/    卡上产物、SHA256SUMS（二进制清单）
 docs/         构建、上板、测量、仿真、性能历史、设计细节

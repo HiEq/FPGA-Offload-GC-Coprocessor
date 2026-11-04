@@ -7,7 +7,7 @@
 | 分区 | 卷标 | 内容 |
 |---|---|---|
 | p1 | `BOOT` | `BOOT.BIN`、`image.ub`，解压 `card-boot.zip`（`boot.scr` / `uEnv.txt` / `mount_data.sh` / `system.dtb`）|
-| p2 | `USERDATA` | 解压 `card-userdata.zip`（`fpga_vs_*.sh` / `fpga_vs_python.py` / `bin/` / `py/` / `tests/` / `ko/`）|
+| p2 | `USERDATA` | 解压 `card-userdata.zip`（`fpga_vs_*.sh` / `fpga_build_routes.sh` / `fpga_vs_python.py` / `bin/` / `py/` / `tests/` / `ko/`）|
 
 `USERDATA` 必须是 FAT32（内核未编 exFAT）。Windows 图形界面无法创建 >32 GB 的 FAT32，
 可用 `mkfs.vfat -F 32 -n USERDATA /dev/mmcblk0p2`。
@@ -95,7 +95,18 @@ cd /run/media/USERDATA-mmcblk0p2 && python3 tests/fpga_vs_c_vs_python.py
 FPGA us 只含引擎时间，C 的时间在 C 内计时，Python 列是量级参照。
 数据表见 [measurement.md](measurement.md)。
 
-### 5. 重复性测试
+### 5. C / DMA 建图验证
+
+```sh
+cd /run/media/USERDATA-mmcblk0p2 && sh fpga_build_routes.sh
+```
+
+顺序执行 C 建图验证、DMA 建图验证、C 建图四路对比、DMA 建图四路对比。需要 root；脚本自行
+`insmod` / `rmmod ko/fogccc_dma.ko`，退出时也会卸载。末行 `BUILD_ROUTES_DONE` 表示四项都跑完，
+逐项判据见下文。单跑、截图控制台与 `-Build` 见
+[`tools/build_routes/README.md`](../tools/build_routes/README.md)。
+
+### 6. 重复性测试
 
 ```sh
 sh fpga_vs_python_repeat.sh 10          # 默认 10 次
@@ -103,7 +114,7 @@ sh fpga_vs_python_repeat.sh 10          # 默认 10 次
 
 两组：不同种子 vs Python 参照、同种子 5 次；末行 `REPEAT_DONE`。
 
-### 6. 单独调用
+### 7. 单独调用
 
 ```sh
 python3 fpga_vs_python.py 4096 8 2 --seed 12345   # 指定种子可复现
@@ -118,7 +129,7 @@ python3 tests/dirty_leftover_test.py       # 残留屏障记录 ⇒ 必须 flush
 insmod ko/fogccc-irq.ko                    # 仅插驱动
 ```
 
-### 7. 结果判读
+### 8. 结果判读
 
 | 关键行 | 含义 |
 |---|---|
@@ -126,13 +137,16 @@ insmod ko/fogccc-irq.ko                    # 仅插驱动
 | `CONTRACT_RESULT OK` | free-list 软件契约（扫描中探针 / 早读 / 扫描中重新执行）符合文档 |
 | `DIRTY_SET_RESULT OK` / `DIRTY_CONCURRENT_RESULT OK` | 脏集/增量标记（含并发 remark）与 CPU oracle 一致 |
 | `CTRL_SPILL_RESULT OK` | 卡上位流含 `CTRL` 写重投递防护 |
+| `C_BUILD_RESULT OK` / `DMA_BUILD_RESULT OK` | C / DMA 建图路径的布局、软件 BFS 与硬件 bitmap 一致 |
+| `C_FOUR_WAY_RESULT OK` / `DMA_FOUR_WAY_RESULT OK` | 四路对比的四个标记计数一致，建图列有值 |
+| `BUILD_ROUTES_DONE` | 卡上 C/DMA 建图四项均执行完毕 |
 | `IRQ_DRIVEN_DONE_OK` | 中断通路正常 |
 | `REPEAT_DONE` | 重复性测试完成 |
 | `MISMATCH` / `FAIL` / `FAILED` | 失败 |
 
 日志：`/mnt/userdata/logs/fpga_vs_python_run_<日期>_<时间>.log`。
 
-### 8. 常见问题
+### 9. 常见问题
 
 - `sh: fpga_vs_python.sh: No such file or directory` → 当前目录不是数据分区；先
   `cd /run/media/USERDATA-mmcblk0p2`，或改用绝对路径

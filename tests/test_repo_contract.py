@@ -17,6 +17,10 @@ BINARY_ALLOWED = {
     "artifacts/boot.scr",
     "artifacts/userdata/bin/test_main",
     "artifacts/userdata/py/libfogccc.so",
+    "artifacts/userdata/bin/verify_c_build",
+    "artifacts/userdata/bin/verify_dma_build",
+    "artifacts/userdata/bin/dma_build_one",
+    "artifacts/userdata/ko/fogccc_dma.ko",
 }
 MAX_TRACKED_BYTES = 1 << 20
 

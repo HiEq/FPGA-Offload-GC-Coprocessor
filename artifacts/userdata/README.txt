@@ -6,12 +6,17 @@ FOGCCC USERDATA 分区说明
   fpga_vs_python_repeat.sh   重复测量（N 个种子 + 固定种子 5 次）
   fpga_vs_c.sh               FPGA vs C 计数器对比，调用 bin/test_main
   fpga_vs_python.py          GC 测试主体，--seed 可复现
+  fpga_build_routes.sh       C/DMA 建图验证 + 两组四路对比（新增）
 
 bin/
   test_main         板级 C 测试套件：正确性 / 循环图 / 重复根只算一次（3 项）
+  verify_c_build    C 建图：direct / cached + memcpy（新增）
+  verify_dma_build  DMA 建图：cached C -> coherent staging -> PL330（新增）
+  dma_build_one     四路对比用的单图 DMA 构建工具（新增）
 
 ko/
   fogccc-irq.ko     IRQ_F2P[0] 内核模块，仅 tests/irq_drv_test.sh 使用
+  fogccc_dma.ko     建图 staging 模块（PS PL330 mem-to-mem，新增）
 
 py/
   fogccc.py         Python ctypes 绑定，含 STATUS 与位图探针
@@ -30,6 +35,10 @@ tests/
   dirty_api_test.py  阶段 3A C 驱动 + ctypes 绑定验收（含 --neg）
   fpga_vs_c_vs_python.py
                     FPGA / C 未缓存 / C 缓存 / Python 四路，同一张图
+  four_way_c_build.py
+                    C 建图后的四路对比，额外输出 build_ms / e2e_ms（新增）
+  four_way_dma_build.py
+                    DMA 建图后的四路对比，额外输出 build_ms / e2e_ms（新增）
   side_table_test.py / barrier_verify_test.py / regs_aww_board_test.py
                     side table、屏障验证、寄存器写投递（A/B）
   py_bfs.py         Python BFS oracle（fpga_vs_python.sh 用）
@@ -51,6 +60,7 @@ logs/
   sh fpga_vs_python.sh 4096 8 2
   sh fpga_vs_python_repeat.sh 10
   sh fpga_vs_c.sh
+  sh fpga_build_routes.sh           C/DMA 建图 + 四路对比（需 root）
   ./bin/test_main                   需 root
   insmod ko/fogccc-irq.ko
   sh tests/irq_drv_test.sh

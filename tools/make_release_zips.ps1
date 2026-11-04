@@ -8,10 +8,19 @@ $tar  = Join-Path $env:SystemRoot 'System32\tar.exe'
 
 $bootZip = Join-Path $art 'card-boot.zip'
 $userZip = Join-Path $art 'card-userdata.zip'
-Remove-Item $bootZip, $userZip -Force -ErrorAction SilentlyContinue
+Remove-Item $userZip -Force -ErrorAction SilentlyContinue
 
-& $tar -a -c -f $bootZip -C $art boot.scr uEnv.txt mount_data.sh system.dtb
-if ($LASTEXITCODE -ne 0) { throw 'card-boot.zip failed' }
+# system.dtb is a vendor build input and is not tracked; rebuilding card-boot.zip
+# without it would silently ship a smaller archive, so keep the existing one.
+if (Test-Path (Join-Path $art 'system.dtb')) {
+    Remove-Item $bootZip -Force -ErrorAction SilentlyContinue
+    & $tar -a -c -f $bootZip -C $art boot.scr uEnv.txt mount_data.sh system.dtb
+    if ($LASTEXITCODE -ne 0) { throw 'card-boot.zip failed' }
+} elseif (Test-Path $bootZip) {
+    Write-Host 'system.dtb absent: keeping the existing card-boot.zip'
+} else {
+    throw 'card-boot.zip missing and system.dtb absent'
+}
 
 & $tar -a -c -f $userZip -C (Join-Path $art 'userdata') `
     --exclude '__pycache__' --exclude '*.pyc' --exclude 'logs' .
