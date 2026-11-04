@@ -40,7 +40,7 @@ GitHub Latest 指向 v4.14（800 MHz）。v4.7（667 MHz）保留为正式版；
 
 - 板级（v4.13 镜像，PS 800 MHz，PL 100 MHz）：`C_BUILD_RESULT OK`（direct 5.365 ms、cached 2.083 ms）、`DMA_BUILD_RESULT OK`（build 1.911 + staging 0.149 + DMA 0.204 = 2.254 ms）；两者均 `marked=3766`、`status=0x0`、`bitmap_bad=0`（`tools/logs/board_build_routes_c.log`、`board_build_routes_dma.log`）。
 - 四路对比：`C_FOUR_WAY_RESULT OK`（4000 对象建图 4.966 ms、FPGA 646.0 µs、端到端 5.612 ms）、`DMA_FOUR_WAY_RESULT OK`（建图 5.172 ms、FPGA 645.1 µs、端到端 5.817 ms）；四个标记计数一致（`board_build_routes_four_way_c.log`、`board_build_routes_four_way_dma.log`）。
-- 卡上实际 USERDATA：`sh fpga_build_routes.sh` 顺序跑完四项，`BUILD_ROUTES_DONE`、`CARD_RUN_RC=0`（`board_build_routes_card.log`）。
+- 卡上布局（`/tmp/brtest` 等价目录）：`sh fpga_build_routes.sh` 顺序跑完四项，`BUILD_ROUTES_DONE`（`board_build_routes_card.log`）；实际 USERDATA 上复跑同一入口，`CARD_RUN_RC=0`、`BUILD_ROUTES_DONE`（`board_build_routes_card_actual.log`）。
 - 仓库契约测试 61/61。
 
 **已知限制**

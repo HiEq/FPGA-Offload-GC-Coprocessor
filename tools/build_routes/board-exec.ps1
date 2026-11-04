@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string[]]$Cmd,
-    [string]$Port = 'COM3',
+    [string]$Port = 'auto',
     [int]$WaitMs = 30000,
     [int]$LoginWaitMs = 40000,
     [string]$User = 'root',

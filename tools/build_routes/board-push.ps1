@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Src,
     [Parameter(Mandatory=$true)][string]$Dest,
-    [string]$Port = 'COM3',
+    [string]$Port = 'auto',
     [int]$LoginWaitMs = 20000
 )
 $ErrorActionPreference = 'Stop'

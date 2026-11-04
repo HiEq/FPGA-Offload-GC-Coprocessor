@@ -1,5 +1,5 @@
 param(
-    [string]$Port = 'COM3'
+    [string]$Port = 'auto'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot

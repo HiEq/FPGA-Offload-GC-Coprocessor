@@ -1,0 +1,36 @@
+# command: python3 tests/four_way_dma_build.py (pushed to /tmp)
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: 8f914cf   VERSION=0x00040301
+# date: 2026-11-04
+
+rmmod fogccc_dma 2>/dev/null; insmod /tmp/fogccc_dma.ko; chmod +x /tmp/dma_build_one; cd /run/media/USERDATA-mmc
+blk0p2 && python3 /tmp/four_way_dma_build.py
+fogccc_dma: ready size=262144 src_phys=0x3f080000 dev=fogccc_dma
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+  objects   mkd  build ms     HW us    C-u us    C-c us    Py ms  Cu/HW  Cc/HW  Py/HW    e2e ms  verdict
+ ----------------------------------------------------------------------------------------------------------------
+
+       10     9     0.541      44.0       6.5       2.9     0.755    0.1x    0.1x     17x     0.585  OK
+
+       50    47     0.602      48.6      25.9       7.1     2.092    0.5x    0.1x     43x     0.651  OK
+
+      100    96     0.678      56.9      52.6      14.0     3.761    0.9x    0.2x     66x     0.735  OK
+
+      500   474     1.134     114.4     246.7      59.4    17.889    2.2x    0.5x    156x     1.248  OK
+
+     1000   945     1.715     185.1     490.2     121.8    35.894    2.6x    0.7x    194x     1.900  OK
+
+     2000  1882     2.816     340.7    1009.3     275.2    70.370    3.0x    0.8x    207x     3.157  OK
+     4000  3766     5.172     645.1    2027.8     618.1   143.152    3.1x    1.0x    222x     5.817  OK
+
+ DMA build = cached C graph (srand 42) + coherent staging + PL330 DMA;
+ HW us = engine cycles only; C-u/C-c/Py are the same four-way references.
+ e2e ms = DMA build total_ms + HW_us/1000 (no PS init/poll overhead).
+ N=4000: dma_build=5.172 ms  hw=0.645 ms  e2e=5.817 ms  paper_python_e2e=102.845 ms  speedup=17.7x
+THREE_WAY_RESULT OK
+
+DMA_FOUR_WAY_RESULT OK

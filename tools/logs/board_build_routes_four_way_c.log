@@ -1,0 +1,33 @@
+# command: python3 tests/four_way_c_build.py (pushed to /tmp)
+# bitstream: 6D4792448135C3796E3CAA1AD86EEA30   boot.bin: d20530bc3ddbfd01be9cacaeac30618d568b5ec6c180232dab64cf905a3898fd
+# commit: 8f914cf   VERSION=0x00040301
+# date: 2026-11-04
+
+cd /run/media/USERDATA-mmcblk0p2 && python3 /tmp/four_way_c_build.py
+[FOGCCC] Initialized:
+  AXI-Lite regs @ 0x43C00000
+  Graph DDR     @ 0x1E000000 (1MB)
+  MAGIC/VERSION : 0x47434343 / 0x00040301
+[FOGCCC] FPGA initialized successfully
+  objects   mkd  build ms     HW us    C-u us    C-c us     Py ms    Cu/HW  Cc/HW  Py/HW    e2e ms  verdict
+ ----------------------------------------------------------------------------------------------------------------
+
+       10     9     0.568      44.3       6.4       2.8     0.715    0.1x    0.1x     16x     0.612  OK
+
+       50    47     0.600      48.7      25.5       7.3     1.994    0.5x    0.1x     41x     0.648  OK
+
+      100    96     0.666      56.9      52.1      11.7     3.647    0.9x    0.2x     64x     0.723  OK
+
+      500   474     1.128     113.5     244.8      58.8    17.573    2.2x    0.5x    155x     1.242  OK
+
+     1000   945     1.705     184.4     486.3     126.3    35.379    2.6x    0.7x    192x     1.890  OK
+
+     2000  1882     2.769     340.3    1003.7     268.7    69.252    2.9x    0.8x    204x     3.109  OK
+
+     4000  3766     4.966     646.0    2038.2     614.1   140.389    3.2x    1.0x    217x     5.612  OK
+ C build = fpga_gc_build_graph() (direct uncached writes);
+ HW us = engine cycles only; C-u/C-c/Py are the same four-way references.
+ e2e ms = C build_ms + HW_us/1000 (no PS init/poll overhead).
+ N=4000: c_build=4.966 ms  hw=0.646 ms  e2e=5.612 ms  paper_python_e2e=102.845 ms  speedup=18.3x
+THREE_WAY_RESULT OK
+C_FOUR_WAY_RESULT OK

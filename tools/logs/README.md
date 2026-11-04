@@ -99,7 +99,8 @@ fpga_vs_c_vs_python.py。表中「命令」列记录产生该日志时的真实�
 | board_build_routes_dma.log | tools/build_routes/run_dma_build.ps1 | DMA_BUILD_RESULT OK；build 1.911 + staging 0.149 + DMA 0.204 ms（total 2.254 ms）；marked=3766 bitmap_bad=0 | README §1/§4 |
 | board_build_routes_four_way_c.log | python3 tests/four_way_c_build.py | C_FOUR_WAY_RESULT OK；4000 对象 C 建图 4.966 ms、FPGA 646.0 us、端到端 5.612 ms | README §1 |
 | board_build_routes_four_way_dma.log | python3 tests/four_way_dma_build.py | DMA_FOUR_WAY_RESULT OK；DMA 建图 5.172 ms、FPGA 645.1 us、端到端 5.817 ms | README §1 |
-| board_build_routes_card.log | sh fpga_build_routes.sh（实际 USERDATA）| 两项验证 + 两组四路全 OK；BUILD_ROUTES_DONE、CARD_RUN_RC=0 | README §2/§4 |
+| board_build_routes_card.log | cd /tmp/brtest && sh fpga_build_routes.sh（等价布局）| 四项全跑完：C/DMA 验证与两组四路全 OK ⇒ BUILD_ROUTES_DONE | README §2/§4 / docs/releases.md v4.14 |
+| board_build_routes_card_actual.log | sh /run/media/USERDATA-mmcblk0p2/fpga_build_routes.sh（实际 USERDATA）| DMA 四路 OK、BUILD_ROUTES_DONE、CARD_RUN_RC=0（串口只保留到末段）| docs/releases.md v4.14 |
 | xsim_freelist_20261022.log | 已退役的独立 tb_freelist 台架 | 273 errors（台架期望过期，非 RTL 缺口）；台架源与 runner 已移除 | 退役说明 |
 
 **测量条件**：2026-10-22 起不再保留解释器计时方式的日志（AGENTS #10）。本目录只有

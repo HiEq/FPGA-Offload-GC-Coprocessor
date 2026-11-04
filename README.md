@@ -177,7 +177,7 @@ gc_dirty_fifo 是标记引擎的第二工作源：写 0x440 推入一个 ID，�
 日志索引与逐条出处：[tools/logs/README.md](tools/logs/README.md)。
 建图日志：`tools/logs/board_build_routes_c.log`、`tools/logs/board_build_routes_dma.log`、
 `tools/logs/board_build_routes_four_way_c.log`、`tools/logs/board_build_routes_four_way_dma.log`、
-`tools/logs/board_build_routes_card.log`。
+`tools/logs/board_build_routes_card.log`、`tools/logs/board_build_routes_card_actual.log`。
 仿真用例矩阵：[docs/simulation.md](docs/simulation.md)。
 
 ## 5. 发布
