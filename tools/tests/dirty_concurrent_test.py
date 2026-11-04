@@ -101,7 +101,7 @@ class Pusher:
                 if self.tag is None:
                     self.tag = (rr(R_DSTAT) >> 16) & 0xF
                 self.tag = (self.tag + 1) & 0xF
-                wr(R_DPUSH, PUSH_WR_MARK | (self.tag << 12) | (oid & 0xFFF))
+                wr(R_DPUSH, PUSH_WR_MARK | (self.tag << 16) | (oid & 0xFFFF))
                 if not self.ack:
                     return True
                 for _ in range(8):
@@ -148,17 +148,17 @@ def start_epoch(keep):
 def read_marks(n):
     out = []
     for o in range(n):
-        wr(R_BMADDR, o)
+        wr(R_BMADDR, o >> 5)
         _ = rr(R_BMADDR)
         out.append((rr(R_BMDATA) >> (o & 31)) & 1)
     return out
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040301:
-        print('FAIL magic/version 0x%08X/0x%08X (need v4.2)' % (rr(0x30), rr(0x34)))
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00050000:
+        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00050000)' % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040301' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00050000' % rr(0x30))
 
     N, SEED = 1024, 12345
     g = C.build_container_graph(N, SEED)
@@ -288,7 +288,7 @@ def main():
         marks = read_marks(N)
         res['marked'] = {i for i in range(N) if marks[i]}
         fc = rr(R_FCOUNT)
-        res['fids'] = set(rr(R_FDATA) & 0xFFF for _ in range(fc))
+        res['fids'] = set(rr(R_FDATA) & 0xFFFF for _ in range(fc))
         res['touched'] = list(touched)
         return res
 

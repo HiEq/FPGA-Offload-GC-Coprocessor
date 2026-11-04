@@ -67,7 +67,7 @@ def push(oid):
     if tag[0] is None:
         tag[0] = (rr(R_DSTAT) >> 16) & 0xF
     tag[0] = (tag[0] + 1) & 0xF
-    wr(R_DPUSH, PUSH_WR_MARK | (tag[0] << 12) | (oid & 0xFFF))
+    wr(R_DPUSH, PUSH_WR_MARK | (tag[0] << 16) | (oid & 0xFFFF))
 
 
 def wait_done_and_idle(timeout=30.0):
@@ -94,17 +94,17 @@ def start_epoch(keep):
 def read_marks(n):
     out = []
     for o in range(n):
-        wr(R_BMADDR, o)
+        wr(R_BMADDR, o >> 5)
         _ = rr(R_BMADDR)
         out.append((rr(R_BMDATA) >> (o & 31)) & 1)
     return out
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00040301:
-        print('FAIL magic/version 0x%08X/0x%08X (need v4.2)' % (rr(0x30), rr(0x34)))
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00050000:
+        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00050000)' % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040301' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00050000' % rr(0x30))
 
     N, SEEDG = 1024, 12345
     g = C.build_container_graph(N, SEEDG)
@@ -241,7 +241,7 @@ def main():
     marks = read_marks(N)
     marked = {i for i in range(N) if marks[i]}
     fc = rr(R_FCOUNT)
-    fids = set(rr(R_FDATA) & 0xFFF for _ in range(fc))
+    fids = set(rr(R_FDATA) & 0xFFFF for _ in range(fc))
     after = rr(R_DSTAT)
     st = rr(R_STATUS)
     print('fallback full mark: marked=%d oracle=%d | free=%d expect=%d | STATUS=0x%X ovf=%d'
