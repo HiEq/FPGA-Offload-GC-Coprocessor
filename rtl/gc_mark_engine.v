@@ -43,8 +43,9 @@ module gc_mark_engine (
     output reg         bm_we = 1'b0,
 
     // DDR读命令队列接口 (→ gc_axi_read 流 0: 引用读)
-    // addr 为组合输出, 与 iss_idx 同拍
+    // addr 为组合输出, 与 ref_word_idx 同拍
     output wire [31:0] rd_cmd_addr,
+    output wire        rd_cmd_pair,
     output reg         rd_cmd_valid = 1'b0,
     input  wire        rd_cmd_ready,
     input  wire [31:0] rd_data,
@@ -177,7 +178,7 @@ module gc_mark_engine (
     reg [31:0] dq_rc  [0:DQD-1];
     reg [3:0]  dq_head = 4'd0;
     reg [4:0]  dq_cnt  = 5'd0;
-    reg [31:0] iss_idx = 32'd0;
+    reg [31:0] ref_word_idx = 32'd0;   // ref words issued for the head descriptor
     reg [31:0] iss_cnt = 32'd0;      // 已发出的引用读命令总数 (#4 交叉校验用)
     wire [3:0] dq_tail = dq_head + dq_cnt[3:0];
     wire       dq_full = (dq_cnt >= DQD[4:0]);
@@ -198,14 +199,24 @@ module gc_mark_engine (
     wire [31:0] hdr_rc_ok  = hdr_rc_bad ? 32'd0 : hdr_rc_raw;
 
     // 出队事件: 最后一笔已握手, 或该描述符本来就没有引用
-    wire iss_hs   = (dq_cnt != 5'd0) && (iss_idx < dq_rc[dq_head]) && rd_cmd_valid && rd_cmd_ready;
-    wire iss_last = iss_hs && (iss_idx + 32'd1 >= dq_rc[dq_head]);
-    wire iss_zero = (dq_cnt != 5'd0) && (iss_idx >= dq_rc[dq_head]);
+    // Pair the reference stream: one 8-byte beat returns two 32-bit refs, so a
+    // command is issued per two refs while the address stays 8-byte aligned and
+    // two refs remain; a lone trailing ref uses a single-word command.
+    wire [31:0] ref_words_left = (dq_cnt != 5'd0) ? (dq_rc[dq_head] - ref_word_idx) : 32'd0;
+    wire [31:0] ref_addr_cur   = dq_ra[dq_head] + (ref_word_idx << 2);
+    wire        ref_pair_ok    = (ref_addr_cur[2] == 1'b0);
+    wire        ref_use_pair   = (ref_words_left >= 32'd2) && ref_pair_ok;
+    wire [1:0]  ref_cmd_words  = ref_use_pair ? 2'd2 : 2'd1;
+
+    wire iss_hs   = (dq_cnt != 5'd0) && (ref_word_idx < dq_rc[dq_head]) && rd_cmd_valid && rd_cmd_ready;
+    wire iss_last = iss_hs && (ref_word_idx + {30'd0, ref_cmd_words} >= dq_rc[dq_head]);
+    wire iss_zero = (dq_cnt != 5'd0) && (ref_word_idx >= dq_rc[dq_head]);
     wire iss_pop  = iss_last || iss_zero;
 
     // 地址组合输出: 当拍就对应正在呈现的那笔命令
-    assign rd_cmd_addr = ((dq_cnt != 5'd0) && (iss_idx < dq_rc[dq_head]))
-                         ? (dq_ra[dq_head] + iss_idx * 32'd4) : 32'd0;
+    assign rd_cmd_pair = ref_use_pair && (ref_words_left >= 32'd2);
+    assign rd_cmd_addr = ((dq_cnt != 5'd0) && (ref_word_idx < dq_rc[dq_head]))
+                         ? ref_addr_cur : 32'd0;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -218,7 +229,7 @@ module gc_mark_engine (
             issue_ok      <= 1'b0;
             dq_head       <= 4'd0;
             dq_cnt        <= 5'd0;
-            iss_idx       <= 32'd0;
+            ref_word_idx       <= 32'd0;
             rd_cmd_valid  <= 1'b0;
             iss_cnt       <= 32'd0;
             pf_head       <= 3'd0;
@@ -284,16 +295,18 @@ module gc_mark_engine (
 
             if (iss_pop) begin
                 dq_head      <= dq_head + 4'd1;
-                iss_idx      <= 32'd0;
+                ref_word_idx      <= 32'd0;
                 rd_cmd_valid <= 1'b0;
+                // The pop cycle owns the last command's handshake, so its
+                // words must be counted here (the else-branch does not run).
+                if (iss_last) iss_cnt <= iss_cnt + {30'd0, ref_cmd_words};
                 // 最后一笔命令握手同样计数
-                if (iss_last) iss_cnt <= iss_cnt + 32'd1;
             end else if (dq_cnt != 5'd0) begin
-                if (iss_idx < dq_rc[dq_head]) begin
+                if (ref_word_idx < dq_rc[dq_head]) begin
                     rd_cmd_valid <= 1'b1;
                     if (rd_cmd_valid && rd_cmd_ready) begin
-                        iss_idx <= iss_idx + 32'd1;
-                        iss_cnt <= iss_cnt + 32'd1;
+                        ref_word_idx <= ref_word_idx + {30'd0, ref_cmd_words};
+                        iss_cnt      <= iss_cnt + {30'd0, ref_cmd_words};
                     end
                 end else begin
                     rd_cmd_valid <= 1'b0;
@@ -330,7 +343,7 @@ module gc_mark_engine (
                 hdr_cmd_valid <= 1'b0;
                 hdr_second    <= 1'b0;
                 dq_head       <= 4'd0;
-                iss_idx       <= 32'd0;
+                ref_word_idx       <= 32'd0;
                 rd_cmd_valid  <= 1'b0;
                 q_pop         <= 1'b0;
             end

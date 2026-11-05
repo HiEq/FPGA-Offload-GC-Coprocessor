@@ -487,10 +487,10 @@ module tb_gc_top;
             $display("      engine: rd_cmd_valid=%0d rd_cmd_ready=%0d rd_data_valid=%0d rd_data_ready=%0d",
                      dut.u_engine.rd_cmd_valid, dut.u_engine.rd_cmd_ready,
                      dut.u_engine.rd_data_valid, dut.u_engine.rd_data_ready);
-            $display("      scout : st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d iss_idx=%0d hdr_sec=%0d",
+            $display("      scout : st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d ref_word_idx=%0d hdr_sec=%0d",
                      dut.u_engine.sc_state, dut.u_engine.pf_cnt, dut.u_engine.pf_iss,
                      dut.u_engine.pf_head, dut.u_engine.dq_cnt, dut.u_engine.dq_head,
-                     dut.u_engine.iss_idx, dut.u_engine.hdr_second);
+                     dut.u_engine.ref_word_idx, dut.u_engine.hdr_second);
             $display("      dq_rc[0..3]=%0d %0d %0d %0d   dq_ra[0]=%h   ref_count=%0d ref_got=%0d cur=%0d",
                      dut.u_engine.dq_rc[0], dut.u_engine.dq_rc[1],
                      dut.u_engine.dq_rc[2], dut.u_engine.dq_rc[3],
@@ -500,10 +500,10 @@ module tb_gc_top;
         end
 
         // ---- 读统计 ----
-        $display("[TB] DONE @cycles=%0d | scout st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d iss_idx=%0d qh=%0d qt=%0d",
+        $display("[TB] DONE @cycles=%0d | scout st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d ref_word_idx=%0d qh=%0d qt=%0d",
                  dut.u_engine.cycles_r, dut.u_engine.sc_state, dut.u_engine.pf_cnt,
                  dut.u_engine.pf_iss, dut.u_engine.pf_head, dut.u_engine.dq_cnt,
-                 dut.u_engine.dq_head, dut.u_engine.iss_idx,
+                 dut.u_engine.dq_head, dut.u_engine.ref_word_idx,
                  dut.u_queue.head, dut.u_queue.tail);
         $display("[TB] DONE detail | cur=%0d ref_count=%0d ref_got=%0d pf_rc=%0d,%0d,%0d,%0d pf_id=%0d,%0d,%0d,%0d dq_rc=%0d,%0d,%0d,%0d",
                  dut.u_engine.cur_obj, dut.u_engine.ref_count, dut.u_engine.ref_got,
@@ -1174,6 +1174,14 @@ module tb_gc_top;
         end else begin
             axil_rd(R_MARKED, rd_val);
             $display("[TB] T-DIRTY-QFULL done: marked=%0d (expect 4096)", rd_val);
+            begin : qf_pop
+                integer k; integer pc;
+                pc = 0;
+                for (k = 0; k < 4096; k = k + 1)
+                    pc = pc + ((dut.u_bitmap.mem[k >> 5] >> (k % 32)) & 1);
+                $display("[TB] T-DIRTY-QFULL bitmap popcount=%0d (counter says %0d)", pc, rd_val);
+                begin : qf_list integer k2; integer shown; shown = 0; for (k2 = 0; k2 < 4096; k2 = k2 + 1) if (((dut.u_bitmap.mem[k2 >> 5] >> (k2 % 32)) & 1) == 0 && shown < 12) begin $display("[TB]   unmarked id=%0d", k2); shown = shown + 1; end end
+            end
             if (rd_val !== 32'd4096) begin
                 $display("[TB][FAIL] T-DIRTY-QFULL marked=%0d != 4096", rd_val);
                 errors = errors + 1;

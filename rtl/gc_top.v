@@ -213,6 +213,7 @@ module gc_top (
     wire        w_engine_q_clear;
 
     wire [31:0] w_rd_cmd_addr;
+    wire        w_rd_cmd_pair;
     wire        w_rd_cmd_valid, w_rd_cmd_ready;
     wire [31:0] w_rd_data;
     wire        w_rd_data_valid, w_rd_data_ready;
@@ -315,6 +316,7 @@ module gc_top (
         .bm_wdata       (w_bm_wdata),
         .bm_we          (w_bm_we),
         .rd_cmd_addr    (w_rd_cmd_addr),
+        .rd_cmd_pair    (w_rd_cmd_pair),
         .rd_cmd_valid   (w_rd_cmd_valid),
         .rd_cmd_ready   (w_rd_cmd_ready),
         .rd_data        (w_rd_data),
@@ -426,6 +428,7 @@ module gc_top (
 
         .cmd0_valid  (w_rd_cmd_valid),
         .cmd0_addr   (w_rd_cmd_addr),
+        .cmd0_pair   (w_rd_cmd_pair),
         .cmd0_ready  (w_rd_cmd_ready),
         .data0_out   (w_rd_data),
         .data0_valid (w_rd_data_valid),

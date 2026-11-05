@@ -14,6 +14,7 @@ module gc_axi_read #(
 
     input  wire        cmd0_valid,
     input  wire [31:0] cmd0_addr,
+    input  wire        cmd0_pair,
     output wire        cmd0_ready,
     output wire [31:0] data0_out,
     output wire        data0_valid,
@@ -49,7 +50,7 @@ module gc_axi_read #(
     localparam integer PW  = 7;        // 128 深
     localparam integer DEP = 1 << PW;
 
-    reg  [32:0] c0f [0:DEP-1];
+    reg  [33:0] c0f [0:DEP-1];
     reg  [PW-1:0] c0w = 0, c0r = 0;
     wire [PW-1:0] c0cnt = c0w - c0r;
     wire          c0full = (c0cnt >= QD[PW-1:0]);
@@ -79,7 +80,7 @@ module gc_axi_read #(
     assign data1_out   = d1f[d1r];
     assign data1_valid = ~d1empty;
 
-    reg          h0f [0:DEP-1];
+    reg  [1:0]   h0f [0:DEP-1];
     reg  [PW-1:0] h0w = 0, h0r = 0;
     wire [PW-1:0] h0cnt = h0w - h0r;
     wire          h0empty = (h0w == h0r);
@@ -92,7 +93,8 @@ module gc_axi_read #(
     // 总未完成数 (AXI 实际限制是 8 笔, 两条流合起来不能超)
     // 总未完成数在 AR 段之后声明 (它依赖本拍握手的增量计数)
 
-    reg        ar_hi  = 1'b0;      // 当前在 AR 通道上的读的 hi_sel
+    reg        ar_hi  = 1'b0;
+    reg        ar_pair = 1'b0;      // 当前在 AR 通道上的读的 hi_sel
     reg        ar_sel = 1'b0;      // 0 = 引用流, 1 = 对象头流
     wire       ar_hs  = ARVALID && ARREADY;
 
@@ -144,6 +146,7 @@ module gc_axi_read #(
             ARCACHE <= 4'b0011;
             ARPROT  <= 3'b000;
             ar_hi   <= 1'b0;
+            ar_pair <= 1'b0;
             ar_sel  <= 1'b0;
             last_served <= 1'b0;
             err     <= 1'b0;
@@ -163,7 +166,7 @@ module gc_axi_read #(
             // handshaking in that same cycle belongs to the run being dropped,
             // so it must not advance c*w past the reloaded c*r.
             if (cmd0_valid && cmd0_ready && !run_start && !abort) begin
-                c0f[c0w] <= {cmd0_addr[2], cmd0_addr};
+                c0f[c0w] <= {cmd0_pair, cmd0_addr[2], cmd0_addr};
                 c0w <= c0w + 1'b1;
             end
             if (cmd1_valid && cmd1_ready && !run_start && !abort) begin
@@ -177,7 +180,7 @@ module gc_axi_read #(
                     h1f[h1w] <= ar_hi;
                     h1w <= h1w + 1'b1;
                 end else begin
-                    h0f[h0w] <= ar_hi;
+                    h0f[h0w] <= {ar_pair, ar_hi};
                     h0w <= h0w + 1'b1;
                 end
             end
@@ -186,7 +189,8 @@ module gc_axi_read #(
                 if (issue_any) begin
                     if (issue0) begin
                         ar_sel  <= 1'b0;
-                        ar_hi   <= c0f[c0r][2];
+                        ar_hi   <= c0f[c0r][32];
+                        ar_pair <= c0f[c0r][33];
                         ARID    <= 6'd0;
                         ARADDR  <= {c0f[c0r][31:3], 3'b000};   // 8 字节对齐
                         c0r     <= c0r + 1'b1;
@@ -230,10 +234,16 @@ module gc_axi_read #(
                     end
                 end else begin
                     if (!h0empty) begin
-                        d0f[d0w] <= (RRESP == 2'b00)
-                                    ? (h0f[h0r] ? RDATA[63:32] : RDATA[31:0])
-                                    : 32'hFFFFFFFF;
-                        d0w <= d0w + 1'b1;
+                        if (h0f[h0r][1]) begin
+                            d0f[d0w]     <= (RRESP == 2'b00) ? RDATA[31:0] : 32'hFFFFFFFF;
+                            d0f[d0w + 7'd1] <= (RRESP == 2'b00) ? RDATA[63:32] : 32'hFFFFFFFF;
+                            d0w <= d0w + 7'd2;
+                        end else begin
+                            d0f[d0w] <= (RRESP == 2'b00)
+                                        ? (h0f[h0r][0] ? RDATA[63:32] : RDATA[31:0])
+                                        : 32'hFFFFFFFF;
+                            d0w <= d0w + 1'b1;
+                        end
                         h0r <= h0r + 1'b1;
                     end
                 end
