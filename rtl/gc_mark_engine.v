@@ -149,19 +149,19 @@ module gc_mark_engine (
                            ((state == S_REFS_LOOP) & ~refs_done & rd_data_valid);
 
     // 独立状态机提前最多 PD 个对象读头, 结果放入 PD 深暂存环
-    localparam integer PD = 4;                      // 暂存环深度 (2 的幂)
+    localparam integer PD = 8;                      // 暂存环深度 (2 的幂)
 
     reg [19:0] pf_id [0:PD-1];
     reg [31:0] pf_rc [0:PD-1];
     reg [31:0] pf_ra [0:PD-1];
-    reg [1:0]  pf_head = 2'd0;
-    reg [2:0]  pf_cnt  = 3'd0;                      // 已填好的头数
-    reg [2:0]  pf_iss  = 3'd0;                      // 已发起未填好的头数
+    reg [2:0]  pf_head = 3'd0;
+    reg [3:0]  pf_cnt  = 4'd0;                      // 已填好的头数
+    reg [3:0]  pf_iss  = 4'd0;                      // 已发起未填好的头数
     reg        pf_take = 1'b0;                      // 主状态机取走一个头 (单拍)
 
-    wire [1:0] pf_fill_slot = pf_head + pf_cnt[1:0];
-    wire [1:0] pf_iss_slot  = pf_head + pf_cnt[1:0] + pf_iss[1:0];
-    wire       pf_room      = ((pf_cnt + pf_iss) < PD[2:0]);
+    wire [2:0] pf_fill_slot = pf_head + pf_cnt[2:0];
+    wire [2:0] pf_iss_slot  = pf_head + pf_cnt[2:0] + pf_iss[2:0];
+    wire       pf_room      = ((pf_cnt + pf_iss) < PD[3:0]);
 
     reg [7:0] sc_tmo = 8'd0;      // SC_POP timeout (lost pop ack)
     localparam [2:0] SC_IDLE = 3'd0, SC_POP = 3'd1, SC_C1 = 3'd2, SC_C2 = 3'd3, SC_C3 = 3'd4;
@@ -188,8 +188,8 @@ module gc_mark_engine (
     // beat can still be presented in the same cycle; it must not be consumed here.
     wire       hdr_hs     = hdr_data_valid && hdr_data_ready && !abort;
     wire       fill_done  = hdr_hs && hdr_second;
-    wire       take_ok    = pf_take && (pf_cnt != 3'd0);
-    wire [2:0] pf_cnt_nxt = pf_cnt + (fill_done ? 3'd1 : 3'd0) - (take_ok ? 3'd1 : 3'd0);
+    wire       take_ok    = pf_take && (pf_cnt != 4'd0);
+    wire [3:0] pf_cnt_nxt = pf_cnt + (fill_done ? 4'd1 : 4'd0) - (take_ok ? 4'd1 : 4'd0);
 
     // 对象头合法性: ref_count 不可能超过对象上限 4096 (超过 = 头被写坏).
     // 头非法时拒绝并置 err_hdr
@@ -221,9 +221,9 @@ module gc_mark_engine (
             iss_idx       <= 32'd0;
             rd_cmd_valid  <= 1'b0;
             iss_cnt       <= 32'd0;
-            pf_head       <= 2'd0;
-            pf_cnt        <= 3'd0;
-            pf_iss        <= 3'd0;
+            pf_head       <= 3'd0;
+            pf_cnt        <= 4'd0;
+            pf_iss        <= 4'd0;
             sc_tmo <= 8'd0;
         end else begin
             q_pop    <= 1'b0;
@@ -303,10 +303,10 @@ module gc_mark_engine (
             end
 
             pf_cnt <= pf_cnt_nxt;
-            pf_iss <= pf_iss + (issue_ok ? 3'd1 : 3'd0) - (fill_done ? 3'd1 : 3'd0);
+            pf_iss <= pf_iss + (issue_ok ? 4'd1 : 4'd0) - (fill_done ? 4'd1 : 4'd0);
             dq_cnt <= dq_cnt + (fill_done ? 5'd1 : 5'd0) - (iss_pop ? 5'd1 : 5'd0);
             if (take_ok)
-                pf_head <= pf_head + 2'd1;
+                pf_head <= pf_head + 3'd1;
 
             // iss_cnt 与 con_cnt 同在 start 清零; 清零留在本块以避免多驱动
     if ((start && (state == S_IDLE)) || abort) begin   // only when the FSM accepts the start
@@ -318,9 +318,9 @@ module gc_mark_engine (
                 // desync (STATUS[2]) -- and across different graphs it would mark
                 // the previous graph's objects. Board test: abort_test.py T4.
                 dq_cnt  <= 5'd0;
-                pf_cnt  <= 3'd0;
-                pf_iss  <= 3'd0;
-                pf_head <= 2'd0;
+                pf_cnt  <= 4'd0;
+                pf_iss  <= 4'd0;
+                pf_head <= 3'd0;
                 // The prefetch FSM and the issuer must return to idle as well.
                 // Otherwise an abort between SC_C1 and SC_C3 leaves sc_state
                 // mid-sequence (with hdr_cmd_valid asserted) and the next run
@@ -473,7 +473,7 @@ module gc_mark_engine (
                 end
 
                 S_POP: begin
-                    if (pf_cnt != 3'd0) begin
+                    if (pf_cnt != 4'd0) begin
                         cur_obj      <= pf_id[pf_head];
                         ref_count    <= pf_rc[pf_head];
                         ref_addr     <= pf_ra[pf_head];
@@ -486,7 +486,7 @@ module gc_mark_engine (
                         // Phase 3A: 脏集也是工作来源 (队列满时由上面的 pf_cnt 分支自然让路)
                         dirty_obj <= dirty_id;
                         state     <= S_DIRTY_RD;
-                    end else if (q_empty && (pf_iss == 3'd0) && (sc_state == SC_IDLE) && (dq_cnt == 5'd0) && dirty_empty) begin
+                    end else if (q_empty && (pf_iss == 4'd0) && (sc_state == SC_IDLE) && (dq_cnt == 5'd0) && dirty_empty) begin
                         state <= S_DONE;
                     end
                 end
