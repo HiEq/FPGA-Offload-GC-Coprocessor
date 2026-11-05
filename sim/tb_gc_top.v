@@ -244,7 +244,7 @@ module tb_gc_top;
         begin axil_wr(12'h000, 32'hA500_0000 | d); end
     endtask
     task dpush_wr(input [31:0] d);
-        begin axil_wr(12'h440, 32'hA540_0000 | d); end
+        begin axil_wr(12'h440, 32'hA500_0000 | d); end
     endtask
 
     task axil_rd(input [11:0] a, output [31:0] d);
@@ -304,7 +304,7 @@ module tb_gc_top;
     integer     dtag = 0;
     task push_dirty(input [11:0] id);
         begin
-            dpush_wr((32'h0 | (dtag[3:0] << 16)) | {20'h0, id});
+            dpush_wr((32'h0 | (dtag[3:0] << 20)) | {20'h0, id});
             dtag = (dtag + 1) & 4'hF;
         end
     endtask
@@ -1227,8 +1227,8 @@ module tb_gc_top;
         dirty_flush_now;
         repeat (50) @(negedge clk);
         axil_rd(R_DSTAT, rd_val);                // current hardware tag
-        dpush_wr(((rd_val[19:16] + 4'd1) << 16) | 32'd7);
-        dpush_wr(((rd_val[19:16] + 4'd1) << 16) | 32'd7);  // duplicate delivery
+        dpush_wr(((rd_val[23:20] + 4'd1) << 20) | 32'd7);
+        dpush_wr(((rd_val[23:20] + 4'd1) << 20) | 32'd7);  // duplicate delivery
         axil_rd(R_DPUSHED, rd_val);
         $display("[TB] T-DIRTY-TAG duplicate delivery: pushed=%0d (expect 1)", rd_val);
         if (rd_val !== 32'd1) begin
@@ -1240,7 +1240,7 @@ module tb_gc_top;
             $display("[TB][FAIL] T-DIRTY-TAG occupancy=%0d != 1", rd_val[8:0]);
             errors = errors + 1;
         end
-        dpush_wr(((rd_val[19:16] + 4'd1) << 16) | 32'd7);  // changed tag -> accepted
+        dpush_wr(((rd_val[23:20] + 4'd1) << 20) | 32'd7);  // changed tag -> accepted
         axil_rd(R_DPUSHED, rd_val);
         $display("[TB] T-DIRTY-TAG changed tag: pushed=%0d (expect 2)", rd_val);
         if (rd_val !== 32'd2) begin
@@ -1367,7 +1367,7 @@ module tb_gc_top;
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
         $display("[TB] T-ID version=%h (expect 00050000)", rd_val);
-        if (rd_val !== 32'h0005_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        if (rd_val !== 32'h0006_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
@@ -2005,7 +2005,7 @@ module tb_gc_top;
 
     // 看门狗
     initial begin
-        #5_000_000;
+        #20_000_000;
         $display("[TB][FAIL] global timeout");
         $display("      engine state=%0d cur_obj=%0d qh=%0d qt=%0d",
                  dut.u_engine.state, dut.u_engine.cur_obj,

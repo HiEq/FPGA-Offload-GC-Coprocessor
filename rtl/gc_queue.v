@@ -1,31 +1,32 @@
-// gc_queue.v — BFS 工作队列 (BRAM)
+// gc_queue.v - BFS work queue (BRAM), P1 256K: depth 262144, 20-bit ids.
 //
-// 深度 4096 条; 以 count 判空/满.
-// full 由上层处理; rvalid 仅在队列非空时有效.
+// The address/pointer width is 18 bits (2^18 entries), the payload is a 20-bit
+// object id.  Keep the array in a clock-only block: an async-reset block would
+// force Vivado to dissolve it into flip-flops.
 module gc_queue (
     input  wire        clk,
     input  wire        rst_n,
     input  wire        clear,
 
-    input  wire [15:0] waddr,
-    input  wire [15:0] wdata,
+    input  wire [17:0] waddr,
+    input  wire [19:0] wdata,
     input  wire        we,
 
     input  wire        en,
-    output reg  [15:0] rdata,
+    output reg  [19:0] rdata,
     output reg         rvalid,
 
-    output reg  [15:0] head,
-    output reg  [15:0] tail,
+    output reg  [17:0] head,
+    output reg  [17:0] tail,
     output wire        empty,
     output wire        full,
-    output reg  [16:0] count
+    output reg  [18:0] count
 );
 
-    localparam integer DEPTH = 65536;
+    localparam integer DEPTH = 262144;
 
     (* ram_style = "block" *)
-    reg [15:0] mem [0:DEPTH-1];
+    reg [19:0] mem [0:DEPTH-1];
 
     always @(posedge clk) begin
         if (we)
@@ -36,32 +37,30 @@ module gc_queue (
         rdata <= mem[head];
     end
 
-    assign empty = (count == 17'd0);
-    assign full  = (count == DEPTH[16:0]);
+    assign empty = (count == 19'd0);
+    assign full  = (count == DEPTH[18:0]);
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            head   <= 16'd0;
-            tail   <= 16'd0;
+            head   <= 18'd0;
+            tail   <= 18'd0;
             rvalid <= 1'b0;
-            count  <= 17'd0;
+            count  <= 19'd0;
         end else if (clear) begin
-            head   <= 16'd0;
-            tail   <= 16'd0;
+            head   <= 18'd0;
+            tail   <= 18'd0;
             rvalid <= 1'b0;
-            count  <= 17'd0;
+            count  <= 19'd0;
         end else begin
-            // 队列非空才给 rvalid
-            rvalid <= en && (count != 17'd0);
-            if (we && (count != DEPTH[16:0]))
-                tail <= waddr + 16'd1;
-            if (en && (count != 17'd0))
-                head <= head + 16'd1;
+            rvalid <= en && (count != 19'd0);
+            if (we && (count != DEPTH[18:0]))
+                tail <= waddr + 18'd1;
+            if (en && (count != 19'd0))
+                head <= head + 18'd1;
 
-            // 同拍一写一读: 计数不变
-            case ({we && (count != DEPTH[16:0]), en && (count != 17'd0)})
-                2'b10:   count <= count + 13'd1;
-                2'b01:   count <= count - 13'd1;
+            case ({we && (count != DEPTH[18:0]), en && (count != 19'd0)})
+                2'b10:   count <= count + 19'd1;
+                2'b01:   count <= count - 19'd1;
                 default: count <= count;
             endcase
         end

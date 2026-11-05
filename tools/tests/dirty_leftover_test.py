@@ -47,8 +47,8 @@ def push(oid):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00050000:
-        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00050000)' % (rr(0x30), rr(0x34)))
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00060000:
+        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00060000)' % (rr(0x30), rr(0x34)))
         return 1
 
     wr(R_CTRL, CTRL_WR_MARK | CTRL_DIRTY_FLUSH)           # arm the flush ...

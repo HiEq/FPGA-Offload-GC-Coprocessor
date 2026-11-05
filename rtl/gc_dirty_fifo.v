@@ -22,11 +22,11 @@ module gc_dirty_fifo (
     input  wire        rst_n,
 
     input  wire        push,
-    input  wire [15:0] push_id,
+    input  wire [19:0] push_id,
     input  wire        flush,        // 1-cycle: clear contents + overflow
 
     input  wire        pop,          // 1-cycle: the engine consumed one id
-    output wire [15:0] id,           // head id (combinational)
+    output wire [19:0] id,           // head id (combinational)
     output wire [8:0]  count,
     output reg  [15:0] pushed = 16'd0, // accepted since the last flush (R: 0x44C)
     output reg  [15:0] popped = 16'd0, // consumed since the last flush (R: 0x450)
@@ -40,7 +40,7 @@ module gc_dirty_fifo (
     localparam [8:0]   DEPTH9 = DEPTH[8:0];
 
     (* ram_style = "distributed" *)
-    reg [15:0]   mem [0:DEPTH-1];
+    reg [19:0]   mem [0:DEPTH-1];
     reg [AW-1:0] wptr = 8'd0;
     reg [AW-1:0] rptr = 8'd0;
     reg [8:0]    cnt  = 9'd0;

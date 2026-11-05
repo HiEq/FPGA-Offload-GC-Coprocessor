@@ -376,7 +376,7 @@ class FOGCCC:
         """Read the whole bitmap back, one probe round trip per object"""
         if n is None:
             n = self._dev.obj_count
-        return [self.read_mark(i) for i in range(min(n, 65536))]
+        return [self.read_mark(i) for i in range(min(n, 262144))]
 
 
 # ==================== 直接运行: 快速测试 ====================

@@ -54,11 +54,11 @@ def wait_done(timeout=20.0):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00050000:
-        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00050000)'
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00060000:
+        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00060000)'
               % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00050000' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00060000' % rr(0x30))
 
     # a fan: obj0 -> 1..199, every other object has no refs
     for i in range(N):
@@ -92,7 +92,7 @@ def main():
         for _ in range(20000):
             if rr(R_CTRL) & CTRL_DONE:
                 break
-            if (rr(R_QHEAD) & 0xFFFF) != (rr(R_QTAIL) & 0xFFFF):
+            if (rr(R_QHEAD) & 0x3FFFF) != (rr(R_QTAIL) & 0x3FFFF):
                 busy = True
                 break
         if not busy:
@@ -103,7 +103,7 @@ def main():
         if not wait_done():
             print('FAIL run 1: DONE never asserted')
             return 1
-        m1, t1 = rr(R_MARKED), rr(R_QTAIL) & 0xFFFF
+        m1, t1 = rr(R_MARKED), rr(R_QTAIL) & 0x3FFFF
         break
     if m1 is None:
         print('FAIL run 1: could not place CLEAR_Q while the engine was busy')
@@ -122,7 +122,7 @@ def main():
     if not wait_done():
         print('FAIL run 2: DONE never asserted')
         return 1
-    m2, t2 = rr(R_MARKED), rr(R_QTAIL) & 0xFFFF
+    m2, t2 = rr(R_MARKED), rr(R_QTAIL) & 0x3FFFF
     print('run 2 spilled START  : marked=%d q_tail=%d (expect %d / %d)' % (m2, t2, N, N))
     if m2 != N:
         print('FAIL run 2: marked=%d != %d' % (m2, N))

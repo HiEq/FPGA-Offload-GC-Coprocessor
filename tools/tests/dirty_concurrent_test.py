@@ -56,7 +56,7 @@ R_RLIST = 0x40
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 CTRL_BM_KEEP, CTRL_DIRTY_FLUSH = (1 << 4), (1 << 5)
 CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
-PUSH_WR_MARK = 0xA5400000
+PUSH_WR_MARK = 0xA5000000
 STATUS_FREEBUSY, STATUS_ERR = (1 << 5), 0x0F   # STATUS[4] = engine idle
 DSTAT_OVF, DSTAT_COUNT = (1 << 9), 0x1FF
 BASE = C.GRAPH_BASE
@@ -101,7 +101,7 @@ class Pusher:
                 if self.tag is None:
                     self.tag = (rr(R_DSTAT) >> 16) & 0xF
                 self.tag = (self.tag + 1) & 0xF
-                wr(R_DPUSH, PUSH_WR_MARK | (self.tag << 16) | (oid & 0xFFFF))
+                wr(R_DPUSH, PUSH_WR_MARK | (self.tag << 20) | (oid & 0xFFFFF))
                 if not self.ack:
                     return True
                 for _ in range(8):
@@ -155,10 +155,10 @@ def read_marks(n):
 
 
 def main():
-    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00050000:
-        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00050000)' % (rr(0x30), rr(0x34)))
+    if rr(0x30) != 0x47434343 or rr(0x34) != 0x00060000:
+        print('FAIL magic/version 0x%08X/0x%08X (need the 64K image, VERSION 0x00060000)' % (rr(0x30), rr(0x34)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00050000' % rr(0x30))
+    print('magic/version OK: 0x%08X / 0x00060000' % rr(0x30))
 
     N, SEED = 1024, 12345
     g = C.build_container_graph(N, SEED)
@@ -288,7 +288,7 @@ def main():
         marks = read_marks(N)
         res['marked'] = {i for i in range(N) if marks[i]}
         fc = rr(R_FCOUNT)
-        res['fids'] = set(rr(R_FDATA) & 0xFFFF for _ in range(fc))
+        res['fids'] = set(rr(R_FDATA) & 0x3FFFF for _ in range(fc))
         res['touched'] = list(touched)
         return res
 

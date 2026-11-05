@@ -110,8 +110,8 @@ void fpga_gc_close(fpga_gc_t *dev) {
 //   [ref0][ref1]...[0xFFFFFFFF]
 // ============================================================
 int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
-    if (n <= 0 || n > 65536) {
-        printf("ERROR: invalid object count %d (1~65536, hardware limit)\n", n);
+    if (n <= 0 || n > 262144) {
+        printf("ERROR: invalid object count %d (1~262144, hardware limit)\n", n);
         return -1;
     }
 
@@ -296,7 +296,7 @@ void fpga_gc_dirty_push(fpga_gc_t *dev, uint32_t obj_id) {
         dev->dirty_tag_valid = 1u;
     }
     dev->dirty_tag = (dev->dirty_tag + 1u) & 0xFu;
-    dev->regs[REG_DIRTY_PUSH / 4] = GC_PUSH_MARK | (dev->dirty_tag << 16) | (obj_id & 0xFFFFu);
+    dev->regs[REG_DIRTY_PUSH / 4] = GC_PUSH_MARK | (dev->dirty_tag << 20) | (obj_id & 0xFFFFFu);
 }
 
 int fpga_gc_dirty_push_acked(fpga_gc_t *dev, uint32_t obj_id, int retries) {
@@ -563,7 +563,7 @@ uint32_t fpga_gc_sw_mark_cached(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
     // Bitmap probe: packed layout, word (id >> 5), bit (id & 31).
     // The probe port is muxed to the register while the engine is idle.
-    if (obj_id >= 65536u)
+    if (obj_id >= 262144u)
         return 0;
     (void)fpga_gc_wait_freeidle(dev, 10000);
     if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
@@ -578,7 +578,7 @@ uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
 }
 
 uint32_t fpga_gc_q_tail(fpga_gc_t *dev) {
-    return dev->regs[REG_Q_TAIL / 4] & 0xFFFFu;
+    return dev->regs[REG_Q_TAIL / 4] & 0x3FFFFu;
 }
 
 int fpga_gc_wait_idle(fpga_gc_t *dev, int timeout_us) {
@@ -605,14 +605,14 @@ uint32_t fpga_gc_free_count(fpga_gc_t *dev) {
 
 uint32_t fpga_gc_free_pop(fpga_gc_t *dev) {
     /* Reading FREE_DATA pops one id from the PL free-list. */
-    return dev->regs[REG_FREE_DATA / 4] & 0xFFFFu;
+    return dev->regs[REG_FREE_DATA / 4] & 0x3FFFFu;
 }
 
 // ============================================================
 // Dump the bitmap (probe loop, one register round trip per object)
 // ============================================================
 void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
-    if (n > 65536) n = 65536;
+    if (n > 262144) n = 262144;
     printf("Bitmap readback (%d objects):\n", n);
     for (int i = 0; i < n; i++) {
         if (i % 64 == 0) printf("  [%4d] ", i);

@@ -17,7 +17,7 @@
 #define FPGA_BASE_ADDR   0x43C00000UL  // AXI-Lite GP0 基地址
 #define GRAPH_DDR_ADDR   0x1E000000UL  // 对象图存放的DDR物理地址
 #define MAP_SIZE         4096          // 寄存器映射大小 (4KB)
-#define GRAPH_MAP_SIZE   0x400000      // 对象图映射大小 (4MB, P1 64K)
+#define GRAPH_MAP_SIZE   0x800000      // 对象图映射大小 (8MB, P1 256K)
 
 // ==================== 寄存器偏移 ====================
 #define REG_CTRL         0x00   // 控制
@@ -30,7 +30,7 @@
 #define REG_Q_TAIL       0x1C   // 队列尾指针 (只读)
 #define REG_ROOT_LIST    0x40   // 根集数组起始
 #define REG_STATUS       0x20   // [0]=queue overflow [1]=AXI read error [2]=ref desync [3]=bad header
-#define REG_BM_ADDR      0x24   // bitmap probe word address (id>>5, 0..2047)
+#define REG_BM_ADDR      0x24   // bitmap probe word address (id>>5, 0..8191)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
 #define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
 #define REG_VERSION      0x34   // fixed 0x0004_0301 (v4.5: root read-back + command markers)
@@ -43,7 +43,7 @@
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00050000u
+#define FOGCCC_VERSION   0x00060000u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
@@ -64,7 +64,7 @@
 // Command writes must carry their destination in WDATA[31:20]: a mispaired
 // W beat (platform AW/W reorder) then fails the check and is dropped.
 #define GC_CTRL_MARK     0xA5000000u  // CTRL (0x000)
-#define GC_PUSH_MARK     0xA5400000u  // DIRTY_PUSH (0x440)
+#define GC_PUSH_MARK     0xA5000000u  // DIRTY_PUSH (0x440): [31:24] marker, [23:20] tag, [19:0] id
 
 // ==================== 对象图DDR格式 ====================
 //

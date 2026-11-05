@@ -29,13 +29,13 @@ module gc_freelist (
 
     input  wire        start,        // 1-cycle: a new mark run started
     input  wire        done,         // level: mark engine reached S_DONE
-    input  wire [31:0] obj_count,    // 0..65536
+    input  wire [31:0] obj_count,    // 0..262144
 
-    output reg  [10:0] bm_raddr,     // bitmap read address (borrowed port)
+    output reg  [12:0] bm_raddr,     // bitmap read address (borrowed port)
     input  wire [31:0] bm_rdata,     // 1 cycle after bm_raddr
 
     output reg  [31:0] free_count,   // number of ids in the list
-    output wire [15:0] free_data,    // id at the pop pointer
+    output wire [19:0] free_data,    // id at the pop pointer
     input  wire        pop,          // 1-cycle: software consumed one id
     output reg         busy          // 1 while the scanner owns the bitmap
 );
@@ -43,75 +43,75 @@ module gc_freelist (
     localparam [1:0] F_IDLE = 2'd0, F_RD = 2'd1, F_WAIT = 2'd2, F_CHK = 2'd3;
 
     (* ram_style = "block" *)
-    reg [15:0] mem [0:65535];
+    reg [19:0] mem [0:262143];
 
-    reg [15:0] wr_ptr;               // scanner push pointer
-    reg [15:0] rd_ptr;               // software pop pointer
-    reg [16:0] cnt;                  // 0..65536
-    reg [15:0] obj_idx;              // object id being tested
+    reg [17:0] wr_ptr;               // scanner push pointer
+    reg [17:0] rd_ptr;               // software pop pointer
+    reg [18:0] cnt;                  // 0..262144
+    reg [19:0] obj_idx;              // object id being tested
     reg        scan_started;
     reg [1:0]  fsm;
-    reg [15:0] free_data_r;
+    reg [19:0] free_data_r;
 
-    wire [16:0] idx17  = {1'b0, obj_idx};
-    wire [16:0] cnt17  = obj_count[16:0];
-    wire        push   = (fsm == F_CHK) && (idx17 < cnt17) &&
+    wire [19:0] idx19  = {1'b0, obj_idx};
+    wire [19:0] cnt19  = obj_count[19:0];
+    wire        push   = (fsm == F_CHK) && (idx19 < cnt19) &&
                          (bm_rdata[obj_idx[4:0]] == 1'b0);
-    wire        pop_ok = pop && (cnt != 17'd0);
+    wire        pop_ok = pop && (cnt != 19'd0);
 
     assign free_data = free_data_r;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            bm_raddr     <= 11'd0;
+            bm_raddr     <= 13'd0;
             free_count   <= 32'd0;
             busy         <= 1'b0;
             fsm          <= F_IDLE;
-            wr_ptr       <= 16'd0;
-            rd_ptr       <= 16'd0;
-            cnt          <= 17'd0;
-            obj_idx      <= 16'd0;
+            wr_ptr       <= 18'd0;
+            rd_ptr       <= 18'd0;
+            cnt          <= 19'd0;
+            obj_idx      <= 20'd0;
             scan_started <= 1'b0;
         end else if (start) begin
             // A new mark run: drop the previous list and re-arm the scan.
-            wr_ptr       <= 16'd0;
-            rd_ptr       <= 16'd0;
-            cnt          <= 17'd0;
+            wr_ptr       <= 18'd0;
+            rd_ptr       <= 18'd0;
+            cnt          <= 19'd0;
             busy         <= 1'b0;
             scan_started <= 1'b0;
             fsm          <= F_IDLE;
-            bm_raddr     <= 11'd0;
+            bm_raddr     <= 13'd0;
         end else begin
             // Default free_count mirror.
-            free_count <= {15'd0, cnt};
+            free_count <= {13'd0, cnt};
 
             // Push the unmarked ids; pop one id per software read.
             // The memory write itself lives in a clock-only block below:
             // an async-reset block prevents BRAM inference (65536x16 is too
             // large to dissolve into registers).
             if (push) begin
-                wr_ptr      <= wr_ptr + 16'd1;
+                wr_ptr      <= wr_ptr + 18'd1;
             end
             if (pop_ok) begin
-                rd_ptr <= rd_ptr + 16'd1;
+                rd_ptr <= rd_ptr + 18'd1;
             end
-            if (push && !pop_ok)      cnt <= cnt + 17'd1;
-            else if (!push && pop_ok) cnt <= cnt - 17'd1;
+            if (push && !pop_ok)      cnt <= cnt + 19'd1;
+            else if (!push && pop_ok) cnt <= cnt - 19'd1;
 
             case (fsm)
                 F_IDLE: begin
                     if (done && !scan_started) begin
                         scan_started <= 1'b1;
                         busy         <= 1'b1;
-                        obj_idx      <= 16'd0;
+                        obj_idx      <= 20'd0;
                         fsm          <= F_RD;
                     end
                 end
 
                 F_RD: begin
                     // bm_raddr must stay stable through F_WAIT/F_CHK.
-                    if (idx17 < cnt17)
-                        bm_raddr <= obj_idx[15:5];
+                    if (idx19 < cnt19)
+                        bm_raddr <= obj_idx[19:5];
                     fsm <= F_WAIT;
                 end
 
@@ -123,11 +123,11 @@ module gc_freelist (
 
                 F_CHK: begin
                     // bm_rdata is valid for the word addressed in F_RD.
-                    if (idx17 + 17'd1 >= cnt17) begin
+                    if (idx19 + 19'd1 >= cnt19) begin
                         busy <= 1'b0;
                         fsm  <= F_IDLE;
                     end else begin
-                        obj_idx <= obj_idx + 16'd1;
+                        obj_idx <= obj_idx + 20'd1;
                         fsm     <= F_RD;
                     end
                 end
