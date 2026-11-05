@@ -42,10 +42,10 @@ module gc_regs (
     input  wire        err_ovf,       // 队列溢出
     input  wire        err_rd,        // AXI 读响应错误
     input  wire        err_ref,       // 引用流失步
-    input  wire        err_hdr,       // 对象头非法 (ref_count > 262144)
+    input  wire        err_hdr,       // 对象头非法 (ref_count > 1048576)
     input  wire        reg_idle,      // engine_idle: state == S_IDLE
 
-    output reg  [12:0] reg_bm_addr,   // 0x24: 探针地址
+    output reg  [14:0] reg_bm_addr,   // 0x24: 探针地址
     input  wire [31:0] reg_bm_data,   // 0x28: 探针数据
 
     // Phase 2 free-list: 0x38 count, 0x3C pop data
@@ -113,7 +113,7 @@ module gc_regs (
             reg_bm_keep    <= 1'b0;
             reg_dirty_push <= 1'b0;
             reg_dirty_flush<= 1'b0;
-            reg_bm_addr    <= 13'h0;
+            reg_bm_addr    <= 15'h0;
             root_wr_addr   <= 8'h0;
             root_wr_data   <= 32'h0;
             root_we        <= 1'b0;
@@ -162,7 +162,7 @@ module gc_regs (
                     12'h004: reg_obj_base   <= (reg_obj_base   & ~wmask) | (WDATA & wmask);
                     12'h008: reg_obj_count  <= (reg_obj_count  & ~wmask) | (WDATA & wmask);
                     12'h00C: reg_root_count <= (reg_root_count & ~wmask) | (WDATA & wmask);
-                    12'h024: reg_bm_addr    <= (reg_bm_addr & ~wmask[12:0]) | (WDATA[12:0] & wmask[12:0]);
+                    12'h024: reg_bm_addr    <= (reg_bm_addr & ~wmask[14:0]) | (WDATA[14:0] & wmask[14:0]);
                     default: begin
                         if ((awaddr_r >= ROOT_AREA_LO) && (awaddr_r < ROOT_AREA_HI)) begin
                             root_wr_addr <= awaddr_r[9:2] - 8'h10;   // (addr>>2) - 16
@@ -212,10 +212,10 @@ module gc_regs (
                     12'h018: RDATA <= {14'h0, q_head};
                     12'h01C: RDATA <= {14'h0, q_tail};
                     12'h020: RDATA <= {26'h0, reg_free_busy, reg_idle, err_hdr, err_ref, err_rd, err_ovf};
-                    12'h024: RDATA <= {19'h0, reg_bm_addr};
+                    12'h024: RDATA <= {17'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
                     12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic
-                    12'h034: RDATA <= 32'h0006_0000;  // P1 256K: 20-bit ids, packed bitmap
+                    12'h034: RDATA <= 32'h0007_0000;  // P1 256K: 20-bit ids, packed bitmap
                     12'h038: RDATA <= reg_free_count;
                     12'h03C: begin
                         RDATA        <= {12'h0, reg_free_data};

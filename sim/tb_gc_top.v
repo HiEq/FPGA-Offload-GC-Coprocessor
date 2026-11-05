@@ -1294,7 +1294,7 @@ module tb_gc_top;
                 ctrl_wr(32'h1);      // START (bm_keep = 0)
                 guard = 0;
                 race_injected = 1'b0;
-                while (!race_injected && guard < 20000) begin
+                while (!race_injected && guard < 100000) begin
                     @(negedge clk);
                     if (dut.u_engine.state == 5'd7 && dut.u_engine.pf_cnt == 3'd0 &&
                         dut.u_engine.q_empty == 1'b1 && dut.u_engine.pf_iss == 3'd0 &&
@@ -1375,7 +1375,7 @@ module tb_gc_top;
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
         $display("[TB] T-ID version=%h (expect 00050000)", rd_val);
-        if (rd_val !== 32'h0006_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        if (rd_val !== 32'h0007_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.

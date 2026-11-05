@@ -31,7 +31,7 @@ module gc_freelist (
     input  wire        done,         // level: mark engine reached S_DONE
     input  wire [31:0] obj_count,    // 0..262144
 
-    output reg  [12:0] bm_raddr,     // bitmap read address (borrowed port)
+    output reg  [14:0] bm_raddr,     // bitmap read address (borrowed port)
     input  wire [31:0] bm_rdata,     // 1 cycle after bm_raddr
 
     output reg  [31:0] free_count,   // number of ids in the list
@@ -55,7 +55,7 @@ module gc_freelist (
 
     wire [19:0] idx19  = {1'b0, obj_idx};
     wire [19:0] cnt19  = obj_count[19:0];
-    wire        push   = (fsm == F_CHK) && (idx19 < cnt19) &&
+    wire        push   = (fsm == F_CHK) && (idx19 < cnt19) && (cnt < 19'd262144) &&
                          (bm_rdata[obj_idx[4:0]] == 1'b0);
     wire        pop_ok = pop && (cnt != 19'd0);
 
@@ -63,7 +63,7 @@ module gc_freelist (
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            bm_raddr     <= 13'd0;
+            bm_raddr     <= 15'd0;
             free_count   <= 32'd0;
             busy         <= 1'b0;
             fsm          <= F_IDLE;
@@ -80,7 +80,7 @@ module gc_freelist (
             busy         <= 1'b0;
             scan_started <= 1'b0;
             fsm          <= F_IDLE;
-            bm_raddr     <= 13'd0;
+            bm_raddr     <= 15'd0;
         end else begin
             // Default free_count mirror.
             free_count <= {13'd0, cnt};

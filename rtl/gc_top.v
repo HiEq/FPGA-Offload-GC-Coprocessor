@@ -178,9 +178,9 @@ module gc_top (
     wire [18:0] w_q_count;
     wire        w_err_ovf, w_err_ref, w_err_hdr;
 
-    wire [12:0] w_bm_raddr_eng, w_bm_waddr;
-    wire [12:0] w_bm_raddr_eff;
-    wire [12:0] w_regs_bm_addr;
+    wire [14:0] w_bm_raddr_eng, w_bm_waddr;
+    wire [14:0] w_bm_raddr_eff;
+    wire [14:0] w_regs_bm_addr;
     wire [31:0] w_bm_wdata;
     wire [31:0] w_bm_rdata;
     reg  [31:0] w_bm_probe_r = 32'h0;
@@ -188,7 +188,7 @@ module gc_top (
     wire        w_engine_idle;
 
     // Phase 2 free-list
-    wire [12:0] w_free_bm_raddr;
+    wire [14:0] w_free_bm_raddr;
     wire [31:0] w_free_count;
     wire [19:0] w_free_data;
     wire        w_free_pop;

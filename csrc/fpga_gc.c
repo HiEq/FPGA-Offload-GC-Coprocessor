@@ -110,8 +110,8 @@ void fpga_gc_close(fpga_gc_t *dev) {
 //   [ref0][ref1]...[0xFFFFFFFF]
 // ============================================================
 int fpga_gc_build_graph(fpga_gc_t *dev, int n, int avg_refs) {
-    if (n <= 0 || n > 262144) {
-        printf("ERROR: invalid object count %d (1~262144, hardware limit)\n", n);
+    if (n <= 0 || n > 1048576) {
+        printf("ERROR: invalid object count %d (1~1048576, hardware limit)\n", n);
         return -1;
     }
 
@@ -563,7 +563,7 @@ uint32_t fpga_gc_sw_mark_cached(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
     // Bitmap probe: packed layout, word (id >> 5), bit (id & 31).
     // The probe port is muxed to the register while the engine is idle.
-    if (obj_id >= 262144u)
+    if (obj_id >= 1048576u)
         return 0;
     (void)fpga_gc_wait_freeidle(dev, 10000);
     if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
@@ -575,6 +575,35 @@ uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id) {
         return 0xFFFFFFFF;
     uint32_t word = dev->regs[REG_BM_DATA / 4];
     return (word >> (obj_id & 31)) & 1U;
+}
+
+int fpga_gc_read_mark_words(fpga_gc_t *dev, uint32_t first_word,
+                            uint32_t *out, int nwords) {
+    int i;
+
+    if (nwords <= 0 || out == NULL)
+        return 0;
+    if ((uint32_t)nwords > 32768u || first_word + (uint32_t)nwords > 32768u)
+        return -1;
+    if (fpga_gc_wait_freeidle(dev, 10000) != 0)
+        return -1;
+    if (!(dev->regs[REG_STATUS / 4] & STATUS_IDLE))
+        return -1;
+
+    for (i = 0; i < nwords; i++) {
+        uint32_t w = first_word + (uint32_t)i;
+        /* The probe address only selects a bitmap word: verify it periodically
+         * (a mispaired write here shows up as a wrong word, i.e. a loud
+         * mismatch) instead of twice per word. */
+        if ((i & 255) == 0) {
+            if (reg_wr_verified(dev, REG_BM_ADDR, w) != 0)
+                return -1;
+        } else {
+            dev->regs[REG_BM_ADDR / 4] = w;
+        }
+        out[i] = dev->regs[REG_BM_DATA / 4];
+    }
+    return 0;
 }
 
 uint32_t fpga_gc_q_tail(fpga_gc_t *dev) {
@@ -612,7 +641,7 @@ uint32_t fpga_gc_free_pop(fpga_gc_t *dev) {
 // Dump the bitmap (probe loop, one register round trip per object)
 // ============================================================
 void fpga_gc_dump_marks(fpga_gc_t *dev, int n) {
-    if (n > 262144) n = 262144;
+    if (n > 1048576) n = 1048576;
     printf("Bitmap readback (%d objects):\n", n);
     for (int i = 0; i < n; i++) {
         if (i % 64 == 0) printf("  [%4d] ", i);

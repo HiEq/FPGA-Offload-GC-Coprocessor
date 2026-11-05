@@ -36,9 +36,9 @@ module gc_mark_engine (
     output reg         dirty_pop = 1'b0,       // 1-cycle: 消费一个脏 id
     output reg  [31:0] dirty_drained = 32'd0,  // 本 epoch 已消费条数 (start 清零)
 
-    output wire [12:0] bm_raddr,            // 读地址 (组合, 1拍后 bm_rdata 有效)
+    output wire [14:0] bm_raddr,            // 读地址 (组合, 1拍后 bm_rdata 有效)
     input  wire [31:0] bm_rdata,
-    output reg  [12:0] bm_waddr = 13'd0,    // 写地址
+    output reg  [14:0] bm_waddr = 15'd0,    // 写地址
     output reg  [31:0] bm_wdata = 32'd0,
     output reg         bm_we = 1'b0,
 
@@ -67,7 +67,7 @@ module gc_mark_engine (
     // 错误标志 (粘滞, 每次 start 清零)
     output reg         err_ovf = 1'b0,     // 队列写满, 对象没能入队 (#1)
     output reg         err_ref = 1'b0,     // 引用流失步: 消费数 > 发出数 (#4)
-    output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 262144
+    output reg         err_hdr = 1'b0,      // 对象头非法: ref_count > 1048576
 
 
     output wire        engine_idle,
@@ -128,7 +128,7 @@ module gc_mark_engine (
     reg [19:0] dirty_obj = 20'd0;       // Phase 3A: 正在处理的脏 id
     reg [31:0] cycles_r;
     reg [31:0] marked_r;
-    reg [12:0] clr_ptr;
+    reg [14:0] clr_ptr;
     reg [19:0] pf_obj = 20'd0;
     reg        pf_valid = 1'b0;    // 已弹出且头命令已压入, 只等取回
     reg        pf_tried = 1'b0;    // 本对象已经发起过预取 (防重复弹队列)
@@ -195,7 +195,7 @@ module gc_mark_engine (
     // 对象头合法性: ref_count 不可能超过对象上限 4096 (超过 = 头被写坏).
     // 头非法时拒绝并置 err_hdr
     wire [31:0] hdr_rc_raw = pf_rc[pf_fill_slot];
-    wire        hdr_rc_bad = (hdr_rc_raw > 32'd262144);
+    wire        hdr_rc_bad = (hdr_rc_raw > 32'd1048576);
     wire [31:0] hdr_rc_ok  = hdr_rc_bad ? 32'd0 : hdr_rc_raw;
 
     // 出队事件: 最后一笔已握手, 或该描述符本来就没有引用
@@ -373,11 +373,11 @@ module gc_mark_engine (
             ref_stop     <= 1'b0;
             root_idx     <= 32'h0;
             pending_obj  <= 20'h0;
-            clr_ptr      <= 13'h0;
+            clr_ptr      <= 15'h0;
             pf_obj       <= 20'h0;
             pf_valid     <= 1'b0;
             pf_tried     <= 1'b0;
-            bm_waddr     <= 13'h0;
+            bm_waddr     <= 15'h0;
             q_push       <= 1'b0;
             bm_wdata     <= 32'h0;
             bm_we        <= 1'b0;
@@ -421,10 +421,10 @@ module gc_mark_engine (
                     bm_waddr <= clr_ptr;
                     bm_wdata <= 32'h0;
                     bm_we    <= 1'b1;
-                    if (clr_ptr == 13'd8191)
+                    if (clr_ptr == 15'd32767)
                         state <= S_RD_ROOT;
                     else
-                        clr_ptr <= clr_ptr + 13'd1;
+                        clr_ptr <= clr_ptr + 15'd1;
                 end
 
                 S_RD_ROOT: begin

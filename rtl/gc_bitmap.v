@@ -7,16 +7,16 @@
 module gc_bitmap (
     input  wire        clk,
 
-    input  wire [12:0] waddr,
+    input  wire [14:0] waddr,
     input  wire [31:0] din,
     input  wire        we,
 
-    input  wire [12:0] raddr,
+    input  wire [14:0] raddr,
     output reg  [31:0] dout
 );
 
     (* ram_style = "block" *)
-    reg [31:0] mem [0:8191];
+    reg [31:0] mem [0:32767];
 
     always @(posedge clk) begin
         if (we)

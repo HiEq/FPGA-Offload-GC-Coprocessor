@@ -17,7 +17,7 @@
 #define FPGA_BASE_ADDR   0x43C00000UL  // AXI-Lite GP0 基地址
 #define GRAPH_DDR_ADDR   0x1E000000UL  // 对象图存放的DDR物理地址
 #define MAP_SIZE         4096          // 寄存器映射大小 (4KB)
-#define GRAPH_MAP_SIZE   0x800000      // 对象图映射大小 (8MB, P1 256K)
+#define GRAPH_MAP_SIZE   0x2000000      // 对象图映射大小 (32MB, P1 1M)
 
 // ==================== 寄存器偏移 ====================
 #define REG_CTRL         0x00   // 控制
@@ -30,7 +30,7 @@
 #define REG_Q_TAIL       0x1C   // 队列尾指针 (只读)
 #define REG_ROOT_LIST    0x40   // 根集数组起始
 #define REG_STATUS       0x20   // [0]=queue overflow [1]=AXI read error [2]=ref desync [3]=bad header
-#define REG_BM_ADDR      0x24   // bitmap probe word address (id>>5, 0..8191)
+#define REG_BM_ADDR      0x24   // bitmap probe word address (id>>5, 0..32767)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
 #define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
 #define REG_VERSION      0x34   // fixed 0x0004_0301 (v4.5: root read-back + command markers)
@@ -43,7 +43,7 @@
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00060000u
+#define FOGCCC_VERSION   0x00070000u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
@@ -147,6 +147,12 @@ uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint
 // 读取单个对象的标记状态
 // 前置条件: 引擎 idle (STATUS[4]=1); 否则返回 0xFFFFFFFF
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id);
+
+/* Read `nwords` consecutive bitmap words (word = object id >> 5).  One
+ * BM_ADDR write per word, one BM_DATA read; the address is verified every
+ * 256 words.  Returns 0 on success, -1 if the probe is unusable. */
+int fpga_gc_read_mark_words(fpga_gc_t *dev, uint32_t first_word,
+                            uint32_t *out, int nwords);
 
 // 队列尾指针 (只读), 用于 q_tail == marked 的不变量检查
 uint32_t fpga_gc_q_tail(fpga_gc_t *dev);
