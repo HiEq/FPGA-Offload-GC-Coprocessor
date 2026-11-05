@@ -1,9 +1,15 @@
 // gc_bitmap.v - mark bitmap (simple dual-port BRAM, independent R/W addresses)
 //
-// Packed layout (P1 64K): object x = bit (x % 32) of word mem[x / 32].
-// The read port bypasses a same-cycle write to the same word (write-first),
-// so a read-modify-write never observes stale data when a write and a read
-// land on one address in the same cycle.
+// Packed layout (P1 1M): object x = bit (x % 32) of word mem[x / 32].
+//
+// Keep this module *plain*: one clocked write port and one clocked read port.
+// A conditional read (`dout <= mem[raddr]` or `din` on a same-word write) makes
+// Vivado declare ram_style=block infeasible and fall back to LUTRAM, which is
+// both enormous at 1M bits and stalls physical optimisation.
+//
+// The write-first bypass lives in gc_top, where the read address and the write
+// data are pipelined together (see w_bm_rdata_eff there).  That keeps this
+// memory inferable and preserves the 1-cycle read latency the engine expects.
 module gc_bitmap (
     input  wire        clk,
 
@@ -24,10 +30,7 @@ module gc_bitmap (
     end
 
     always @(posedge clk) begin
-        if (we && (waddr == raddr))
-            dout <= din;        // write-first bypass: same-word hazard
-        else
-            dout <= mem[raddr];
+        dout <= mem[raddr];
     end
 
 endmodule

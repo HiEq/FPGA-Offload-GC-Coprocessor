@@ -187,6 +187,23 @@ module gc_top (
     wire        w_bm_we;
     wire        w_engine_idle;
 
+    // Write-first bypass, pipelined to match the bitmap's read latency.
+    // gc_bitmap must stay a plain BRAM (see its header); the engine may read a
+    // word in the same cycle it writes it, and BRAM read-first would hand back
+    // the old word.  Latching the address and the write together lets the
+    // cycle-N+1 consumer see the cycle-N write.
+    reg  [14:0] bm_ra_r = 15'd0;
+    reg  [14:0] bm_wa_r = 15'd0;
+    reg  [31:0] bm_wd_r = 32'd0;
+    reg         bm_we_r = 1'b0;
+    always @(posedge S_AXI_ACLK) begin
+        bm_ra_r <= w_bm_raddr_eff;
+        bm_wa_r <= w_bm_waddr;
+        bm_wd_r <= w_bm_wdata;
+        bm_we_r <= w_bm_we;
+    end
+    wire [31:0] w_bm_rdata_eff = (bm_we_r && (bm_ra_r == bm_wa_r)) ? bm_wd_r : w_bm_rdata;
+
     // Phase 2 free-list
     wire [14:0] w_free_bm_raddr;
     wire [31:0] w_free_count;
@@ -311,7 +328,7 @@ module gc_top (
         .q_empty        (w_q_empty),
         .q_full         (w_q_full),
         .bm_raddr       (w_bm_raddr_eng),
-        .bm_rdata       (w_bm_rdata),
+        .bm_rdata       (w_bm_rdata_eff),
         .bm_waddr       (w_bm_waddr),
         .bm_wdata       (w_bm_wdata),
         .bm_we          (w_bm_we),
@@ -355,7 +372,7 @@ module gc_top (
     assign w_bm_raddr_eff = w_free_busy ? w_free_bm_raddr :
                             (w_engine_idle ? w_regs_bm_addr : w_bm_raddr_eng);
 
-    always @(posedge S_AXI_ACLK) w_bm_probe_r <= w_bm_rdata;
+    always @(posedge S_AXI_ACLK) w_bm_probe_r <= w_bm_rdata_eff;
 
     assign w_clear_q_eff = w_clear_q & w_engine_idle;
 
@@ -380,7 +397,7 @@ module gc_top (
         .done       (w_done),
         .obj_count  (w_obj_count),
         .bm_raddr   (w_free_bm_raddr),
-        .bm_rdata   (w_bm_rdata),
+        .bm_rdata   (w_bm_rdata_eff),
         .free_count (w_free_count),
         .free_data  (w_free_data),
         .pop        (w_free_pop),

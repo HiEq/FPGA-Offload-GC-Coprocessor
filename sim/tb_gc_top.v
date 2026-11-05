@@ -156,6 +156,11 @@ module tb_gc_top;
         .irq_o            (irq)
     );
 
+    // bitmap peek across the four banks (object id or word index)
+    function [31:0] bm_word(input [14:0] w);
+        bm_word = dut.u_bitmap.mem[w];
+    endfunction
+
     // ================= 内存模型 =================
     reg [31:0] mem [0:MEMW-1];
 
@@ -540,7 +545,7 @@ module tb_gc_top;
         // 位图映射: 对象 x → mem[x] 的第 (x%32) 位
         got = 0;
         for (i = 0; i < N; i = i + 1) begin
-            bitv = (dut.u_bitmap.mem[i >> 5] >> (i % 32)) & 32'h1;
+            bitv = (bm_word(i[14:0] >> 5) >> (i % 32)) & 32'h1;
             if (bitv !== expb[i]) begin
                 if (errors < 20)
                     $display("[TB][FAIL] object %0d bitmap=%0d expected=%0d", i, bitv, expb[i]);
@@ -552,7 +557,7 @@ module tb_gc_top;
 
         // 孤岛必须全 0 (多标记检测)
         for (i = N-ISLAND; i < N; i = i + 1) begin
-            bitv = (dut.u_bitmap.mem[i >> 5] >> (i % 32)) & 32'h1;
+            bitv = (bm_word(i[14:0] >> 5) >> (i % 32)) & 32'h1;
             if (bitv) begin
                 $display("[TB][FAIL] island object %0d marked", i);
                 errors = errors + 1;
@@ -740,13 +745,13 @@ module tb_gc_top;
         end
         axil_wr(R_BMADDR, 32'd1);          // id 60 -> word 1, bit 28
         axil_rd(R_BMDATA, rd_val);
-        $display("[TB] T6 probe[id60]=%h (bit28=%0d) bram=%h", rd_val, rd_val[28], dut.u_bitmap.mem[1]);
+        $display("[TB] T6 probe[id60]=%h (bit28=%0d) bram=%h", rd_val, rd_val[28], bm_word(15'd1));
         if (rd_val[28] !== 1'b1) begin
             $display("[TB][FAIL] T6 BM_DATA[id60] bit28 != 1 (probe did not see the bit)");
             errors = errors + 1;
         end
-        if (rd_val !== dut.u_bitmap.mem[1]) begin
-            $display("[TB][FAIL] T6 probe %h != bram %h", rd_val, dut.u_bitmap.mem[1]);
+        if (rd_val !== bm_word(15'd1)) begin
+            $display("[TB][FAIL] T6 probe %h != bram %h", rd_val, bm_word(15'd1));
             errors = errors + 1;
         end
         axil_wr(R_BMADDR, 32'd2);          // ids 64..95, untouched by this case
@@ -1178,9 +1183,9 @@ module tb_gc_top;
                 integer k; integer pc;
                 pc = 0;
                 for (k = 0; k < 4096; k = k + 1)
-                    pc = pc + ((dut.u_bitmap.mem[k >> 5] >> (k % 32)) & 1);
+                    pc = pc + ((bm_word(k[14:0] >> 5) >> (k % 32)) & 1);
                 $display("[TB] T-DIRTY-QFULL bitmap popcount=%0d (counter says %0d)", pc, rd_val);
-                begin : qf_list integer k2; integer shown; shown = 0; for (k2 = 0; k2 < 4096; k2 = k2 + 1) if (((dut.u_bitmap.mem[k2 >> 5] >> (k2 % 32)) & 1) == 0 && shown < 12) begin $display("[TB]   unmarked id=%0d", k2); shown = shown + 1; end end
+                begin : qf_list integer k2; integer shown; shown = 0; for (k2 = 0; k2 < 4096; k2 = k2 + 1) if (((bm_word(k2[14:0] >> 5) >> (k2 % 32)) & 1) == 0 && shown < 12) begin $display("[TB]   unmarked id=%0d", k2); shown = shown + 1; end end
             end
             if (rd_val !== 32'd4096) begin
                 $display("[TB][FAIL] T-DIRTY-QFULL marked=%0d != 4096", rd_val);
