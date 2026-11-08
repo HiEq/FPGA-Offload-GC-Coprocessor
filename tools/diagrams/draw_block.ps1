@@ -48,8 +48,8 @@ function Label([int]$x, [int]$y, [string]$text, [int]$size, $color = $white) {
     $b.Dispose(); $f.Dispose()
 }
 function Frame([int]$x, [int]$y, [int]$w, [int]$h) {
-    Fill $x $y $w $h ([System.Drawing.ColorTranslator]::FromHtml('#3d3d3d'))
-    $pen = New-Object System.Drawing.Pen ([System.Drawing.ColorTranslator]::FromHtml('#6b6b6b')), 3
+    # Outline only: the PS/PL interiors keep the SoC panel background.
+    $pen = New-Object System.Drawing.Pen ([System.Drawing.ColorTranslator]::FromHtml('#262626')), 3
     $g.DrawRectangle($pen, $x, $y, $w, $h)
     $pen.Dispose()
 }
