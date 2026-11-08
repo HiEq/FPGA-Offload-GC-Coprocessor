@@ -32,8 +32,10 @@ FAILS=0
 if [ -t 1 ]; then TTY=1; else TTY=0; fi
 
 bar() {
-    _pct=$(( $1 * 100 / TOTAL ))
-    _fill=$(( $1 * 20 / TOTAL ))
+    # bar <percent 0..100> <message>
+    _pct=$1
+    [ "$_pct" -gt 100 ] && _pct=100
+    _fill=$(( _pct * 20 / 100 ))
     _bar=''
     _i=0
     while [ $_i -lt 20 ]; do
@@ -109,6 +111,13 @@ run_stage() {
     "$@" > "$log" 2>&1 &
     pid=$!
     t0=$(date +%s)
+    case $kind in
+        g1m|wl|tree) exp=20 ;;          # these use the GC-round bar
+        mutate)      exp=5 ;;
+        threads)     exp=5 ;;
+        hello)       exp=3 ;;
+        *)           exp=10 ;;
+    esac
     while kill -0 "$pid" 2>/dev/null; do
         now=$(date +%s)
         el=$((now - t0))
@@ -118,7 +127,22 @@ run_stage() {
             break
         fi
         if [ "$TTY" -eq 1 ]; then
-            bar $((STAGE - 1)) "$(printf '%s %s  %ds' "$tag" "$side" "$el")"
+            case $kind in
+                g1m|wl|tree)
+                    # Three System.gc() rounds print as they finish, so this
+                    # bar is real progress; the others are time estimates.
+                    rounds=$(grep -c 'round=' "$log" 2>/dev/null || true)
+                    [ -z "$rounds" ] && rounds=0
+                    pct=$(( rounds * 100 / 3 ))
+                    msg=$(printf '%s %s  GC %d/3  %ds' "$tag" "$side" "$rounds" "$el")
+                    ;;
+                *)
+                    pct=$(( el * 100 / exp ))
+                    [ "$pct" -gt 96 ] && pct=96
+                    msg=$(printf '%s %s  %ds' "$tag" "$side" "$el")
+                    ;;
+            esac
+            bar "$pct" "$msg"
         fi
         sleep 1
     done
@@ -142,8 +166,8 @@ run_stage() {
 
     if [ "$side" = sw ]; then mk=$(mark_sw "$log"); else mk=$(mark_hw "$log"); fi
     if [ "$TTY" -eq 1 ]; then
-        bar "$STAGE" "$(printf '%s %s  %s %ds' "$tag" "$side" "$res" "$el")"
-        printf '\n'
+        bar 100 "$(printf '%s %s  %s %ds' "$tag" "$side" "$res" "$el")"
+        printf '\n\n'
     else
         printf '  -> %s  %ds\n' "$res" "$el"
     fi
@@ -151,8 +175,11 @@ run_stage() {
         "$tag" "$side" "$res" "$(e2e_of "$kind" "$log" $((el * 1000)))" "$mk" "$ex" >> "$ROWS"
 }
 
-echo "=== self-built workloads: $N nodes, heap 700m (smoke 256m)"
+echo "=== self-built workloads ===================================================="
+echo "    G1M $N | FogcccWorkload $WN | Tree | Mutate | Threads | Hello"
+echo "    heap 700m (smoke 256m) | timeout ${SECS}s per run"
 echo "    logs: $LOG"
+echo
 
 run_stage "G1M $N" hw g1m g1m_hw \
     env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
@@ -188,9 +215,12 @@ run_stage HelloWorld jvm hello hello_hw \
 
 WALL=$(( $(date +%s) - T_START ))
 printf '\n'
+SEP="----------------------------------------------------------"
+printf '%s\n' "$SEP"
 printf '%-22s %-4s %-6s %8s %8s %5s\n' test side result e2e_ms mark_ms extra
+printf '%s\n' "$SEP"
 cat "$ROWS"
-printf '\nresult: %d/%d passed, wall %ds, logs %s\n' \
-    $((TOTAL - FAILS)) "$TOTAL" "$WALL" "$LOG"
+printf '%s\n' "$SEP"
+printf ' %d/%d passed | wall %ds\n' $((TOTAL - FAILS)) "$TOTAL" "$WALL"
 
 if [ "$FAILS" -eq 0 ]; then exit 0; else exit 1; fi
