@@ -20,6 +20,10 @@ echo "=== xvlog ==="
     "$SRC/rtl/gc_mark_engine.v" \
     "$SRC/rtl/gc_axi_read.v" \
     "$SRC/rtl/gc_bitmap.v" \
+    "$SRC/rtl/gc_bitmapN.v" \
+    "$SRC/rtl/gc_lane.v" \
+    "$SRC/rtl/gc_push_arb.v" \
+    "$SRC/rtl/gc_push_fifo.v" \
     "$SRC/rtl/gc_queue.v" \
     "$SRC/rtl/gc_freelist.v" \
     "$SRC/rtl/gc_dirty_fifo.v" \
@@ -38,3 +42,4 @@ grep -q '\[TB\]\[FAIL\]' tb_sim.log && { echo "=== REPORTED FAILURES (see $CACHE
 grep -q '\[TB\] ==================== PASS' tb_sim.log || { echo "=== NO PASS BANNER (see $CACHE/tb_sim.log) ===" >&2; exit 1; }
 echo "=== RUN_SIM DONE ==="
 echo "cache dir: $CACHE"
+

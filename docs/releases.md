@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v5.0 | 2026-11-08 | 1M 对象 / 64 MiB 位流 + JamVM 适配器；1M STW 256 vs 428 ms；6 个 DaCapo 基准 `verify_extra=0` | `v5.0` |
 | v4.14 | 2026-11-04 | C/DMA 建图验证（源码、脚本、卡上分发与证据日志），镜像同 v4.13 | `v4.14` |
 | v4.13 | 2026-10-27 | 文档与测试脚本整理（重命名、自动日志、800 MHz 数据），镜像同 v4.12 | `v4.13` |
 | v4.12 | 2026-10-27 | vim-tiny 取代 busybox vi、lf 用 vim 打开、CPU 百分比统一 | `9ff18a0` |
@@ -23,7 +24,33 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-GitHub Latest 指向 v4.14（800 MHz）。v4.7（667 MHz）保留为正式版；v4.1–v4.6、v4.8–v4.13 标为 Pre-release 历史快照，仍可下载，但不作为推荐版本。正式版为 v4.7 与 v4.14。
+v5.0 为当前版本。GitHub Latest 的切换在发布资产打包后执行；v4.1–v4.13 标为 Pre-release 历史快照，仍可下载。
+
+---
+
+## v5.0
+
+**变更内容**
+
+- RTL：1M 对象 / 64 MiB 图区变体（位图地址 15 位、引用流成对合并、位图驻留 BRAM），寄存器映射不变。
+- 适配器：新增 `jvm-shadow/`（JamVM 补丁、`libjvm.so` 构建脚本、自研负载），标记阶段由 PL 接管。
+- 适配器内部：id 回收与空闲表、重建导出过滤、溢出仅回退当轮、每轮清脏位图、Class 对象登记为硬件根、STW 计时。
+- 文档：`README.md` 增加 DaCapo 与 STW 小节；新增 `docs/jvm-adapter.md`、`jvm-shadow/README.md`、`tools/dacapo_quick.sh`。
+
+**验证结果**
+
+- 板上 1M：`pl_graph=64 MiB`、`fpga_manager=operating`，1,003,857 个对象连续 3 轮 `verify_extra=0`。
+- 1M STW（`G1M 1000000`，`-Xms700m -Xmx700m`）：纯 mark 73.9 vs 350 ms（4.7×）；稳态整次 GC 停顿 256 vs 428 ms（1.67×）；第一次重建轮 1000 ms。
+- DaCapo 9.12-MR1 `-s small`（COLD+verify，700 MB）：6/6 通过、6/6 `verify_extra=0`；纯 mark 2.9–8.3 vs 66.8–75.4 ms（9.6–23×）；端到端 91,682 / 2,542 / 16,958 / 1,618 / 51,148 / 15,441 ms（avrora / luindex / lusearch / pmd / sunflow / xalan）。
+- 日常回归 `tools/dacapo_quick.sh`（luindex、pmd、xalan、lusearch）：4/4 通过，约 75 s。
+
+**已知限制**
+
+- 20 位 id 上限 1,048,576。导出在 mark 之前，两次 GC 之间分配的块数必须小于该值。
+- 数万对象的图不适合 offload：导入、重建与清扫的固定开销大于 CPU mark；默认决策门回退 CPU。
+- `FOGCCC_TAKEOVER_COLD=1` 只在带 verify 时安全（启动期根集不完整）。
+- 运行时内联器在本板不可靠，`libjvm.so` 以 `--disable-int-inlining` 构建。
+- DaCapo 9.12 的 eclipse、fop、jython、h2、batik、tomcat、tradebeans、tradesoap 在基础 JamVM 上不可用。
 
 ---
 

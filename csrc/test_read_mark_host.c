@@ -39,20 +39,27 @@ int main(void) {
     check("busy engine -> sentinel", fpga_gc_read_mark(&dev, 7), 0xFFFFFFFFUL);
     check("busy engine -> BM_ADDR untouched", regs[REG_BM_ADDR / 4], 0);
 
-    /* 2. idle, bit set -> 1, and the probe address is written */
+    /* 2. idle, bit set -> 1, and the probe word address is written */
     memset(regs, 0, sizeof regs);
     regs[REG_STATUS / 4] = STATUS_IDLE;
     regs[REG_BM_DATA / 4] = (1U << 3);
     check("idle, bit set -> 1", fpga_gc_read_mark(&dev, 3), 1);
-    check("idle -> BM_ADDR = obj id", regs[REG_BM_ADDR / 4], 3);
+    check("idle -> BM_ADDR = id >> 5", regs[REG_BM_ADDR / 4], 3 >> 5);
 
     /* 3. idle, bit clear -> 0 */
     check("idle, bit clear -> 0", fpga_gc_read_mark(&dev, 4), 0);
 
     /* 4. out-of-range id -> 0, probe untouched (no sentinel) */
-    regs[REG_BM_ADDR / 4] = 0xFFFF;
-    check("id 4096 -> 0", fpga_gc_read_mark(&dev, 4096), 0);
-    check("id 4096 -> BM_ADDR untouched", regs[REG_BM_ADDR / 4], 0xFFFF);
+    regs[REG_BM_ADDR / 4] = 0x7FFF;
+    check("id 1048576 -> 0", fpga_gc_read_mark(&dev, 1048576u), 0);
+    check("id 1048576 -> BM_ADDR untouched", regs[REG_BM_ADDR / 4], 0x7FFF);
+
+    /* 4b. last valid id maps to the last bitmap word, bit 31 */
+    memset(regs, 0, sizeof regs);
+    regs[REG_STATUS / 4] = STATUS_IDLE;
+    regs[REG_BM_DATA / 4] = (1U << 31);
+    check("id 1048575 -> 1", fpga_gc_read_mark(&dev, 1048575u), 1);
+    check("id 1048575 -> BM_ADDR = 32767", regs[REG_BM_ADDR / 4], 32767);
 
     /* 5. a different bit position in the same word */
     memset(regs, 0, sizeof regs);

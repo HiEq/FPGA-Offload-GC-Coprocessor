@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 rem ============================================================
 rem run_sim.bat - run Vivado xsim on tb_gc_top
@@ -30,9 +30,14 @@ cd /d "%CACHE%"
 echo === xvlog ===
 call "%XV%\xvlog.bat" ^
     "%SRC%\rtl\gc_top.v" ^
+    "%SRC%\rtl\gc_dump.v" ^
     "%SRC%\rtl\gc_mark_engine.v" ^
     "%SRC%\rtl\gc_axi_read.v" ^
     "%SRC%\rtl\gc_bitmap.v" ^
+    "%SRC%\rtl\gc_bitmapN.v" ^
+    "%SRC%\rtl\gc_lane.v" ^
+    "%SRC%\rtl\gc_push_arb.v" ^
+    "%SRC%\rtl\gc_push_fifo.v" ^
     "%SRC%\rtl\gc_queue.v" ^
     "%SRC%\rtl\gc_freelist.v" ^
     "%SRC%\rtl\gc_dirty_fifo.v" ^
@@ -75,3 +80,4 @@ exit /b 1
 :err
 echo === BUILD/SIM FAILED ===
 exit /b 1
+

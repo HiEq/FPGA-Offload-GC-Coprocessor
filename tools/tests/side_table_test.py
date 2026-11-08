@@ -27,7 +27,7 @@ import time
 
 REG_BASE   = 0x43C00000
 GRAPH_BASE = 0x1E000000
-GRAPH_SIZE = 0x100000          # 1 MiB
+GRAPH_SIZE = 0x800000          # 4 MiB (P1 64K)
 HDR_BASE   = 0x0000
 
 R_CTRL, R_OBJ_BASE, R_OBJ_COUNT, R_ROOT_COUNT = 0x00, 0x04, 0x08, 0x0C
@@ -35,12 +35,12 @@ R_MARKED, R_CYCLES, R_Q_HEAD, R_Q_TAIL, R_ROOT_LIST, R_STATUS = 0x10, 0x14, 0x18
 R_BM_ADDR, R_BM_DATA = 0x24, 0x28
 R_MAGIC, R_VERSION = 0x30, 0x34
 R_FREE_COUNT, R_FREE_DATA = 0x38, 0x3C
-MAGIC_VALUE, VERSION_VALUE = 0x47434343, 0x00040301
+MAGIC_VALUE, VERSION_VALUE = 0x47434343, 0x00060000
 
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
 MIN_CYCLES = 4096
-N_MAX_HW = 4096
+N_MAX_HW = 262144
 
 
 def parse_args(argv):
@@ -276,7 +276,7 @@ def run_hw(g, neg, seed):
             break
         time.sleep(0.0002)
     free_count = rr(R_FREE_COUNT)
-    free_ids = [rr(R_FREE_DATA) & 0xFFF for _ in range(free_count)]
+    free_ids = [rr(R_FREE_DATA) & 0x3FFFF for _ in range(free_count)]
 
     hw_marked = rr(R_MARKED)
     hw_cycles = rr(R_CYCLES)
@@ -287,7 +287,7 @@ def run_hw(g, neg, seed):
     bm_bad = 0
     bm_first = -1
     for o in range(g['n']):
-        wr(R_BM_ADDR, o)
+        wr(R_BM_ADDR, o >> 5)
         rr(R_BM_ADDR)
         hb = (rr(R_BM_DATA) >> (o & 31)) & 1
         if hb != full[o]:
@@ -304,8 +304,8 @@ def run_hw(g, neg, seed):
         fails.append('NOT-IDLE')
     if hw_cycles < MIN_CYCLES:
         fails.append('CYCLES<%d' % MIN_CYCLES)
-    if not neg and q_tail != (hw_marked & 0xFFF):
-        fails.append('QTAIL=%d!=%d' % (q_tail, hw_marked & 0xFFF))
+    if not neg and q_tail != (hw_marked & 0x3FFFF):
+        fails.append('QTAIL=%d!=%d' % (q_tail, hw_marked & 0x3FFFF))
     if not neg and bm_bad:
         fails.append('BITMAP=%d first=%d' % (bm_bad, bm_first))
     if not neg and hw_marked != full_count:

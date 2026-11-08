@@ -32,6 +32,7 @@ module axi_proto_check (
     input  wire [5:0]  RID,
     input  wire [1:0]  RRESP,
     input  wire        RVALID,
+    input  wire        RLAST,
     input  wire        RREADY,
 
     output reg  [31:0] errors
@@ -64,9 +65,9 @@ module axi_proto_check (
                     errors <= errors + 1;
                     $display("[AXI][FAIL] ARSIZE=%b (expect 011 = 8 bytes) @%0t", ARSIZE, $time);
                 end
-                if (ARLEN !== 4'd0) begin
+                if (ARLEN > 4'd3) begin
                     errors <= errors + 1;
-                    $display("[AXI][FAIL] ARLEN=%0d (expect 0 = single beat) @%0t", ARLEN, $time);
+                    $display("[AXI][FAIL] ARLEN=%0d (expect 0..3 = up to 4 beats) @%0t", ARLEN, $time);
                 end
                 if (ARBURST !== 2'b01) begin
                     errors <= errors + 1;
@@ -104,8 +105,9 @@ module axi_proto_check (
                 $display("[AXI][FAIL] RVALID with no outstanding AR (RID=%0d) @%0t", RID, $time);
             end
 
-            if (ar_fire && !r_fire)      outstanding <= outstanding + 1;
-            else if (!ar_fire && r_fire && outstanding > 0) outstanding <= outstanding - 1;
+            // one request = ARLEN+1 beats; it stops being outstanding on RLAST
+            if (ar_fire && !(r_fire && RLAST))      outstanding <= outstanding + 1;
+            else if (!ar_fire && r_fire && RLAST && outstanding > 0) outstanding <= outstanding - 1;
 
             p_valid <= ARVALID;
             p_ready <= ARREADY;

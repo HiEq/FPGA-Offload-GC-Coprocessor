@@ -97,6 +97,7 @@ vivado/artifacts_before_p1/
 # 注意：boot.scr 是 mkimage 打的本仓自己的启动脚本，内容不是厂商代码，保留入库。
 # ============================================================
 artifacts/BOOT.BIN
+artifacts/BOOT.BIN_*
 artifacts/zynq_fsbl.elf
 artifacts/system.dtb
 
