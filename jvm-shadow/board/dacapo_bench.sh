@@ -28,8 +28,10 @@ FAILS=0
 if [ -t 1 ]; then TTY=1; else TTY=0; fi
 
 bar() {
-    _pct=$(( $1 * 100 / TOTAL ))
-    _fill=$(( $1 * 20 / TOTAL ))
+    # bar <percent 0..100> <message>
+    _pct=$1
+    [ "$_pct" -gt 100 ] && _pct=100
+    _fill=$(( _pct * 20 / 100 ))
     _bar=''
     _i=0
     while [ $_i -lt 20 ]; do
@@ -37,6 +39,18 @@ bar() {
         _i=$((_i + 1))
     done
     printf '\r  [%s] %3d%%  %s\033[K' "$_bar" "$_pct" "$2"
+}
+
+expected_seconds() {
+    # Typical wall time of one run (JVM start included), from the 2026-11-08
+    # measurements.  Used only to advance the per-benchmark bar.
+    case $1 in
+        luindex)  printf '5' ;;
+        pmd)      printf '5' ;;
+        xalan)    printf '18' ;;
+        lusearch) printf '19' ;;
+        *)        printf '10' ;;
+    esac
 }
 
 e2e_of() {
@@ -80,6 +94,7 @@ run_stage() {
     "$@" > "$log" 2>&1 &
     pid=$!
     t0=$(date +%s)
+    exp=$(expected_seconds "$bench")
     while kill -0 "$pid" 2>/dev/null; do
         now=$(date +%s)
         el=$((now - t0))
@@ -89,7 +104,9 @@ run_stage() {
             break
         fi
         if [ "$TTY" -eq 1 ]; then
-            bar $((STAGE - 1)) "$(printf '%s %s  %ds' "$bench" "$side" "$el")"
+            pct=$(( el * 100 / exp ))
+            [ "$pct" -gt 96 ] && pct=96
+            bar "$pct" "$(printf '%s %s  %ds/%ds' "$bench" "$side" "$el" "$exp")"
         fi
         sleep 1
     done
@@ -115,15 +132,17 @@ run_stage() {
     if [ "$side" = hw ]; then R_MARK=$(mark_hw "$log"); else R_MARK=$(mark_sw "$log"); fi
 
     if [ "$TTY" -eq 1 ]; then
-        bar "$STAGE" "$(printf '%s %s  %s %ds' "$bench" "$side" "$R_RES" "$el")"
-        printf '\n'
+        bar 100 "$(printf '%s %s  %s %ds' "$bench" "$side" "$R_RES" "$el")"
+        printf '\n\n'
     else
         printf '  -> %s  %ds\n' "$R_RES" "$el"
     fi
 }
 
-echo "=== DaCapo 9.12-MR1 -s small: $BENCHES, heap $HEAP"
+echo "=== DaCapo 9.12-MR1 (-s small) ============================================"
+echo "    $TOTAL runs | heap $HEAP | timeout ${SECS}s per run"
 echo "    logs: $LOG"
+echo
 
 for bench in $BENCHES; do
     run_stage "$bench" hw \
@@ -143,16 +162,32 @@ for bench in $BENCHES; do
     else
         ratio=$(awk -v a="$sw_mark" -v b="$hw_mark" 'BEGIN{ if (b + 0 > 0) printf "%.1fx", a / b; else printf "-" }')
     fi
-    printf '%-9s %-5s %-5s %8s %8s %8s %8s %6s %5s\n' \
-        "$bench" "$hw_res" "$sw_res" "$hw_e2e" "$sw_e2e" "$hw_mark" "$sw_mark" "$ratio" "$hw_ex" >> "$ROWS"
+    if [ "$hw_e2e" = - ] || [ "$sw_e2e" = - ]; then
+        e2e_ratio=-
+    else
+        e2e_ratio=$(awk -v a="$sw_e2e" -v b="$hw_e2e" 'BEGIN{ if (b + 0 > 0) printf "%.3fx", a / b; else printf "-" }')
+    fi
+    printf '%-9s %-5s %-5s %8s %8s %7s %8s %8s %7s %5s\n' \
+        "$bench" "$hw_res" "$sw_res" "$hw_e2e" "$sw_e2e" "$e2e_ratio" \
+        "$hw_mark" "$sw_mark" "$ratio" "$hw_ex" >> "$ROWS"
 done
 
 WALL=$(( $(date +%s) - T_START ))
-printf '\n'
-printf '%-9s %-5s %-5s %8s %8s %8s %8s %6s %5s\n' \
-    bench hw sw e2e_hw e2e_sw mark_hw mark_sw ratio extra
+geo() {
+    awk -v c="$1" '{ v=$c; sub(/x$/, "", v); if (v != "-" && v + 0 > 0) { s += log(v); n++ } } END { if (n > 0) print exp(s / n); else print 0 }' "$ROWS"
+}
+
+SEP="-------------------------------------------------------------------------------"
+printf '\n%s\n' "$SEP"
+printf '%-9s %-5s %-5s %8s %8s %7s %8s %8s %7s %5s\n' \
+    bench hw sw e2e_hw e2e_sw e2e_x mark_hw mark_sw mark_x extra
+printf '%s\n' "$SEP"
 cat "$ROWS"
-printf '\nresult: %d/%d passed, wall %ds, logs %s\n' \
-    $((TOTAL - FAILS)) "$TOTAL" "$WALL" "$LOG"
+printf '%s\n' "$SEP"
+_gv=$(geo 9); _ev=$(geo 6)
+_mark=$(awk -v v="$_gv" 'BEGIN{ if (v + 0 > 0) printf "%.1fx", v; else printf "-" }')
+_e2e=$(awk -v v="$_ev" 'BEGIN{ if (v + 0 > 0) printf "%.2fx", v; else printf "-" }')
+printf ' %d/%d passed | wall %ds | e2e %s | mark %s (geomean)\n' \
+    $((TOTAL - FAILS)) "$TOTAL" "$WALL" "$_e2e" "$_mark"
 
 if [ "$FAILS" -eq 0 ]; then exit 0; else exit 1; fi

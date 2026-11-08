@@ -181,8 +181,9 @@ env FOGCCC_STW=1 $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -verbosegc \
 sh $T/dacapo_bench.sh        # 每步一行进度，结束时一张表
 ```
 
-表格列：bench、hw、sw、e2e_hw、e2e_sw、mark_hw、mark_sw、ratio、extra。
-`ratio` 是纯 mark 的 原版/硬件 比值，`extra` 是硬件侧的 `verify_extra`。
+表格列：bench、hw、sw、e2e_hw、e2e_sw、e2e_x、mark_hw、mark_sw、mark_x、extra。
+`e2e_x` 是端到端 原版/硬件 的比值（约 1.0，硬件接管有固定开销）；`mark_x` 是纯 mark
+的 原版/硬件 比值；`extra` 是硬件侧的 `verify_extra`。
 
 生产路径（不 verify）：去掉 FOGCCC_TAKEOVER_VERIFY 和 FOGCCC_TAKEOVER_COLD，
 第一次 GC 走影子轮，第二次起接管。用 128 MB 固定堆跑两次迭代：

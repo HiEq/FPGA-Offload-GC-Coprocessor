@@ -58,7 +58,8 @@ sh $T/run_dacapo.sh luindex sw # 单个基准，原版对照
 | e2e_ms | 端到端毫秒（G1M 与 DaCapo 是 3 次 GC 或单次运行） |
 | mark_ms | 纯标记毫秒；硬件取 takeover 的中位数，原版取 GC Mark 的中位数 |
 | extra | 硬件侧 verify_extra，必须为 0 |
-| ratio | 仅 DaCapo 表：原版 mark / 硬件 mark |
+| e2e_x | 仅 DaCapo 表：端到端 原版 / 硬件（约 1.0；硬件接管有固定开销） |
+| mark_x | 仅 DaCapo 表：纯 mark 原版 / 硬件 |
 
 `FALLBACK` 表示对象数超过 1,048,576 的 id 上限，该轮回退 CPU 标记。
 
