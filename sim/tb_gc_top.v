@@ -36,6 +36,22 @@ module tb_gc_top;
     always #(CLKP/2) clk = ~clk;
     reg rstn = 1'b0;
 
+`ifdef DBG_X
+    always @(posedge clk) begin
+        if ((^dut.u_engine.can2) === 1'bx) begin
+            $display("[XDBG2] t=%0t can2=X rd=%h rdh=%h two=%b left=%h lo_in=%b hi_in=%b lo_ok=%b hi_ok=%b l0r=%b l1r=%b cnt=%h d0r=%h dv=%b st=%0d",
+                $time, dut.u_engine.rd_data, dut.u_engine.rd_data_hi,
+                dut.u_engine.rd_data_two, dut.u_engine.refs_left,
+                dut.u_engine.lo_in, dut.u_engine.hi_in,
+                dut.u_engine.lo_ok, dut.u_engine.hi_ok,
+                dut.u_engine.lane0_ready, dut.u_engine.lane1_ready,
+                dut.u_axi_rd.d0cnt, dut.u_axi_rd.d0r,
+                dut.u_axi_rd.data0_valid, dut.u_engine.state);
+            $finish;
+        end
+    end
+`endif
+
     // ---------------- AXI-Lite 主机 ----------------
     reg  [11:0] m_awaddr  = 12'h0;
     reg         m_awvalid = 1'b0;
@@ -158,7 +174,8 @@ module tb_gc_top;
 
     // bitmap peek across the four banks (object id or word index)
     function [31:0] bm_word(input [14:0] w);
-        bm_word = dut.u_bitmap.mem[w];
+        bm_word = w[0] ? dut.u_bitmap.g_bank[1].mem[w[14:1]]
+                       : dut.u_bitmap.g_bank[0].mem[w[14:1]];
     endfunction
 
     // ================= 内存模型 =================
@@ -170,24 +187,48 @@ module tb_gc_top;
     assign hp_bid     = 6'h00;
     assign hp_bresp   = 2'b00;
     assign hp_bvalid  = 1'b0;
-    assign hp_rlast   = 1'b1;          // 每笔 AR 只有 1 拍
+    // ---- burst-capable read model: one AR returns ARLEN+1 beats ----
+    localparam integer RQ = 32;
+    reg  [39:0] rfifo [0:RQ-1];        // {id[5:0], len[1:0], addr[31:0]}
+    reg  [4:0]  rf_w = 0, rf_r = 0;
+    reg  [1:0]  rf_beat = 0;
+    reg         rf_valid_d = 1'b0;      // one extra cycle: the DUT latches its
+                                        // tracking entry on the AR edge, so the
+                                        // first beat must not arrive that same edge
+    wire [4:0]  rf_cnt    = rf_w - rf_r;
+    wire        rf_valid  = (rf_cnt != 0);
+    wire [5:0]  rf_id     = rfifo[rf_r][39:34];
+    wire [1:0]  rf_len    = rfifo[rf_r][33:32];
+    wire [31:0] rf_addr   = rfifo[rf_r][31:0] + {27'd0, rf_beat, 3'b000};
+    wire        rf_last   = (rf_beat == rf_len);
+    wire [31:0] rf_widx   = rf_addr[31:2] - BASE[31:2];
 
-    // {valid, id[5:0], addr[31:0]} —— ID 必须跟着请求走, 返回时回显成 RID
-    reg  [38:0] shr [0:LAT-1];
-    integer     si;
-    wire        hp_rvalid_i = shr[0][38];
-    wire [5:0]  hp_rid_o    = shr[0][37:32];
-    wire [31:0] hp_raddr    = shr[0][31:0];
-    wire        hp_can_shift = !(hp_rvalid_i && !hp_rready);
-
-    assign hp_arready = hp_can_shift;   // 输出被阻塞时不再收地址
-    assign hp_rvalid  = hp_rvalid_i;
-    assign hp_rid     = hp_rid_o;       // 回显请求的 ID
+    assign hp_arready = (rf_cnt < RQ);  // no room -> stop accepting addresses
+    assign hp_rvalid  = rf_valid_d && rf_valid;
+    assign hp_rid     = rf_id;          // echo the request ID
+    assign hp_rlast   = rf_last;
     reg  inject_err = 1'b0;
     assign hp_rresp   = inject_err ? 2'b10 : 2'b00;
+    assign hp_rdata   = { mem[rf_widx + 1], mem[rf_widx] };  // little endian: low word first
 
-    wire [31:0] hp_widx = hp_raddr[31:2] - BASE[31:2];
-    assign hp_rdata = { mem[hp_widx + 1], mem[hp_widx] };  // 小端: 低字在先
+    always @(posedge clk or negedge rstn) begin
+        if (!rstn) begin
+            rf_w <= 0; rf_r <= 0; rf_beat <= 0; rf_valid_d <= 1'b0;
+        end else begin
+            rf_valid_d <= rf_valid;
+            if (hp_arvalid && hp_arready) begin
+                rfifo[rf_w] <= {hp_arid, hp_arlen[1:0], hp_araddr};
+                rf_w <= rf_w + 1;
+            end
+            if (rf_valid_d && rf_valid && hp_rready) begin
+                if (rf_last) begin
+                    rf_beat <= 0;
+                    rf_r <= rf_r + 1;
+                end else
+                    rf_beat <= rf_beat + 1;
+            end
+        end
+    end
 
     // ---------------- AXI 协议检查器 (AGENTS.md 缺口 #1) ----------------
     // 行为级存储模型不是协议检查器: 它对 ARSIZE/ARLEN/ARBURST 错误照常应答,
@@ -207,19 +248,10 @@ module tb_gc_top;
         .RID     (hp_rid),
         .RRESP   (hp_rresp),
         .RVALID  (hp_rvalid),
+        .RLAST   (hp_rlast),
         .RREADY  (hp_rready),
         .errors  (axi_errs)
     );
-
-    always @(posedge clk or negedge rstn) begin
-        if (!rstn) begin
-            for (si = 0; si < LAT; si = si + 1) shr[si] <= 39'd0;
-        end else if (hp_can_shift) begin
-            for (si = 0; si < LAT-1; si = si + 1)
-                shr[si] <= shr[si+1];
-            shr[LAT-1] <= (hp_arvalid && hp_arready) ? {1'b1, hp_arid, hp_araddr} : 39'd0;
-        end
-    end
 
     // ================= AXI-Lite 任务 =================
     task axil_wr(input [11:0] a, input [31:0] d);
@@ -495,7 +527,7 @@ module tb_gc_top;
             $display("      scout : st=%0d pf_cnt=%0d pf_iss=%0d pf_head=%0d dq_cnt=%0d dq_head=%0d ref_word_idx=%0d hdr_sec=%0d",
                      dut.u_engine.sc_state, dut.u_engine.pf_cnt, dut.u_engine.pf_iss,
                      dut.u_engine.pf_head, dut.u_engine.dq_cnt, dut.u_engine.dq_head,
-                     dut.u_engine.ref_word_idx, dut.u_engine.hdr_second);
+                     dut.u_engine.ref_word_idx, dut.u_engine.hdr_wc);
             $display("      dq_rc[0..3]=%0d %0d %0d %0d   dq_ra[0]=%h   ref_count=%0d ref_got=%0d cur=%0d",
                      dut.u_engine.dq_rc[0], dut.u_engine.dq_rc[1],
                      dut.u_engine.dq_rc[2], dut.u_engine.dq_rc[3],
@@ -600,6 +632,11 @@ module tb_gc_top;
                 errors = errors + 1;
             end
         end
+
+        axil_rd(12'h454, rd_val);
+        $display("[TB] T1 Q_HWM=%0d (debug peak; may be 0 on short runs)", rd_val);
+        axil_rd(12'h458, rd_val);
+        $display("[TB] T1 Q_HI=%0d (cycles with a wide frontier)", rd_val);
 
         // ============================================================
         // T2: 重复根 —— 同一个 root 写两次, 必须只计一次 (#5)
@@ -1137,12 +1174,12 @@ module tb_gc_top;
         //      Construction: 4096-object star (occupancy reaches 4095) + four dirty
         //      records pointing at an ALREADY MARKED id - the dirty path enqueues a
         //      forced re-scan unconditionally, which pushes occupancy to the depth.
-        //      Observed: no hang (marked=4096).  Occupancy
-        //      never reaches the queue depth at the current limits (a push needs an
-        //      unmarked target, <= 4096 ids, and a pop precedes every enqueue burst),
-        //      so the q_full wait is never entered.  Kept as a GUARD: if the queue
-        //      depth or the object limit ever change so occupancy can hit the depth,
-        //      this test hangs and the deadlock becomes real.
+        //      Observed: no hang (marked=4096).  Occupancy often reaches 4095, which
+        //      at the current limits (<= 4096 ids, and a pop precedes every enqueue
+        //      burst) can never reach the queue depth (`dut.u_queue.DEPTH`), so the
+        //      q_full wait is never entered.  Kept as a GUARD against the queue depth
+        //      shrinking or the object limit growing: the comparison below reads the
+        //      depth from the DUT, so it follows a depth change instead of drifting.
         //      See AGENTS #19 and tools/logs/xsim_qfull_dirty_20261023.log.
         // ----
         dirty_flush_now;
@@ -1193,14 +1230,15 @@ module tb_gc_top;
             end
         end
         qf_mon = 1'b0;
-        $display("[TB] T-DIRTY-QFULL observed: peak occupancy=%0d/4096  q_full&&dirty cycles=%0d  S_DIRTY_PUSH waits=%0d",
-                 qf_maxcnt, qf_danger, qf_wait);
+        $display("[TB] T-DIRTY-QFULL observed: peak occupancy=%0d/%0d  q_full&&dirty cycles=%0d  S_DIRTY_PUSH waits=%0d",
+                 qf_maxcnt, dut.u_queue.DEPTH, qf_danger, qf_wait);
         if (qf_danger !== 0 || qf_wait !== 0) begin
             $display("[TB][FAIL] T-DIRTY-QFULL the deadlock precondition DID occur (q_full with a pending record)");
             errors = errors + 1;
         end
-        if (qf_maxcnt >= 4096) begin
-            $display("[TB][FAIL] T-DIRTY-QFULL occupancy reached the queue depth (%0d)", qf_maxcnt);
+        if (qf_maxcnt >= dut.u_queue.DEPTH) begin
+            $display("[TB][FAIL] T-DIRTY-QFULL occupancy reached the queue depth (%0d of %0d)",
+                     qf_maxcnt, dut.u_queue.DEPTH);
             errors = errors + 1;
         end
         dirty_flush_now;
@@ -1379,8 +1417,8 @@ module tb_gc_top;
         $display("[TB] T-ID magic=%h (expect 47434343)", rd_val);
         if (rd_val !== 32'h47434343) begin $display("[TB][FAIL] T-ID magic=%h", rd_val); errors = errors + 1; end
         axil_rd(12'h034, rd_val);
-        $display("[TB] T-ID version=%h (expect 00050000)", rd_val);
-        if (rd_val !== 32'h0007_0000) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
+        $display("[TB] T-ID version=%h (expect 00070500)", rd_val);
+        if (rd_val !== 32'h0007_0500) begin $display("[TB][FAIL] T-ID version=%h", rd_val); errors = errors + 1; end
 
         // ---- T-ABORT: abort must pull a hung engine back to IDLE and stay reusable ----
         // Star graph: object 0 points at 1..31; each of 1..31 has exactly one ref.
@@ -1873,7 +1911,7 @@ module tb_gc_top;
             $display("[TB][FAIL] AXI protocol violations: %0d (ARSIZE/ARLEN/ARBURST/align/VALID)", axi_errs);
             errors = errors + 1;
         end else begin
-            $display("[TB] AXI protocol check OK (ARSIZE=3, ARLEN=0, ARBURST=INCR, 8B align, VALID stable)");
+            $display("[TB] AXI protocol check OK (ARSIZE=3, ARLEN<=3, ARBURST=INCR, 8B align, VALID stable)");
         end
 
         // ---- 结论 ----
@@ -1965,6 +2003,12 @@ module tb_gc_top;
     // ================= 事件日志 (定位 X / 握手问题) =================
     integer evc = 0;
     always @(posedge clk) begin
+        if (dut.u_axi_rd.ARVALID || hp_rvalid || rf_valid) begin
+            $display("[RF] w=%0d r=%0d v=%b vd=%b rdy=%b rid=%h rlast=%b",
+                     rf_w, rf_r, rf_valid, rf_valid_d, hp_rready, hp_rid, hp_rlast);
+        end
+    end
+    always @(posedge clk) begin
         if (evc < 200) begin
             if (dut.u_axi_rd.ARVALID && hp_arready) begin
                 $display("[EV%0d] AR addr=%h hi=%0d hw=%0d hr=%0d",
@@ -2000,10 +2044,17 @@ module tb_gc_top;
 
     // 卡死检测: 在 S_REFS_PUSHW 连续 >40 拍 → 立即倒轨迹并结束
     integer pushw_run = 0;
+    integer last_got = -1;
     reg     dumped = 1'b0;
     always @(posedge clk) begin
-        if (dut.u_engine.state == 5'd14) pushw_run = pushw_run + 1;   // S_REFS_LOOP (reachable)
-        else pushw_run = 0;
+        if (dut.u_engine.state != 5'd14) begin
+            pushw_run = 0;                  // left S_REFS_LOOP
+        end else if (dut.u_engine.ref_got != last_got) begin
+            pushw_run = 0;                  // made progress on this object
+        end else begin
+            pushw_run = pushw_run + 1;
+        end
+        last_got = dut.u_engine.ref_got;
         if (pushw_run > 2000 && !dumped) begin
             dumped = 1'b1;
             $display("[TB][FAIL] stuck: S_REFS_LOOP held for %0d cycles", pushw_run);
@@ -2026,5 +2077,31 @@ module tb_gc_top;
         dump_ring;
         $finish;
     end
+
+`ifdef TB_HDR
+    always @(posedge clk) begin
+        if (dut.u_engine.sc_state == 3'd2)            $display("[HDRCMD] t=%0t pfh=%0d pfc=%0d pfi=%0d fill=%0d iss=%0d",
+                $time, dut.u_engine.pf_head, dut.u_engine.pf_cnt, dut.u_engine.pf_iss,
+                dut.u_engine.pf_fill_slot, dut.u_engine.pf_iss_slot);
+        if (dut.u_engine.hdr_hs)
+            $display("[HDR] t=%0t wc=%0d fill=%0d d=%h hi=%h two=%b take2=%b",
+                $time, dut.u_engine.hdr_wc, dut.u_engine.pf_fill_slot,
+                dut.u_engine.hdr_data, dut.u_engine.hdr_data_hi,
+                dut.u_engine.hdr_data_two, dut.u_engine.hdr_data_take2);
+        if (dut.u_engine.state == 5'd7 && dut.u_engine.ref_count === 21'bx)
+            $display("[HDRBAD] t=%0t pfh=%0d pfc=%0d pfi=%0d cur=%0d rc=%b",
+                $time, dut.u_engine.pf_head, dut.u_engine.pf_cnt, dut.u_engine.pf_iss,
+                dut.u_engine.cur_obj, dut.u_engine.ref_count);
+    end
+`endif
+
+    // Guard: the housekeeping bitmap write must never collide with a lane
+    // write.  gc_top's write mux (w_bm_we0/1) lets the housekeeping port
+    // REPLACE the lane's write to the same bank in that cycle, which silently
+    // drops a mark.  The engine therefore waits for lane_idle before entering
+    // the dirty path.
+    always @(posedge clk)
+        if (dut.u_engine.bm_we && (dut.u_engine.lane0_we | dut.u_engine.lane1_we))
+            $display("[TB][FAIL] housekeeping bitmap write collides with a lane write");
 
 endmodule

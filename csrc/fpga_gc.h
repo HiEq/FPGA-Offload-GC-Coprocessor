@@ -17,7 +17,7 @@
 #define FPGA_BASE_ADDR   0x43C00000UL  // AXI-Lite GP0 基地址
 #define GRAPH_DDR_ADDR   0x1E000000UL  // 对象图存放的DDR物理地址
 #define MAP_SIZE         4096          // 寄存器映射大小 (4KB)
-#define GRAPH_MAP_SIZE   0x2000000      // 对象图映射大小 (32MB, P1 1M)
+#define GRAPH_MAP_SIZE   0x4000000      // 对象图映射大小 (64MB, P1 1M)
 
 // ==================== 寄存器偏移 ====================
 #define REG_CTRL         0x00   // 控制
@@ -42,8 +42,10 @@
 #define REG_DIRTY_DRAINED  0x448  // ids consumed in the current epoch
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
+#define REG_Q_HWM        0x454  // peak BFS queue occupancy of the last run
+#define REG_Q_HI         0x458  // cycles with q_count >= 64 (wide frontier)
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00070000u
+#define FOGCCC_VERSION   0x00070500u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
@@ -52,6 +54,9 @@
 #define STATUS_HDR       (1U << 3)   // ref_count > 65536 (corrupt header)
 #define STATUS_IDLE      (1U << 4)   // engine FSM is in S_IDLE
 #define STATUS_FREEBUSY  (1U << 5)   // Phase 2 free-list scanner owns the bitmap
+#define STATUS_DUMP_BUSY (1U << 6)   // bitmap DMA is streaming to DDR
+#define STATUS_DUMP_DONE (1U << 7)   // a dump completed since the last start
+#define GRAPH_DUMP_OFFSET 0x03FE0000u  // 128 KiB at the end of the graph window
 
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
@@ -99,6 +104,12 @@ typedef struct {
     // in python/fogccc.py stays byte-compatible.
     uint32_t           dirty_tag;       // next tag to use
     uint32_t           dirty_tag_valid; // 0 until the first push seeds it from 0x444
+    // Epoch statistics for the engine-selection decision.  Read at DONE
+    // (before the free-list wait) so a redelivered START cannot wipe them,
+    // and accumulated across the root batches of one epoch.
+    uint32_t           epoch_q_hwm;     // max queue occupancy over the epoch
+    uint32_t           epoch_q_hi;      // cycles with a wide frontier (q >= 64)
+    uint32_t           epoch_cycles;    // total engine cycles of the epoch
 } fpga_gc_t;
 
 // ==================== API函数 ====================
@@ -171,6 +182,16 @@ void fpga_gc_clear(fpga_gc_t *dev);
 
 // 打印硬件统计信息
 uint32_t fpga_gc_status(fpga_gc_t *dev);
+uint32_t fpga_gc_q_hwm(fpga_gc_t *dev);
+
+// Cycles with a wide frontier (q_count >= 64).  The ratio to CYCLES is robust
+// to root injection in any number of batches, unlike the peak.
+uint32_t fpga_gc_q_hi(fpga_gc_t *dev);
+int      fpga_gc_prefer_cpu(fpga_gc_t *dev);
+
+// Stream the mark bitmap to DDR (PL DMA) and copy it out.  Replaces the
+// AXI-Lite probe loop (~190 ms) with a ~1 ms memcpy.
+int fpga_gc_dump_bitmap(fpga_gc_t *dev, uint32_t *dst, int nwords);
 void fpga_gc_print_stats(fpga_gc_t *dev);
 
 #endif // FPGA_GC_H

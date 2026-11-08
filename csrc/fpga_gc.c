@@ -11,6 +11,11 @@
 #include <string.h>
 #include <time.h>
 
+/* Marker written into the dump buffer before each dump: a word the PL dump
+   fails to write keeps this value, so the driver can repair it via the probe.
+   A real bitmap word equals it with probability 2^-32. */
+#define GC_DUMP_SENTINEL 0xDEADBEEFu
+
 // ============================================================
 // 初始化
 // ============================================================
@@ -228,6 +233,21 @@ void fpga_gc_set_roots(fpga_gc_t *dev, uint32_t *roots, int n_roots) {
 // 启动FPGA标记, 等待完成
 // ============================================================
 // keep=0: 全标记周期 (清位图 + 清脏集); keep=1: 增量 epoch (保留位图, **不清**脏集)
+static uint64_t mark_now_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ull + (uint64_t)ts.tv_nsec / 1000ull;
+}
+
+static int mark_split_on(void) {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("FOGCCC_MARK_TIME");
+        v = (e != NULL && e[0] != '\0' && e[0] != '0');
+    }
+    return v;
+}
+
 static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
     // 写入对象图参数（写后回读：W/AW 错配会写成错误的值）
     if (reg_wr_verified(dev, REG_OBJ_BASE, dev->graph_paddr) != 0)
@@ -245,6 +265,7 @@ static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
 
     // 启动 (BM_KEEP 必须与 START 同一次写: 0x11)
     dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | CTRL_START | (keep ? CTRL_BM_KEEP : 0u);
+    uint64_t t_start = mark_split_on() ? mark_now_us() : 0;
 
     // 关键: START 是 AXI-Lite posted write, 紧接着的读可能先于写生效,
     // 从而读到【上一轮遗留的 DONE=1】并直接返回旧结果.
@@ -268,10 +289,32 @@ static uint32_t mark_run(fpga_gc_t *dev, uint32_t keep, uint32_t *cycles_out) {
 
     /* Phase 2: the free-list scanner borrows the bitmap read port after DONE.
      * Wait for it before any bitmap probe / status snapshot. */
+    uint64_t t_done = mark_split_on() ? mark_now_us() : 0;
     (void)fpga_gc_wait_freeidle(dev, 10000);
+    if (mark_split_on()) {
+        uint64_t t_free = mark_now_us();
+        printf("[FOGCCC] mark split: start_to_done=%llu us freeidle=%llu us\n",
+               (unsigned long long)(t_done - t_start),
+               (unsigned long long)(t_free - t_done));
+    }
 
     uint32_t marked = dev->regs[REG_MARKED / 4];
     uint32_t cycles = dev->regs[REG_CYCLES / 4];
+    uint32_t hwm = dev->regs[REG_Q_HWM / 4] & 0xFFFFFu;
+    uint32_t qhi = dev->regs[REG_Q_HI / 4];
+
+    // Read before wait_freeidle: a redelivered START can restart the engine
+    // after DONE and clear the live counters.
+    if (keep == 0u) {
+        dev->epoch_q_hwm  = hwm;
+        dev->epoch_q_hi   = qhi;
+        dev->epoch_cycles = cycles;
+    } else {
+        if (hwm > dev->epoch_q_hwm)
+            dev->epoch_q_hwm = hwm;
+        dev->epoch_q_hi   += qhi;
+        dev->epoch_cycles += cycles;
+    }
     if (cycles_out) *cycles_out = cycles;
     return marked;
 }
@@ -607,7 +650,7 @@ int fpga_gc_read_mark_words(fpga_gc_t *dev, uint32_t first_word,
 }
 
 uint32_t fpga_gc_q_tail(fpga_gc_t *dev) {
-    return dev->regs[REG_Q_TAIL / 4] & 0x3FFFFu;
+    return dev->regs[REG_Q_TAIL / 4] & 0x7FFFFu;
 }
 
 int fpga_gc_wait_idle(fpga_gc_t *dev, int timeout_us) {
@@ -661,6 +704,72 @@ void fpga_gc_clear(fpga_gc_t *dev) {
 
 uint32_t fpga_gc_status(fpga_gc_t *dev) {
     return dev->regs[REG_STATUS / 4] & 0xFU;
+}
+
+// Peak BFS-queue occupancy of the epoch: the driver-side accumulation across
+// the root batches (a single-pass view is not enough once roots are fed in
+// batches of 256).
+uint32_t fpga_gc_q_hwm(fpga_gc_t *dev) {
+    return dev->epoch_q_hwm;
+}
+
+// Chain-like graphs leave the BFS queue almost empty, and there the software
+// mark is faster than the prefetch-starved engine.  The decision uses the
+// fraction of cycles with a wide frontier, which root injection (in any number
+// of batches) cannot move: a chain spends ~0.001% of its cycles above 64,
+// a wide graph more than half.
+int fpga_gc_prefer_cpu(fpga_gc_t *dev) {
+    if (dev->epoch_cycles == 0)
+        return 0;
+    return ((uint64_t)dev->epoch_q_hi * 20u) < (uint64_t)dev->epoch_cycles;
+}
+
+uint32_t fpga_gc_q_hi(fpga_gc_t *dev) {
+    return dev->epoch_q_hi;
+}
+
+int fpga_gc_dump_bitmap(fpga_gc_t *dev, uint32_t *dst, int nwords) {
+    uint32_t timeout = 10000000;
+    uint32_t *ddr;
+    int i, repaired = 0;
+
+    if (nwords > 32768)
+        nwords = 32768;
+
+    ddr = (uint32_t *)((uint8_t *)dev->graph_vaddr + GRAPH_DUMP_OFFSET);
+
+    /* Sentinel pass: a word the PL dump fails to write keeps this pattern
+       (a genuine bitmap word hits it with probability 2^-32).  The dump has
+       been measured to drop a word now and then, which used to leave the
+       previous round's bitmap in DDR and cost one or two marks. */
+    for (i = 0; i < nwords; i++)
+        ddr[i] = GC_DUMP_SENTINEL;
+
+    /* CTRL bit 6 starts the PL-side dump; the marker is required. */
+    dev->regs[REG_CTRL / 4] = GC_CTRL_MARK | (1u << 6);
+    (void)dev->regs[REG_CTRL / 4];      /* flush the posted write */
+
+    while (dev->regs[REG_STATUS / 4] & STATUS_DUMP_BUSY) {
+        if (--timeout == 0)
+            return -1;
+    }
+    if (!(dev->regs[REG_STATUS / 4] & STATUS_DUMP_DONE))
+        return -1;
+
+    /* Repair every word the dump did not write, via the AXI-Lite probe. */
+    for (i = 0; i < nwords; i++)
+        if (ddr[i] == GC_DUMP_SENTINEL) {
+            uint32_t w = 0;
+
+            if (fpga_gc_read_mark_words(dev, (uint32_t)i, &w, 1) == 0)
+                ddr[i] = w;
+            repaired++;
+        }
+    if (repaired != 0)
+        fprintf(stderr, "[FOGCCC] dump: repaired %d dropped word(s)\n", repaired);
+
+    memcpy(dst, ddr, (size_t)nwords * 4u);
+    return 0;
 }
 // ============================================================
 // Print hardware statistics

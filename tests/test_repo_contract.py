@@ -33,6 +33,8 @@ STATUS_SIGNAL = {
     "HDR": "err_hdr",
     "IDLE": "reg_idle",
     "FREEBUSY": "reg_free_busy",
+    "DUMP_BUSY": "dump_busy",
+    "DUMP_DONE": "dump_done",
 }
 
 
@@ -81,7 +83,7 @@ def parse_status_header(text):
     return {
         int(bit): name
         for name, bit in re.findall(
-            r"(?m)^#define\s+STATUS_([A-Z]+)\s+\(1U\s*<<\s*(\d+)\)", text
+            r"(?m)^#define\s+STATUS_([A-Z_]+)\s+\(1U\s*<<\s*(\d+)\)", text
         )
     }
 
@@ -181,8 +183,9 @@ class StatusBitsTest(unittest.TestCase):
 
     def test_negative_control_reordered_concat_is_detected(self):
         regs = read("rtl/gc_regs.v")
-        mutated = re.sub(r"\{26'h0, reg_free_busy, reg_idle, err_hdr, err_ref, err_rd, err_ovf\}",
-                         "{26'h0, reg_free_busy, err_hdr, reg_idle, err_ref, err_rd, err_ovf}", regs)
+        # Swap two adjacent status fields; the order is the contract.
+        mutated = regs.replace("dump_done, dump_busy", "dump_busy, dump_done", 1)
+        self.assertNotEqual(mutated, regs, "negative control no longer matches the RTL concat")
         masks = parse_status_header(read("csrc/fpga_gc.h"))
         expected = [STATUS_SIGNAL[name] for _, name in sorted(masks.items())][::-1]
         self.assertNotEqual(parse_status_rtl(mutated), expected)
@@ -246,9 +249,21 @@ class DesignParametersTest(unittest.TestCase):
                          "MAXO must equal the HP port's NUM_READ_OUTSTANDING")
 
     def test_object_limit_matches_the_readme(self):
-        depth = int(re.search(r"localparam integer DEPTH\s*=\s*(\d+)", read("rtl/gc_queue.v")).group(1))
+        # The object limit is the id width, not the queue depth: the 1M build
+        # keeps 20-bit ids while the BFS queue holds 524,288 pending entries.
+        queue = read("rtl/gc_queue.v")
+        width = int(re.search(r"reg \[(\d+):0\] mem", queue).group(1)) + 1
         documented = int(re.search(r"(?m)^\|\s*对象上限\s*\|\s*\*\*(\d+)\*\*", read("README.md")).group(1))
-        self.assertEqual(depth, documented)
+        self.assertEqual(1 << width, documented, "README 对象上限 disagrees with the queue id width")
+
+    def test_negative_control_object_limit_is_detected(self):
+        queue = read("rtl/gc_queue.v")
+        width = int(re.search(r"reg \[(\d+):0\] mem", queue).group(1)) + 1
+        readme = read("README.md")
+        mutated = re.sub(r"(?m)^(\|\s*对象上限\s*\|\s*\*\*)(\d+)(\*\*)",
+                         lambda m: m.group(1) + str(int(m.group(2)) // 2) + m.group(3), readme)
+        documented = int(re.search(r"(?m)^\|\s*对象上限\s*\|\s*\*\*(\d+)\*\*", mutated).group(1))
+        self.assertNotEqual(1 << width, documented)
 
 
 # ---------------------------------------------------------------- software API

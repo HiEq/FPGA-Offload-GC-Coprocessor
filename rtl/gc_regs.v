@@ -36,8 +36,10 @@ module gc_regs (
     input  wire        reg_done,
     input  wire [31:0] reg_marked_count,
     input  wire [31:0] reg_cycles,
-    input  wire [17:0] q_head,
-    input  wire [17:0] q_tail,
+    input  wire [18:0] q_head,
+    input  wire [18:0] q_tail,
+    input  wire [19:0] q_hwm,       // 0x454: queue high-water mark of the run
+    input  wire [31:0] q_hi,        // 0x458: cycles with q_count >= 64
 
     input  wire        err_ovf,       // 队列溢出
     input  wire        err_rd,        // AXI 读响应错误
@@ -55,6 +57,9 @@ module gc_regs (
     output reg         reg_free_pop,
 
     // Phase 3A dirty set: 0x44 push/occupancy, 0x48 status, 0x4C drained
+    output reg         reg_dump = 1'b0,     // 1-cycle: start the bitmap dump
+    input  wire        dump_busy,
+    input  wire        dump_done,
     output reg         reg_dirty_push,        // 1-cycle: push WDATA[11:0]
     output reg  [19:0] reg_dirty_push_id,
     output reg         reg_dirty_flush,       // 1-cycle: clear FIFO + overflow
@@ -126,6 +131,7 @@ module gc_regs (
             reg_abort    <= 1'b0;
             reg_clear_q  <= 1'b0;
             reg_dirty_push  <= 1'b0;
+    reg_dump        <= 1'b0;
             reg_dirty_flush <= 1'b0;
             root_we      <= 1'b0;
 
@@ -139,6 +145,7 @@ module gc_regs (
                 case (awaddr_r)
                     12'h000: if (WDATA[31:20] == 12'hA50) begin
                         reg_start    <= WDATA[0];
+        reg_dump     <= WDATA[6];
                         // WDATA[1] 未使用
                         reg_clear_q  <= WDATA[2];
                         reg_abort    <= WDATA[3];   // 1 = abort the running mark
@@ -209,13 +216,13 @@ module gc_regs (
                     12'h00C: RDATA <= reg_root_count;
                     12'h010: RDATA <= reg_marked_count;
                     12'h014: RDATA <= reg_cycles;
-                    12'h018: RDATA <= {14'h0, q_head};
-                    12'h01C: RDATA <= {14'h0, q_tail};
-                    12'h020: RDATA <= {26'h0, reg_free_busy, reg_idle, err_hdr, err_ref, err_rd, err_ovf};
+                    12'h018: RDATA <= {13'h0, q_head};
+                    12'h01C: RDATA <= {13'h0, q_tail};
+                    12'h020: RDATA <= {24'h0, dump_done, dump_busy, reg_free_busy, reg_idle, err_hdr, err_ref, err_rd, err_ovf};
                     12'h024: RDATA <= {17'h0, reg_bm_addr};
                     12'h028: RDATA <= reg_bm_data;
                     12'h030: RDATA <= 32'h47434343;   // 'GCCC' magic
-                    12'h034: RDATA <= 32'h0007_0000;  // P1 256K: 20-bit ids, packed bitmap
+                    12'h034: RDATA <= 32'h0007_0500;  // P1 256K: 20-bit ids, packed bitmap
                     12'h038: RDATA <= reg_free_count;
                     12'h03C: begin
                         RDATA        <= {12'h0, reg_free_data};
@@ -226,6 +233,8 @@ module gc_regs (
                     12'h448: RDATA <= dirty_drained;                            // consumed this epoch
                     12'h44C: RDATA <= {16'h0, dirty_pushed};                    // accepted since flush
                     12'h450: RDATA <= {16'h0, dirty_popped};                    // consumed since flush
+                    12'h454: RDATA <= {12'h0, q_hwm};                           // peak BFS queue occupancy
+                    12'h458: RDATA <= q_hi;                                     // wide-frontier cycles
                     default: begin
                         if ((araddr_r >= ROOT_AREA_LO) && (araddr_r < ROOT_AREA_HI)) RDATA <= root_rd_data;
                         else begin RDATA <= 32'hDEADBEEF; RRESP <= 2'b10; end   // SLVERR

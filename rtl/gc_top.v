@@ -122,24 +122,13 @@ module gc_top (
     wire        w_start, w_clear_q, w_abort;
     wire        w_done;
     wire [31:0] w_marked_count, w_cycles;
+    wire        w_dump, w_dump_busy, w_dump_done;
+    wire [14:0] w_dump_bm_raddr;
+    wire [31:0] w_dump_base = w_obj_base + 32'h03FE0000;
 
     // 只读 DDR; 接口为完整 AXI4, 写信号绑常量
-    assign S_AXI_HP_AWADDR  = 32'h0;
-    assign S_AXI_HP_AWID    = 6'h0;
-    assign S_AXI_HP_AWLEN   = 4'h0;
-    assign S_AXI_HP_AWSIZE  = 3'b011;
-    assign S_AXI_HP_AWBURST = 2'b01;
-    assign S_AXI_HP_AWCACHE = 4'b0011;
-    assign S_AXI_HP_AWPROT  = 3'b000;
-    assign S_AXI_HP_AWVALID = 1'b0;
-
-    assign S_AXI_HP_WDATA   = 64'h0;
-    assign S_AXI_HP_WID     = 6'h0;
-    assign S_AXI_HP_WSTRB   = 8'h0;
-    assign S_AXI_HP_WLAST   = 1'b1;
-    assign S_AXI_HP_WVALID  = 1'b0;
-
-    assign S_AXI_HP_BREADY  = 1'b1;
+    // HP write channel drives the bitmap dump (gc_dump); reads stay with the
+    // engine / probe / free-list.
 
     (* ram_style = "distributed" *)
     reg  [31:0] root_mem [0:255];
@@ -167,25 +156,101 @@ module gc_top (
         for (root_i = 0; root_i < 256; root_i = root_i + 1) root_mem[root_i] = 32'h0;
     end
 
-    wire        w_q_push, w_q_pop;
-    wire [19:0] w_q_push_data;
-    wire [17:0] w_q_push_addr;
+    wire        w_q_we, w_q_pop;
+    wire [19:0] w_q_wdata;
     wire        w_q_pop_ack;
     wire [19:0] w_q_pop_id;
-    wire [17:0] w_q_head, w_q_tail;
+    wire [18:0] w_q_head, w_q_tail;
     wire        w_q_empty;
     wire        w_q_full;
-    wire [18:0] w_q_count;
+    wire [19:0] w_q_count;
+
+    // Peak BFS-queue occupancy of the run: the driver reads it to choose the
+    // next collection's engine (tiny peak = chain-like = CPU wins).
+    // Two metrics, both snapshotted so a redelivered START cannot wipe them:
+    //   0x454 Q_HWM : peak BFS-queue occupancy (debug; root injection inflates it)
+    //   0x458 Q_HI  : cycles with q_count >= 64 (the decision metric)
+    // The decision uses Q_HI / CYCLES, which root injection cannot move: 454
+    // roots cost ~454 cycles out of a multi-million-cycle run.
+    reg  [19:0] w_q_hwm;     // live peak
+    reg  [31:0] w_q_hi;      // live wide-frontier cycle count
+    reg  [19:0] w_q_hwm_r;   // snapshot read at 0x454 (survives a spurious restart)
+    reg  [31:0] w_q_hi_r;    // snapshot read at 0x458
+    wire        w_engine_idle;   // engine state == S_IDLE (declared here, used below)
+
+    // A late redelivery of the CTRL START store can restart the engine after
+    // DONE with an empty queue, and that empty run also reaches DONE.  Latch
+    // one cycle after DONE (when marked_count is final) and only for a run
+    // that actually marked something, so an empty restart cannot overwrite a
+    // completed run's stats.
+    reg  w_done_d;
+    always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
+        if (!S_AXI_ARESETN) begin
+            w_done_d  <= 1'b0;
+            w_q_hwm_r <= 20'd0;
+            w_q_hi_r  <= 32'd0;
+        end else begin
+            w_done_d <= w_done;
+            if (w_done_d && (w_marked_count != 32'd0)) begin
+                w_q_hwm_r <= w_q_hwm;
+                w_q_hi_r  <= w_q_hi;
+            end
+        end
+    end
+
+    always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
+        if (!S_AXI_ARESETN) begin
+            w_q_hi <= 32'd0;
+        end else if (w_start && w_engine_idle) begin
+            w_q_hi <= 32'd0;
+        end else if (w_q_count >= 20'd64) begin
+            // Unconditional: a root burst contributes at most `roots` cycles,
+            // which is <0.01% of any run the decision targets.
+            w_q_hi <= w_q_hi + 32'd1;
+        end
+    end
+    always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
+        if (!S_AXI_ARESETN) begin
+            w_q_hwm <= 20'd0;
+        end else if (w_start && w_engine_idle) begin
+            w_q_hwm <= 20'd0;
+        end else if (w_q_count > w_q_hwm) begin
+            w_q_hwm <= w_q_count;
+        end
+    end
     wire        w_err_ovf, w_err_ref, w_err_hdr;
 
-    wire [14:0] w_bm_raddr_eng, w_bm_waddr;
+    wire [14:0] w_hk_raddr, w_bm_waddr;
     wire [14:0] w_bm_raddr_eff;
     wire [14:0] w_regs_bm_addr;
     wire [31:0] w_bm_wdata;
-    wire [31:0] w_bm_rdata;
+    wire [31:0] w_bm_rdata;          // ext read (bank selected one cycle later)
     reg  [31:0] w_bm_probe_r = 32'h0;
     wire        w_bm_we;
-    wire        w_engine_idle;
+    wire        w_ref_active;
+
+    // Two banked lanes: lane k owns the ids with id[5] == k.  The bank ports are
+    // owned by the lanes while ref_active, and by the housekeeping path
+    // (clear/root/dirty) plus the dump/free-list/probe otherwise.
+    wire [13:0] w_l0_raddr, w_l0_waddr, w_l1_raddr, w_l1_waddr;
+    wire        w_l0_we, w_l1_we;
+    wire [31:0] w_l0_wdata, w_l1_wdata, w_l0_rdata, w_l1_rdata;
+
+    wire [13:0] w_ext_addr = w_bm_raddr_eff[14:1];
+    reg         w_ext_bank_r = 1'b0;
+    always @(posedge S_AXI_ACLK) w_ext_bank_r <= w_bm_raddr_eff[0];
+    wire [31:0] w_ext_rdata = w_ext_bank_r ? w_l1_rdata : w_l0_rdata;
+
+    wire        w_hk_bank = w_bm_waddr[0];
+    wire [13:0] w_hk_addr = w_bm_waddr[14:1];
+    wire        w_bm_we0 = w_l0_we | (w_bm_we & ~w_hk_bank);
+    wire        w_bm_we1 = w_l1_we | (w_bm_we &  w_hk_bank);
+    wire [13:0] w_bm_wa0 = (w_bm_we & ~w_hk_bank) ? w_hk_addr : w_l0_waddr;
+    wire [13:0] w_bm_wa1 = (w_bm_we &  w_hk_bank) ? w_hk_addr : w_l1_waddr;
+    wire [31:0] w_bm_wd0 = (w_bm_we & ~w_hk_bank) ? w_bm_wdata : w_l0_wdata;
+    wire [31:0] w_bm_wd1 = (w_bm_we &  w_hk_bank) ? w_bm_wdata : w_l1_wdata;
+    wire [13:0] w_bm_ra0 = w_ref_active ? w_l0_raddr : w_ext_addr;
+    wire [13:0] w_bm_ra1 = w_ref_active ? w_l1_raddr : w_ext_addr;
 
     // Write-first bypass, pipelined to match the bitmap's read latency.
     // gc_bitmap must stay a plain BRAM (see its header); the engine may read a
@@ -202,7 +267,7 @@ module gc_top (
         bm_wd_r <= w_bm_wdata;
         bm_we_r <= w_bm_we;
     end
-    wire [31:0] w_bm_rdata_eff = (bm_we_r && (bm_ra_r == bm_wa_r)) ? bm_wd_r : w_bm_rdata;
+    wire [31:0] w_bm_rdata_eff = (bm_we_r && (bm_ra_r == bm_wa_r)) ? bm_wd_r : w_ext_rdata;
 
     // Phase 2 free-list
     wire [14:0] w_free_bm_raddr;
@@ -231,8 +296,12 @@ module gc_top (
 
     wire [31:0] w_rd_cmd_addr;
     wire        w_rd_cmd_pair;
+    wire [1:0]  w_rd_cmd_len;
     wire        w_rd_cmd_valid, w_rd_cmd_ready;
     wire [31:0] w_rd_data;
+    wire [31:0] w_rd_data_hi;
+    wire        w_rd_data_two;
+    wire        w_rd_data_take2;
     wire        w_rd_data_valid, w_rd_data_ready;
     wire        w_rd_err;
 
@@ -273,11 +342,16 @@ module gc_top (
         .reg_cycles        (w_cycles),
         .q_head            (w_q_head),
         .q_tail            (w_q_tail),
+        .q_hwm             (w_q_hwm_r),
+        .q_hi              (w_q_hi_r),
         .err_ovf           (w_err_ovf),
         .err_rd            (w_rd_err),
         .err_ref           (w_err_ref),
         .err_hdr           (w_err_hdr),
         .reg_idle          (w_engine_idle),
+        .reg_dump          (w_dump),
+        .dump_busy         (w_dump_busy),
+        .dump_done         (w_dump_done),
         .root_wr_addr      (root_wr_addr),
         .root_wr_data      (root_wr_data),
         .root_we           (root_we),
@@ -318,27 +392,41 @@ module gc_top (
         .abort          (w_abort),
         .root_rd_addr   (root_rd_addr),
         .root_rd_data   (root_rd_data),
-        .q_push         (w_q_push),
-        .q_push_data    (w_q_push_data),
-        .q_push_addr    (w_q_push_addr),
+        .q_we           (w_q_we),
+        .q_wdata        (w_q_wdata),
         .q_pop          (w_q_pop),
         .q_pop_ack      (w_q_pop_ack),
         .q_pop_id       (w_q_pop_id),
         .q_tail         (w_q_tail),
         .q_empty        (w_q_empty),
         .q_full         (w_q_full),
-        .bm_raddr       (w_bm_raddr_eng),
-        .bm_rdata       (w_bm_rdata_eff),
+        .ref_active     (w_ref_active),
+        .lane0_raddr    (w_l0_raddr),
+        .lane0_waddr    (w_l0_waddr),
+        .lane0_we       (w_l0_we),
+        .lane0_wdata    (w_l0_wdata),
+        .lane0_rdata    (w_l0_rdata),
+        .lane1_raddr    (w_l1_raddr),
+        .lane1_waddr    (w_l1_waddr),
+        .lane1_we       (w_l1_we),
+        .lane1_wdata    (w_l1_wdata),
+        .lane1_rdata    (w_l1_rdata),
+        .hk_raddr       (w_hk_raddr),
+        .hk_rdata       (w_bm_rdata_eff),
         .bm_waddr       (w_bm_waddr),
         .bm_wdata       (w_bm_wdata),
         .bm_we          (w_bm_we),
         .rd_cmd_addr    (w_rd_cmd_addr),
         .rd_cmd_pair    (w_rd_cmd_pair),
+        .rd_cmd_len     (w_rd_cmd_len),
         .rd_cmd_valid   (w_rd_cmd_valid),
         .rd_cmd_ready   (w_rd_cmd_ready),
         .rd_data        (w_rd_data),
+        .rd_data_hi     (w_rd_data_hi),
+        .rd_data_two    (w_rd_data_two),
         .rd_data_valid  (w_rd_data_valid),
         .rd_data_ready  (w_rd_data_ready),
+        .rd_data_take2  (w_rd_data_take2),
         .hdr_cmd_addr   (w_hdr_cmd_addr),
         .hdr_cmd_valid  (w_hdr_cmd_valid),
         .hdr_cmd_ready  (w_hdr_cmd_ready),
@@ -360,17 +448,18 @@ module gc_top (
         .dirty_drained  (w_dirty_drained)
     );
 
-    gc_bitmap u_bitmap (
+    gc_bitmapN #(.LANES(2), .SEL(1)) u_bitmap (
         .clk   (S_AXI_ACLK),
-        .waddr (w_bm_waddr),
-        .din   (w_bm_wdata),
-        .we    (w_bm_we),
-        .raddr (w_bm_raddr_eff),
-        .dout  (w_bm_rdata)
+        .we    ({w_bm_we1, w_bm_we0}),
+        .waddr ({w_bm_wa1, w_bm_wa0}),
+        .din   ({w_bm_wd1, w_bm_wd0}),
+        .raddr ({w_bm_ra1, w_bm_ra0}),
+        .dout  ({w_l1_rdata, w_l0_rdata})
     );
 
-    assign w_bm_raddr_eff = w_free_busy ? w_free_bm_raddr :
-                            (w_engine_idle ? w_regs_bm_addr : w_bm_raddr_eng);
+    assign w_bm_raddr_eff = w_dump_busy ? w_dump_bm_raddr :
+                            (w_free_busy ? w_free_bm_raddr :
+                            (w_engine_idle ? w_regs_bm_addr : w_hk_raddr));
 
     always @(posedge S_AXI_ACLK) w_bm_probe_r <= w_bm_rdata_eff;
 
@@ -426,9 +515,9 @@ module gc_top (
         .clear  (w_clear_q_eff | w_abort | w_engine_q_clear),   // abort always clears; a
                                                         // spilled CLEAR_Q does not
                                                         // touch a running epoch
-        .waddr  (w_q_push_addr),
-        .wdata  (w_q_push_data),
-        .we     (w_q_push),
+        .waddr  (w_q_tail),
+        .wdata  (w_q_wdata),
+        .we     (w_q_we),
         .en     (w_q_pop),
         .rdata  (w_q_pop_id),
         .rvalid (w_q_pop_ack),
@@ -446,8 +535,12 @@ module gc_top (
         .cmd0_valid  (w_rd_cmd_valid),
         .cmd0_addr   (w_rd_cmd_addr),
         .cmd0_pair   (w_rd_cmd_pair),
+        .cmd0_len    (w_rd_cmd_len),
         .cmd0_ready  (w_rd_cmd_ready),
         .data0_out   (w_rd_data),
+        .data0_out_hi (w_rd_data_hi),
+        .data0_two   (w_rd_data_two),
+        .data0_take2 (w_rd_data_take2),
         .data0_valid (w_rd_data_valid),
         .data0_ready (w_rd_data_ready),
 
@@ -480,5 +573,39 @@ module gc_top (
     );
 
     assign irq_o = w_done;
+
+    // ---------------------------------------------------------------- bitmap dump
+    // The PS cannot read the 128 KiB bitmap quickly over AXI-Lite; stream it to
+    // DDR over the HP write channel and let the CPU memcpy it (~1 ms), instead
+    // of one probe-address write + data read per word (~190 ms).
+    gc_dump u_dump (
+        .clk       (S_AXI_ACLK),
+        .rst_n     (S_AXI_ARESETN),
+        .start     (w_dump & w_engine_idle & ~w_free_busy & ~w_dump_busy),
+        .base      (w_dump_base),
+        .busy      (w_dump_busy),
+        .done      (w_dump_done),
+        .bm_raddr  (w_dump_bm_raddr),
+        .bm_rdata  (w_bm_rdata_eff),
+        .AWADDR    (S_AXI_HP_AWADDR),
+        .AWID      (S_AXI_HP_AWID),
+        .AWLEN     (S_AXI_HP_AWLEN),
+        .AWSIZE    (S_AXI_HP_AWSIZE),
+        .AWBURST   (S_AXI_HP_AWBURST),
+        .AWCACHE   (S_AXI_HP_AWCACHE),
+        .AWPROT    (S_AXI_HP_AWPROT),
+        .AWVALID   (S_AXI_HP_AWVALID),
+        .AWREADY   (S_AXI_HP_AWREADY),
+        .WDATA     (S_AXI_HP_WDATA),
+        .WID       (S_AXI_HP_WID),
+        .WSTRB     (S_AXI_HP_WSTRB),
+        .WLAST     (S_AXI_HP_WLAST),
+        .WVALID    (S_AXI_HP_WVALID),
+        .WREADY    (S_AXI_HP_WREADY),
+        .BID       (S_AXI_HP_BID),
+        .BRESP     (S_AXI_HP_BRESP),
+        .BVALID    (S_AXI_HP_BVALID),
+        .BREADY    (S_AXI_HP_BREADY)
+    );
 
 endmodule

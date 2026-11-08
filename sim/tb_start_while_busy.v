@@ -155,11 +155,14 @@ module tb_start_while_busy;
             mem[i*4 + 2] = REF_BASE + i * 16;
             mem[i*4 + 3] = 0;
         end
-        // Object 0: 32 references to objects 1..32.
-        mem[0*4 + 1] = 32;
+        // Object 0: 32 references to objects 1..32, then 268 out-of-range
+        // refs (0xFFFFFFFF).  The long list keeps the engine inside
+        // S_REFS_LOOP while the duplicate START is written.
+        mem[0*4 + 1] = 300;
         for (i = 0; i < 32; i = i + 1)
             mem[(REF_BASE >> 2) + i] = i + 1;
-        mem[(REF_BASE >> 2) + 32] = 32'hFFFFFFFF;
+        for (i = 32; i < 300; i = i + 1)
+            mem[(REF_BASE >> 2) + i] = 32'hFFFFFFFF;
     end
 
     // One outstanding read at a time.  Enough for the engine to make progress;
@@ -167,28 +170,35 @@ module tb_start_while_busy;
     reg        pend_valid = 1'b0;
     reg [5:0]  pend_id    = 6'h0;
     reg [31:0] pend_addr  = 32'h0;
-    reg [63:0] pend_data  = 64'h0;
+    reg [3:0]  pend_beats = 4'd0;    // ARLEN (beats-1)
+    reg [3:0]  pend_idx   = 4'd0;
 
     assign hp_arready = ~pend_valid;
     assign hp_rvalid  = pend_valid;
     assign hp_rid     = pend_id;
-    assign hp_rdata   = pend_data;
+    assign hp_rdata   = {mem[(pend_addr >> 2) + (pend_idx << 1) + 1],
+                         mem[(pend_addr >> 2) + (pend_idx << 1)]};
     assign hp_rresp   = 2'b00;
-    assign hp_rlast   = 1'b1;
+    assign hp_rlast   = (pend_idx == pend_beats);
 
     always @(posedge clk) begin
         if (!rstn) begin
             pend_valid <= 1'b0;
             pend_id    <= 6'h0;
             pend_addr  <= 32'h0;
-            pend_data  <= 64'h0;
+            pend_beats <= 4'd0;
+            pend_idx   <= 4'd0;
         end else if (hp_arvalid && hp_arready) begin
             pend_valid <= 1'b1;
             pend_id    <= hp_arid;
             pend_addr  <= hp_araddr;
-            pend_data  <= {mem[(hp_araddr >> 2) + 1], mem[hp_araddr >> 2]};
+            pend_beats <= hp_arlen;
+            pend_idx   <= 4'd0;
         end else if (pend_valid && hp_rready) begin
-            pend_valid <= 1'b0;
+            if (pend_idx == pend_beats)
+                pend_valid <= 1'b0;
+            else
+                pend_idx <= pend_idx + 4'd1;
         end
     end
 
@@ -254,8 +264,15 @@ module tb_start_while_busy;
         end
         if (wait_cnt >= 200000) begin
             $display("[BUSY-START][FAIL] setup: engine never reached S_REFS_LOOP");
+            $display("      state=%0d qcnt=%0d qtail=%0d qempty=%b cur=%0d rc=%0d rgot=%0d",
+                     dut.u_engine.state, dut.u_queue.count, dut.u_queue.tail,
+                     dut.u_queue.empty, dut.u_engine.cur_obj,
+                     dut.u_engine.ref_count, dut.u_engine.ref_got);
             errors = errors + 1;
         end else begin
+            $display("[BUSY] in S_REFS_LOOP: rc=%0d rgot=%0d cur=%0d",
+                     dut.u_engine.ref_count, dut.u_engine.ref_got,
+                     dut.u_engine.cur_obj);
             // Duplicate START while busy: the engine must ignore it and the
             // read engine must not flush the current object's reads.
             axil_write(12'h000, 32'hA500_0001);
@@ -281,7 +298,10 @@ module tb_start_while_busy;
                     errors = errors + 1;
                 end
                 for (i = 0; i < N; i = i + 1) begin
-                    word = dut.u_bitmap.mem[i];
+                    if (i[5])
+                        word = dut.u_bitmap.g_bank[1].mem[i[14:6]];
+                    else
+                        word = dut.u_bitmap.g_bank[0].mem[i[14:6]];
                     if (word[i % 32] !== (i <= 32)) begin
                         $display("[BUSY-START][FAIL] bitmap[%0d]=%0d, expect %0d",
                                  i, word[i % 32], (i <= 32));

@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 rem ============================================================
 rem run_port_tb.bat - the three directed testbenches that guard the
@@ -23,8 +23,10 @@ set "FAILED="
 echo === xvlog (all RTL once) ===
 call "%XV%\xvlog.bat" -sv ^
     "%SRC%\rtl\gc_top.v" "%SRC%\rtl\gc_mark_engine.v" "%SRC%\rtl\gc_axi_read.v" ^
-    "%SRC%\rtl\gc_bitmap.v" "%SRC%\rtl\gc_queue.v" "%SRC%\rtl\gc_freelist.v" ^
-    "%SRC%\rtl\gc_dirty_fifo.v" "%SRC%\rtl\gc_regs.v" "%SRC%\sim\axi_proto_check.v" ^
+    "%SRC%\rtl\gc_bitmap.v" "%SRC%\rtl\gc_bitmapN.v" "%SRC%\rtl\gc_lane.v" ^
+    "%SRC%\rtl\gc_push_arb.v" "%SRC%\rtl\gc_push_fifo.v" "%SRC%\rtl\gc_queue.v" "%SRC%\rtl\gc_freelist.v" ^
+    "%SRC%\rtl\gc_dirty_fifo.v" "%SRC%\rtl\gc_regs.v" "%SRC%\rtl\gc_dump.v" ^
+    "%SRC%\sim\axi_proto_check.v" ^
     "%SRC%\sim\tb_flush_data.v" "%SRC%\sim\tb_stale_ar_flush.v" "%SRC%\sim\tb_start_while_busy.v"
 if errorlevel 1 goto :fail
 
@@ -55,3 +57,4 @@ exit /b 0
 :fail
 echo === BUILD FAILED ===
 exit /b 1
+

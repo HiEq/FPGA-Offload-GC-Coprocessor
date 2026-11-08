@@ -36,6 +36,10 @@ Step 'sim: tb_cmdfifo_flush' { & cmd /c (Join-Path $root 'sim\run_cmdfifo_tb.bat
 
 Step 'sim: tb_regs_aww' { & cmd /c (Join-Path $root 'sim\run_regs_aww_tb.bat') }
 
+Step 'sim: tb_gc_dump' { & cmd /c (Join-Path $root 'sim\run_dump_tb.bat') }
+
+Step 'sim: step2 blocks' { & cmd /c (Join-Path $root 'sim\run_smp_tb.bat') }
+
 Step 'sim: hand-over TBs' { & cmd /c (Join-Path $root 'sim\run_port_tb.bat') }
 
 Write-Host ''

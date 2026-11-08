@@ -10,14 +10,14 @@
 / {
     /* carve the PL object-graph window out of Linux's memory.
      * The AXI HP port is NOT cache coherent with the PS, so this region
-     * must never be handed out to the kernel allocator. 32 MiB @0x1E000000 */
+     * must never be handed out to the kernel allocator. 64 MiB @0x1E000000 */
     reserved-memory {
         #address-cells = <1>;
         #size-cells = <1>;
         ranges;
 
         pl_graph: pl_graph@1e000000 {
-            reg = <0x1e000000 0x02000000>;
+            reg = <0x1e000000 0x04000000>;
             no-map;   /* non-coherent PL window: also keep the kernel from mapping it */
         };
     };

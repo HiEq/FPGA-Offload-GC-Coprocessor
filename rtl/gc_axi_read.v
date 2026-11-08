@@ -15,8 +15,12 @@ module gc_axi_read #(
     input  wire        cmd0_valid,
     input  wire [31:0] cmd0_addr,
     input  wire        cmd0_pair,
+    input  wire [1:0]  cmd0_len,     // burst length in beats minus 1 (0 = single)
     output wire        cmd0_ready,
     output wire [31:0] data0_out,
+    output wire [31:0] data0_out_hi,  // second ref of the same beat
+    output wire        data0_two,     // two refs available this cycle
+    input  wire        data0_take2,   // consumer accepts both words
     output wire        data0_valid,
     input  wire        data0_ready,
 
@@ -50,7 +54,7 @@ module gc_axi_read #(
     localparam integer PW  = 7;        // 128 深
     localparam integer DEP = 1 << PW;
 
-    reg  [33:0] c0f [0:DEP-1];
+    reg  [35:0] c0f [0:DEP-1];
     reg  [PW-1:0] c0w = 0, c0r = 0;
     wire [PW-1:0] c0cnt = c0w - c0r;
     wire          c0full = (c0cnt >= QD[PW-1:0]);
@@ -70,6 +74,8 @@ module gc_axi_read #(
     wire          d0full = (d0cnt >= QD[PW-1:0]);
     wire          d0empty = (d0w == d0r);
     assign data0_out   = d0f[d0r];
+    assign data0_out_hi = d0f[(d0r + 7'd1) & (DEP-1)];
+    assign data0_two   = (d0cnt >= 2);
     assign data0_valid = ~d0empty;
 
     reg  [31:0] d1f [0:DEP-1];
@@ -95,6 +101,7 @@ module gc_axi_read #(
 
     reg        ar_hi  = 1'b0;
     reg        ar_pair = 1'b0;      // 当前在 AR 通道上的读的 hi_sel
+    reg  [1:0] ar_len = 2'd0;       // 当前 AR 的突发长度 (beats-1)
     reg        ar_sel = 1'b0;      // 0 = 引用流, 1 = 对象头流
     wire       ar_hs  = ARVALID && ARREADY;
 
@@ -166,7 +173,7 @@ module gc_axi_read #(
             // handshaking in that same cycle belongs to the run being dropped,
             // so it must not advance c*w past the reloaded c*r.
             if (cmd0_valid && cmd0_ready && !run_start && !abort) begin
-                c0f[c0w] <= {cmd0_pair, cmd0_addr[2], cmd0_addr};
+                c0f[c0w] <= {cmd0_len, cmd0_pair, cmd0_addr[2], cmd0_addr};
                 c0w <= c0w + 1'b1;
             end
             if (cmd1_valid && cmd1_ready && !run_start && !abort) begin
@@ -191,14 +198,18 @@ module gc_axi_read #(
                         ar_sel  <= 1'b0;
                         ar_hi   <= c0f[c0r][32];
                         ar_pair <= c0f[c0r][33];
+                        ar_len  <= c0f[c0r][35:34];
                         ARID    <= 6'd0;
                         ARADDR  <= {c0f[c0r][31:3], 3'b000};   // 8 字节对齐
+                        ARLEN   <= c0f[c0r][35:34];
                         c0r     <= c0r + 1'b1;
                     end else begin
                         ar_sel  <= 1'b1;
                         ar_hi   <= c1f[c1r][2];
+                        ar_len  <= 2'd1;
                         ARID    <= 6'd1;
                         ARADDR  <= {c1f[c1r][31:3], 3'b000};
+                        ARLEN   <= 4'd1;   // one 2-beat burst = the whole 16-byte header
                         c1r     <= c1r + 1'b1;
                     end
                     ARVALID <= 1'b1;
@@ -226,17 +237,17 @@ module gc_axi_read #(
                     err <= 1'b1;
                 if (r_is1) begin
                     if (!h1empty) begin
-                        d1f[d1w] <= (RRESP == 2'b00)
-                                    ? (h1f[h1r] ? RDATA[63:32] : RDATA[31:0])
-                                    : 32'hFFFFFFFF;
-                        d1w <= d1w + 1'b1;
-                        h1r <= h1r + 1'b1;
+                        // header burst: both 32-bit halves, in address order
+                        d1f[d1w]     <= (RRESP == 2'b00) ? RDATA[31:0] : 32'hFFFFFFFF;
+                        d1f[(d1w + 7'd1) & (DEP-1)] <= (RRESP == 2'b00) ? RDATA[63:32] : 32'hFFFFFFFF;
+                        d1w <= d1w + 7'd2;
+                        if (RLAST) h1r <= h1r + 1'b1;
                     end
                 end else begin
                     if (!h0empty) begin
                         if (h0f[h0r][1]) begin
                             d0f[d0w]     <= (RRESP == 2'b00) ? RDATA[31:0] : 32'hFFFFFFFF;
-                            d0f[d0w + 7'd1] <= (RRESP == 2'b00) ? RDATA[63:32] : 32'hFFFFFFFF;
+                            d0f[(d0w + 7'd1) & (DEP-1)] <= (RRESP == 2'b00) ? RDATA[63:32] : 32'hFFFFFFFF;
                             d0w <= d0w + 7'd2;
                         end else begin
                             d0f[d0w] <= (RRESP == 2'b00)
@@ -244,13 +255,13 @@ module gc_axi_read #(
                                         : 32'hFFFFFFFF;
                             d0w <= d0w + 1'b1;
                         end
-                        h0r <= h0r + 1'b1;
+                        if (RLAST) h0r <= h0r + 1'b1;
                     end
                 end
             end
 
             if (data0_valid && data0_ready && !run_start && !abort)
-                d0r <= d0r + 1'b1;      // a flush owns the pointers in that cycle
+                d0r <= d0r + ((data0_take2 && data0_two) ? 7'd2 : 7'd1);
             if (data1_valid && data1_ready && !run_start && !abort)
                 d1r <= d1r + 1'b1;
         end

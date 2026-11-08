@@ -1,11 +1,10 @@
 # ============================================================
-# build.tcl — FOGCCC Vivado工程自动创建脚本
+# build.tcl 。FOGCCC Vivado工程自动创建脚本
 # 平台: Xilinx Zynq-7000 XC7Z100
 #
 # 用法 (三选一):
-#   1. Vivado Tcl Console:  source <repo>/vivado/build.tcl   （脚本自己按 info script 定位，与当前目录无关）
-#   2. Vivado Tcl Console:  cd到本目录后:  source build.tcl
-#   3. 命令行:              vivado -mode batch -source build.tcl
+#   1. Vivado Tcl Console:  source <repo>/vivado/build.tcl   （脚本自己按 info script 定位，与当前目录无关。#   2. Vivado Tcl Console:  cd到本目录。  source build.tcl
+#   3. 命令。              vivado -mode batch -source build.tcl
 #
 # 产出:
 #   fogccc_proj/system.bd              (Block Design)
@@ -15,9 +14,8 @@
 # ============================================================
 
 # ============ 配置 ============
-# 注: 构建日志里偶发的 "ERROR: [Common 17-354] Could not open 'C' for writing."
-# 来自 Vivado 自身的 webtalk 写入器 (路径被截断成裸 'C'; 每次构建 0~4 条, 与设计
-# 流程无关, 所有产物照常生成). 2026.1 已没有 set_param general.webtalk /
+# 。 构建日志里偶发的 "ERROR: [Common 17-354] Could not open 'C' for writing."
+# 来自 Vivado 自身。webtalk 写入。(路径被截断成。'C'; 每次构建 0~4 。 与设。# 流程无关, 所有产物照常生。. 2026.1 已没。set_param general.webtalk /
 # config_webtalk 命令, 因此在脚本里无法关闭; 详见 tools/out/*.log 记录.
 
 set PART      "xc7z100ffg900-2"
@@ -26,8 +24,8 @@ set SCRIPT_DIR [file dirname [file normalize [info script]]]
 set PROJ_DIR  [file normalize [file join $SCRIPT_DIR "fogccc_proj"]]
 set RTL_DIR    [file normalize [file join $SCRIPT_DIR ".." "rtl"]]
 
-# 综合/实现并行线程数 —— 必须放在**最前面**才会生效!
-# (原来这行写在综合之后, 等于没设, 白白慢了好几倍)
+# 综合/实现并行线程。—。必须放在**最前面**才会生效!
+# (原来这行写在综合之后, 等于没设, 白白慢了好几。
 set_param general.maxThreads 20
 
 puts "INFO: RTL dir = $RTL_DIR"
@@ -50,8 +48,8 @@ puts "INFO: Added [llength $rtl_files] RTL files"
 create_bd_design "system"
 puts "INFO: Creating Block Design..."
 
-# ---- 1. PS7 (开源骚客 OS-ZYNQ7100 Lite 板卡配置) ----
-# 参照厂商 design_1.bd: 只设必需参数, DDR延迟/时序由IP按型号自动计算
+# ---- 1. PS7 (开源骚。OS-ZYNQ7100 Lite 板卡配置) ----
+# 参照厂商 design_1.bd: 只设必需参数, DDR延迟/时序由IP按型号自动计算。
 create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps7_0
 set_property -dict [list \
     CONFIG.PCW_UIPARAM_DDR_PARTNO {MT41K256M16 RE-125} \
@@ -64,12 +62,12 @@ set_property -dict [list \
     CONFIG.PCW_SD0_SD0_IO {MIO 40 .. 45} \
     CONFIG.PCW_EN_DDR {1} \
     CONFIG.PCW_CRYSTAL_PERIPHERAL_FREQMHZ {33.333333} \
-    CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {666.666666} \
+    CONFIG.PCW_APU_PERIPHERAL_FREQMHZ {800} \
     CONFIG.PCW_UIPARAM_DDR_FREQ_MHZ {533.333333} \
     CONFIG.PCW_USE_M_AXI_GP0 {1} \
     CONFIG.PCW_USE_S_AXI_HP0 {1} \
     CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {64} \
-    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
+    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {150} \
     CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {200} \
     CONFIG.PCW_EN_CLK0_PORT {1} \
     CONFIG.PCW_EN_CLK1_PORT {1} \
@@ -87,22 +85,22 @@ set_property -dict [list \
 ] [get_bd_cells axi_lite_ic]
 puts "INFO: AXI Interconnect created"
 
-# ---- 3. Reset Generator (100MHz域) ----
+# ---- 3. Reset Generator (100MHz。 ----
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_gen
 
-# 单一时钟域: 100MHz (FCLK_CLK0) 同时驱动 AXI-Lite 和 AXI HP.
-# 旧版 HP 跑 FCLK_CLK1=200MHz, 需要独立复位; 现在读主控用命令/数据 FIFO,
-# 流式数据无法简单 2FF 跨域, 故统一时钟域并去掉 rst_gen_hp.
+# 单一时钟。 100MHz (FCLK_CLK0) 同时驱动 AXI-Lite 。AXI HP.
+# 旧版 HP 。FCLK_CLK1=200MHz, 需要独立复。 现在读主控用命令/数据 FIFO,
+# 流式数据无法简。2FF 跨域, 故统一时钟域并去掉 rst_gen_hp.
 puts "INFO: Single clock domain (100MHz), no HP reset generator"
 
 # ---- 4. GC Coprocessor ----
 create_bd_cell -type module -reference gc_top gc_top_0
 puts "INFO: gc_top instantiated"
 
-# ---- 5. AXI HP 直连 (不再需要 Interconnect) ----
-# gc_top 的 HP 口已显式声明成 AXI3 / ID_WIDTH 6, 与 PS7 的 S_AXI_HP0 完全一致,
-# 1 主 1 从时 Interconnect 纯属多余 —— 它还要做 AXI4->AXI3 协议转换,
-# 实测那一级转换会让每对象多 1.5 拍. 直连后协议转换和流水级都省掉.
+# ---- 5. AXI HP 直连 (不再需。Interconnect) ----
+# gc_top 。HP 口已显式声明。AXI3 / ID_WIDTH 6, 。PS7 。S_AXI_HP0 完全一。
+# 1 。1 从时 Interconnect 纯属多余 —。它还要做 AXI4->AXI3 协议转换,
+# 实测那一级转换会让每对象。1.5 。 直连后协议转换和流水级都省掉.
 puts "INFO: AXI HP path will be connected directly (no interconnect)"
 
 # ============================================================
@@ -121,7 +119,7 @@ connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins ps7_0/S_AXI_HP0_ACLK]
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins axi_lite_ic/S00_ACLK]
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins axi_lite_ic/M00_ACLK]
 
-# FCLK_CLK0 (100MHz) -> AXI HP (直连, 单一时钟域)
+# FCLK_CLK0 (100MHz) -> AXI HP (直连, 单一时钟。
 connect_bd_net [get_bd_pins ps7_0/FCLK_CLK0] [get_bd_pins gc_top_0/S_AXI_HP_ACLK]
 
 puts "INFO: Clocks connected"
@@ -129,20 +127,20 @@ puts "INFO: Clocks connected"
 # ============================================================
 # 6. 复位连接
 # ============================================================
-# 100MHz域 (AXI-Lite + 引擎)
+# 100MHz。(AXI-Lite + 引擎)
 connect_bd_net [get_bd_pins ps7_0/FCLK_RESET0_N] [get_bd_pins rst_gen/ext_reset_in]
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins axi_lite_ic/ARESETN]
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins axi_lite_ic/S00_ARESETN]
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins axi_lite_ic/M00_ARESETN]
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins gc_top_0/S_AXI_ARESETN]
 
-# 100MHz域 (AXI HP 与 AXI-Lite 同一域) — 复用 rst_gen
+# 100MHz。(AXI HP 。AXI-Lite 同一。 。复用 rst_gen
 connect_bd_net [get_bd_pins rst_gen/peripheral_aresetn] [get_bd_pins gc_top_0/S_AXI_HP_ARESETN]
 
 puts "INFO: Resets connected (single 100MHz domain)"
 
 # ============================================================
-# 7. AXI-Lite 数据通路 (PS7 -> gc_top 控制寄存器)
+# 7. AXI-Lite 数据通路 (PS7 -> gc_top 控制寄存。
 # ============================================================
 connect_bd_intf_net [get_bd_intf_pins ps7_0/M_AXI_GP0] \
                     [get_bd_intf_pins axi_lite_ic/S00_AXI]
@@ -151,14 +149,13 @@ connect_bd_intf_net [get_bd_intf_pins axi_lite_ic/M00_AXI] \
 
 puts "INFO: AXI-Lite path connected (GP0 -> interconnect -> gc_top)"
 
-# gc_top 的 done 输出接到 PS7 的 fabric 中断 (IRQ_F2P)
-# 驱动目前是轮询 DONE, 中断是给将来的事件驱动留的; 不接的话综合会告警
-# "port irq_o is unconnected", 而且真要改成中断驱动时会静默收不到.
+# gc_top 。done 输出接到 PS7 。fabric 中断 (IRQ_F2P)
+# 驱动目前是轮。DONE, 中断是给将来的事件驱动留。 不接的话综合会告。# "port irq_o is unconnected", 而且真要改成中断驱动时会静默收不。
 connect_bd_net [get_bd_pins gc_top_0/irq_o] [get_bd_pins ps7_0/IRQ_F2P]
 puts "INFO: irq_o connected to ps7_0/IRQ_F2P"
 
 # ============================================================
-# 8. AXI HP 数据通路 (gc_top 直连 PS7 HP0, 无 Interconnect)
+# 8. AXI HP 数据通路 (gc_top 直连 PS7 HP0, 。Interconnect)
 # ============================================================
 connect_bd_intf_net [get_bd_intf_pins gc_top_0/S_AXI_HP] \
                     [get_bd_intf_pins ps7_0/S_AXI_HP0]
@@ -168,12 +165,12 @@ puts "INFO: AXI HP path connected directly (gc_top -> HP0)"
 # ============================================================
 # 9. 地址映射
 # ============================================================
-# 先自动分配所有地址段
+# 先自动分配所有地址。
 assign_bd_address
 
 # 找到gc_top在PS7地址空间中的映射段并设置偏移
 # 注意: 该段属于 /ps7_0/Data (主机地址空间), 形如 /ps7_0/Data/SEG_gc_top_0_reg0,
-#       既不能用 interconnect 引脚找, 也不能用 gc_top 单元找
+#       既不能用 interconnect 引脚。 也不能用 gc_top 单元。
 set gc_seg ""
 foreach s [get_bd_addr_segs -quiet] {
     set p [get_property PATH $s]
@@ -199,17 +196,15 @@ if {[llength $hp_seg] > 0} {
 }
 
 # ============================================================
-# 10. 验证并保存
-# ============================================================
+# 10. 验证并保。# ============================================================
 validate_bd_design
 save_bd_design
 puts "INFO: Block Design validated and saved"
 
 # ============================================================
-# [可选] 只建 BD 并导出接口推断结果, 不做综合/实现
+# [可选] 只建 BD 并导出接口推断结。 不做综合/实现
 #   用法:  cmd /c "set BD_ONLY=1 && vivado -mode batch -source build.tcl"
-#   用途: 改完 RTL 的接口属性后, 3 分钟就能确认 Vivado 推断成什么协议
-# ============================================================
+#   用。 改完 RTL 的接口属性后, 3 分钟就能确认 Vivado 推断成什么协。# ============================================================
 if {[info exists ::env(BD_ONLY)] && $::env(BD_ONLY) ne "" && $::env(BD_ONLY) ne "0"} {
     set dump [file join $SCRIPT_DIR "bd_if_dump.txt"]
     set fh [open $dump w]
@@ -240,8 +235,7 @@ generate_target all [get_files system.bd]
 puts "INFO: Output products generated"
 
 # ============================================================
-# 12. 生成HDL Wrapper并设为顶层
-# ============================================================
+# 12. 生成HDL Wrapper并设为顶。# ============================================================
 make_wrapper -files [get_files system.bd] -top
 
 # 查找wrapper文件
@@ -303,7 +297,7 @@ puts ""
 # ============================================================
 puts "INFO: Starting synthesis..."
 reset_run synth_1
-launch_runs synth_1 -jobs 8
+launch_runs synth_1 -jobs 20
 wait_on_run synth_1
 
 if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
@@ -316,7 +310,7 @@ puts "INFO: Synthesis PASSED"
 # 15. 实现
 # ============================================================
 puts "INFO: Starting implementation..."
-launch_runs impl_1 -jobs 8
+launch_runs impl_1 -jobs 20
 wait_on_run impl_1
 
 if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
@@ -326,8 +320,7 @@ if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
 puts "INFO: Implementation PASSED"
 
 # ============================================================
-# 16. 时序检查
-# ============================================================
+# 16. 时序检。# ============================================================
 open_run impl_1
 set wns [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -setup]]
 if {$wns < 0} {
@@ -339,18 +332,18 @@ if {$wns < 0} {
 # ============================================================
 # 17. 资源报告
 # ============================================================
-# 用 file join + forward slash 避免Windows路径冒号问题
+# 。file join + forward slash 避免Windows路径冒号问题
 report_utilization -file [file join [file normalize $PROJ_DIR] utilization.rpt]
 report_timing_summary -file [file join [file normalize $PROJ_DIR] timing.rpt]
 puts "INFO: Reports saved to [file normalize $PROJ_DIR]"
 
-# (maxThreads 已在文件开头设置)
+# (maxThreads 已在文件开头设。
 
 # ============================================================
 # 18. 生成Bitstream
 # ============================================================
 puts "INFO: Generating bitstream..."
-launch_runs impl_1 -to_step write_bitstream -jobs 8
+launch_runs impl_1 -to_step write_bitstream -jobs 20
 wait_on_run impl_1
 
 # ============================================================
