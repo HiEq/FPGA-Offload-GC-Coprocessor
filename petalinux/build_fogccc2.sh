@@ -4,8 +4,8 @@
 #
 # 前置:
 #   - Vivado 已产出  <工程根>\vivado\fogccc_proj\system.xsa 和 system_wrapper.bit
-#   - artifacts/zynq_fsbl.elf 存在 (厂商 FSBL; 不入库, 见 NOTICE)
-#     只构建 image.ub 时不需要它: 设置 SKIP_BOOT=1 跳过 BOOT.BIN 打包
+#   - BOOT.BIN 用本次构建的 images/linux/zynq_fsbl.elf（由 XSA 生成，串口分频随 PS7 配置）
+#     只构建 image.ub 时: 设置 SKIP_BOOT=1 跳过 BOOT.BIN 打包
 #   - fogccc2_linux 不存在时, 本脚本会用仓库里的 project-spec 骨架创建它, 配置包括:
 #       kernel cmdline = console=ttyPS0,921600 earlycon
 #       rootfs = initramfs, hostname = linux, empty-root-password
@@ -22,7 +22,6 @@ PROJ="$PLNX_ROOT/fogccc2_linux"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 XSA="$ROOT/vivado/fogccc_proj/system.xsa"
 BIT="$ROOT/vivado/fogccc_proj/fogccc_z7100.runs/impl_1/system_wrapper.bit"
-FSBL="$ROOT/artifacts/zynq_fsbl.elf"
 OUT="$ROOT/artifacts"
 SKIP_BOOT="${SKIP_BOOT:-0}"
 if [ "${1:-}" = "--skip-boot" ]; then
@@ -32,9 +31,9 @@ fi
 echo "=== Step 0: 检查输入文件 ==="
 ls -la "$XSA" "$BIT"
 if [ "$SKIP_BOOT" = "1" ]; then
-    echo "SKIP_BOOT=1: 只构建 image.ub，不打包 BOOT.BIN，跳过厂商 FSBL 检查"
+    echo "SKIP_BOOT=1: 只构建 image.ub，不打包 BOOT.BIN，跳过 FSBL 检查"
 else
-    ls -la "$FSBL"
+    echo "FSBL 用本次构建的 images/linux/zynq_fsbl.elf（由 XSA 生成，串口分频随 PS7 配置）"
 fi
 
 echo "=== Step 1: 载入 PetaLinux 2026.1 环境 ==="
@@ -67,6 +66,10 @@ grep -q 'CONFIG_SUBSYSTEM_ROOTFS_INITRAMFS=y' project-spec/configs/config \
     || { echo "!!! 丢失: ROOTFS_INITRAMFS"; fail=1; }
 grep -q 'earlycon' project-spec/configs/config \
     || { echo "!!! 丢失: kernel cmdline (earlycon)"; fail=1; }
+grep -q 'CONFIG_SUBSYSTEM_SERIAL_PS7_UART_0_SELECT=y' project-spec/configs/config \
+    || { echo "!!! 丢失: 串口选择不是 PS7_UART_0（MANUAL 会让 stdout-path 变成 notfound，U-Boot 退回 115200）"; fail=1; }
+grep -q 'CONFIG_SUBSYSTEM_SERIAL_PS7_UART_0_BAUDRATE_921600=y' project-spec/configs/config \
+    || { echo "!!! 丢失: 串口波特率 921600"; fail=1; }
 grep -q 'CONFIG_imagefeature-empty-root-password=y' project-spec/configs/rootfs_config \
     || { echo "!!! 丢失: empty-root-password (上板会登不进去)"; fail=1; }
 grep -q 'CONFIG_python3=y' project-spec/configs/rootfs_config \
@@ -104,7 +107,7 @@ if [ "$SKIP_BOOT" = "1" ]; then
     echo "=== Step 4: SKIP_BOOT=1，跳过 BOOT.BIN 打包 ==="
 else
     echo "=== Step 4: 打包 BOOT.BIN (显式带新比特流) ==="
-    petalinux-package boot --fsbl "$FSBL" --fpga "$BIT" --u-boot --force
+    petalinux-package boot --fsbl images/linux/zynq_fsbl.elf --fpga "$BIT" --u-boot --force
 fi
 
 echo "=== Step 5: 拷贝启动文件到 FOGCCC2/artifacts ==="
