@@ -47,11 +47,19 @@ function Label([int]$x, [int]$y, [string]$text, [int]$size, $color = $white) {
     $g.DrawString($text, $f, $b, [single]$x, [single]$y)
     $b.Dispose(); $f.Dispose()
 }
+function Frame([int]$x, [int]$y, [int]$w, [int]$h) {
+    Fill $x $y $w $h ([System.Drawing.ColorTranslator]::FromHtml('#3d3d3d'))
+    $pen = New-Object System.Drawing.Pen ([System.Drawing.ColorTranslator]::FromHtml('#6b6b6b')), 3
+    $g.DrawRectangle($pen, $x, $y, $w, $h)
+    $pen.Dispose()
+}
 function Bar([int]$x, [int]$y, [int]$w, [int]$h) { Fill $x $y $w $h $accent }
 
 # ---------------------------------------------------------------- SoC panel
 Fill 24 24 1552 820 $panel
 Label 64 44 'ZYNQ 7100 SoC' 42
+Frame 44 116 556 712
+Frame 764 116 784 712
 
 # PS column
 $px = 64; $pw = 520; $ph = 104
