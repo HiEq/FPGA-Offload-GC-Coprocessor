@@ -12,20 +12,20 @@
 | BRAM / DSP | 755 × 36Kb / 2,020 slices |
 | PS | 2× ARM Cortex-A9 @ 800 MHz（v4.8 起；v4.7 及以前 666.67 MHz），DDR3 @ 533.33 MHz |
 | 工具链 | Vivado 2026.1 / PetaLinux 2026.1 |
-| 时钟域 | 单一时钟 FCLK0 = 100 MHz（引擎 / AXI-Lite / AXI HP），无 CDC |
+| 时钟域 | 单一时钟 FCLK0 = 150 MHz（引擎 / AXI-Lite / AXI HP），无 CDC |
 | AXI HP | 64-bit，每拍 1 个 32-bit 字，8 字节对齐 + 半字选择 |
-| 实测资源 | LUT 26,826 (9.67%) / FF 71,460 (12.88%) / BRAM 5.5 (0.73%) / DSP 0 |
-| 时序 | WNS +0.049 ns / WHS +0.049 ns（v4.5 起未再重建 PL，裕量偏紧） |
+| 时序 | WNS +0.012 ns / WHS +0.056 ns（150 MHz 实现，vivado/timing_150_final.rpt，2026-11-06） |
 
-资源与时序取自 `vivado/build.tcl` 的实现报告（位流 md5 `6D4792448135C3796E3CAA1AD86EEA30`，2026-10-25），v4.6 起未重建 PL（v4.13 与 v4.12 镜像相同），数值不变。`fogccc_proj/` 不入库，可由该脚本重建；原始报告副本见 `vivado/reports/`。
+资源与时序取自 150 MHz 的 `report_timing_summary`（`vivado/timing_150_final.rpt`）；
+1M 变体的综合/实现报告随构建生成，不入库。`fogccc_proj/` 不入库，可由 `vivado/build.tcl` 重建。
 
 ## 工具链版本
 
 | 组件 | 版本 |
 | --- | --- |
 | Vivado | 2026.1（SW Build 6511674） |
-| PetaLinux | 2026.1（SDK `release-S06060014`） |
-| 交叉编译器 | gcc 13.4.0（`arm-amd-linux-gnueabi-gcc`，`-mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard`） |
+| PetaLinux | 2026.1（SDK release-S06060014） |
+| 交叉编译器 | gcc 13.4.0（arm-amd-linux-gnueabi-gcc，-mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard） |
 | 构建主机 | Ubuntu 22.04.5 LTS（WSL2） |
 | 目标 glibc | 2.39 |
 | 目标内核 / U-Boot | linux-xlnx 6.18.10 / u-boot-xlnx 2026.01 |
@@ -61,27 +61,31 @@ powershell -File tools/make_release_zips.ps1
 ## 目录
 
 ```
-rtl/          gc_top / gc_regs / gc_mark_engine / gc_bitmap / gc_queue /
-              gc_freelist / gc_dirty_fifo / gc_axi_read
+rtl/          gc_top / gc_regs / gc_mark_engine / gc_bitmapN / gc_queue /
+              gc_freelist / gc_dirty_fifo / gc_axi_read / gc_lane /
+              gc_dump / gc_push_arb / gc_push_fifo
 sim/          tb_gc_top、定向 TB（axi_read / runstart / cmdfifo / regs_aww / hand-over）、
               axi_proto_check.v、run_*.bat|sh
 csrc/         fpga_gc.[ch]、test_main.c、py_bfs.py、build_c_bins.sh、
               build_routes/（C/DMA 建图源码与 build_c.sh / build_dma.sh）
 python/       fogccc.py（ctypes 绑定）
+jvm-shadow/   JamVM 适配器（补丁、libjvm 构建脚本、自研负载）
 vivado/       build.tcl（BD + 综合 + 实现 + XSA）、build_rtl_only.tcl
 tools/        serial_*.ps1、push_tests.ps1、make_manifest/card/release_*、
-              reproduce_all.ps1、tests/（板上测试）、build_routes/（C/DMA 建图入口）、
+              reproduce_all.ps1、dacapo_quick.sh、diagrams/、
+              tests/（板上测试）、build_routes/（C/DMA 建图入口）、
               debug/（调试脚本）、logs/（证据）
 driver/       fogccc_irq.c + PetaLinux 模块 recipe、fogccc_dma/（建图 staging 模块）
 petalinux/    工程骨架与构建脚本（BUILD_GUIDE.md）
 artifacts/    卡上产物、SHA256SUMS（二进制清单）
-docs/         构建、上板、测量、仿真、性能历史、设计细节
+docs/         构建、上板、测量、仿真、性能历史、设计细节、JVM 适配器、发布记录
 tests/        仓库契约测试（目录、提交信息、字面量基线）
 .github/      CI（lint：语法 + iverilog 定向回归 + gcc + SHA256SUMS）
 Makefile      常用命令入口
 AGENTS.md     AI 参与者的工程约束
 ```
 
-与选题指南 3.3.5.4 推荐目录的对照见 [`README.md`](../README.md) 第 6 节。
+目录与选题指南 3.3.5.4 推荐结构的映射：src/ → rtl/、csrc/、driver/、python/；sim/ → sim/；
+build/ → vivado/、petalinux/、Makefile；board/ → tools/、tools/logs/；data/ → artifacts/。
 
 `artifacts/BOOT.BIN` 与 `artifacts/image.ub` 被 `.gitignore` 排除，只随 Release 发布。

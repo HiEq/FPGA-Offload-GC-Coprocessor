@@ -7,17 +7,18 @@
 ```
 +---------------------------------------------------------------------------------+
 | Zynq-7000 XC7Z100                                                               |
-| PS (ARM Cortex-A9 x2 @ 800 MHz)        PL (FCLK0 = 100 MHz)                     |
-|   host app / SW GC                       gc_top                                 |
+| PS (ARM Cortex-A9 x2 @ 800 MHz)        PL (FCLK0 = 150 MHz)                     |
+|   JamVM + libjvm adapter                 gc_top                                 |
 |   fpga_gc.c    -- AXI-Lite -------->     |- gc_regs          registers          |
 |   fogccc.py                              |- gc_mark_engine   BFS FSM            |
-|   /dev/mem mmap -- AXI HP (64-bit) ->    |- gc_bitmap        4096x32            |
-|                                          |- gc_queue         4096x12            |
+|   /dev/mem mmap -- AXI HP (64-bit) ->    |- gc_bitmapN       1M-bit (2 banks)   |
+|                                          |- gc_queue         524288 x 20        |
 |                                          |- gc_freelist      free scan          |
 |                                          |- gc_dirty_fifo    dirty-edge source  |
-|                                          `- gc_axi_read      dual-stream reader |
+|                                          |- gc_dump          bitmap to DDR      |
+|                                          - gc_axi_read      dual-stream reader |
 |                                                                                 |
-| DDR3 0x1E000000: object graph (written by the host)                             |
+| DDR3 0x1E000000: object graph, 64 MiB (written by the host)                     |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -26,8 +27,8 @@
 3. 引擎做 BFS 标记；PS 轮询 `CTRL[31]=done`。
 4. 宿主读 `MARKED` / 位图 / free-list，决定回收。
 
-第 1 步与回收动作由调用者负责；本仓库不接入任何语言运行时。读写路径见
-`csrc/fpga_gc.c`、`python/fogccc.py`。
+第 1 步与回收动作由调用者负责；JamVM 适配器见
+[`jvm-adapter.md`](jvm-adapter.md)。读写路径见 `csrc/fpga_gc.c`、`python/fogccc.py`。
 
 ## 脏引用与增量标记（Phase 3A/3B）
 
@@ -49,7 +50,7 @@
 **命令写标记**：`CTRL`(0x000) 与 `DIRTY_PUSH`(0x440) 的写数据高 12 位必须分别带 `0xA50` / `0xA54`。
 本平台的 AXI-Lite 写通道会把一个 W 拍配到另一条 store 的 AW 地址上；标记不匹配时 `gc_regs` 照常应答但**丢弃**这次写，
 所以错配的拍不会触发 START/ABORT，也不会变成伪造的推送。数据寄存器（OBJ_BASE 等）不带标记，错配只表现为一次错误的值，由测试覆盖。
-`VERSION=0x0004_0301` 起强制该约定；同一版把根集（`0x040`–`0x43F`）改成可读，驱动写后回读并重试，数据寄存器错配由此可检测。
+`VERSION=0x0007_0500` 起强制该约定；同一版把根集（`0x040`–`0x43F`）改成可读，驱动写后回读并重试，数据寄存器错配由此可检测。
 
 **屏障顺序**：先让指针存储对 PL 可见（写完回读/屏障），再写 `0x440`。
 
