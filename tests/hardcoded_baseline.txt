@@ -42,7 +42,7 @@
 3 magic tools/debug/serial_coldboot_verify.ps1
 2 magic tools/debug/verify_bootbin.py
 1 magic tools/debug/wait_boot.ps1
-13 magic tools/diagrams/draw_block.ps1
+10 magic tools/diagrams/draw_block.ps1
 1 path tools/fogccc.bat
 1 magic tools/log.bat
 1 magic tools/reproduce_all.ps1

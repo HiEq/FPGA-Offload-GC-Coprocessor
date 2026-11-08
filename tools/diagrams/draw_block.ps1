@@ -1,16 +1,15 @@
 # Draw docs/images/block.png in the FOGCCC palette.
 #
-# Palette and typography match the v4 diagram: flat rectangles, square corners,
-# orthogonal connectors, Arial Bold.  Regenerate with:
+# Flat rectangles, square corners, orthogonal connectors, Arial Bold.
+# Regenerate with:
 #   powershell -ExecutionPolicy Bypass -File tools/diagrams/draw_block.ps1
 param(
-    [string]$Out = (Join-Path $PSScriptRoot '..\..\docs\images\block.png'),
-    [string]$Render = (Join-Path $PSScriptRoot '..\..\docs\images\zynq7100-render.jpg')
+    [string]$Out = (Join-Path $PSScriptRoot '..\..\docs\images\block.png')
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
-$W = 1600; $H = 1560
+$W = 1600; $H = 1360
 $bg     = [System.Drawing.ColorTranslator]::FromHtml('#ffffff')
 $panel  = [System.Drawing.ColorTranslator]::FromHtml('#474747')
 $inner  = [System.Drawing.ColorTranslator]::FromHtml('#262626')
@@ -87,37 +86,28 @@ for ($i = 0; $i -lt 8; $i++) {
 Label 784 770 'PL: Kintex-7 FPGA | FCLK0 150 MHz | gc_top' 30
 
 # ---------------------------------------------------------------- AXI HP path (orthogonal)
-# graph (DDR) -> up -> right under the SoC -> up into the PL
-Bar 240 874 30 36          # up from the DDR graph panel
+Bar 240 874 30 46          # up from the DDR graph panel
 Bar 240 874 760 30         # horizontal run under the SoC
 Bar 970 844 30 30          # up into the PL panel
 BoxText 400 870 400 30 @('AXI HP 64-bit single-beat') 18
 
-# ---------------------------------------------------------------- DDR3 graph
-Fill 24 910 460 620 $panel
-Fill 40 934 428 118 $inner; BoxText 40 934 428 118 @('0x1E000000','64 MiB Object Graph') 24
-# object grid: 10 x 6 flat squares (square corners)
+# ---------------------------------------------------------------- bottom row
+$by = 920; $bh2 = 420
+
+# DDR3 graph
+Fill 24 $by 560 $bh2 $panel
+Fill 40 940 528 110 $inner; BoxText 40 940 528 110 @('0x1E000000','64 MiB Object Graph') 24
 for ($r = 0; $r -lt 6; $r++) {
-    for ($c = 0; $c -lt 10; $c++) {
-        Fill (70 + $c * 36) (1090 + $r * 30) 26 18 $accent
+    for ($c = 0; $c -lt 12; $c++) {
+        Fill (64 + $c * 40) (1090 + $r * 30) 30 20 $accent
     }
 }
-Label 40 1460 'DDR3 Memory' 30
+Label 40 1270 'DDR3 Memory' 30
 
-# ---------------------------------------------------------------- board render
-if (Test-Path $Render) {
-    $img = [System.Drawing.Image]::FromFile((Resolve-Path $Render))
-    $dst = New-Object System.Drawing.Rectangle 510, 950, 540, 304
-    $g.DrawImage($img, $dst)
-    $pen = New-Object System.Drawing.Pen $inner, 3
-    $g.DrawRectangle($pen, 510, 950, 540, 304)
-    $pen.Dispose(); $img.Dispose()
-}
-
-# ---------------------------------------------------------------- UART/JTAG and PC
-Fill 1080 960 80 460 $accent
+# UART/JTAG bar
+Fill 620 $by 110 $bh2 $accent
 $state = $g.Save()
-$g.TranslateTransform(1120, 1190)
+$g.TranslateTransform(675, ($by + $bh2 / 2))
 $g.RotateTransform(-90)
 $f = Font 30; $b = New-Object System.Drawing.SolidBrush $white
 $sf = New-Object System.Drawing.StringFormat
@@ -126,9 +116,12 @@ $g.DrawString('UART / JTAG', $f, $b, [single]0, [single]-20, $sf)
 $b.Dispose(); $f.Dispose(); $sf.Dispose()
 $g.Restore($state)
 
-Bar 1050 1090 30 40     # board -> UART
-Bar 1160 1150 30 40     # UART -> PC
-Fill 1190 1080 370 220 $panel; BoxText 1190 1080 370 220 @('PC') 44
+# PC
+Fill 780 $by 796 $bh2 $panel; BoxText 780 $by 796 $bh2 @('PC') 44
+
+# links: DDR -> UART -> PC (orthogonal)
+Bar 584 1120 36 40
+Bar 730 1120 50 40
 
 $g.Dispose()
 $dir = Split-Path -Parent $Out
