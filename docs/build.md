@@ -69,10 +69,11 @@ sim/          tb_gc_top、定向 TB（axi_read / runstart / cmdfifo / regs_aww /
 csrc/         fpga_gc.[ch]、test_main.c、py_bfs.py、build_c_bins.sh、
               build_routes/（C/DMA 建图源码与 build_c.sh / build_dma.sh）
 python/       fogccc.py（ctypes 绑定）
-jvm-shadow/   JamVM 适配器（补丁、libjvm 构建脚本、自研负载）
+jvm-shadow/   JamVM 适配器（补丁、libjvm 构建脚本、自研负载）；
+              board/（板端 selftest.sh、dacapo_bench.sh、run_dacapo.sh）
 vivado/       build.tcl（BD + 综合 + 实现 + XSA）、build_rtl_only.tcl
 tools/        serial_*.ps1、push_tests.ps1、make_manifest/card/release_*、
-              reproduce_all.ps1、dacapo_quick.sh、diagrams/、
+              reproduce_all.ps1、diagrams/、
               tests/（板上测试）、build_routes/（C/DMA 建图入口）、
               debug/（调试脚本）、logs/（证据）
 driver/       fogccc_irq.c + PetaLinux 模块 recipe、fogccc_dma/（建图 staging 模块）

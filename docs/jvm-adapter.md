@@ -64,17 +64,17 @@ T=/run/media/USERDATA-mmcblk0p2/fogccc-tools
 日志放在 USERDATA 分区 `/run/media/USERDATA-mmcblk0p2/fogccc-tools/`，
 重启后仍在。该分区由 udev 挂载为 vfat（`rw,errors=remount-ro`）。
 
-从 PC 安装（仓库内 `jvm-shadow/board/` 与 `tools/dacapo_quick.sh`）：
+从 PC 安装（脚本在仓库 `jvm-shadow/board/`）：
 
 ```powershell
-$T = 'jvm-shadow\board'
-foreach ($f in 'run_1m.sh','run_workload.sh','run_dacapo.sh','README.md') {
+$src = 'jvm-shadow\board'
+foreach ($f in 'selftest.sh','dacapo_bench.sh','run_dacapo.sh','README.md') {
     powershell -ExecutionPolicy Bypass -File tools\serial_push_chunked.ps1 `
-        -Src "$T\$f" -Dest "/run/media/USERDATA-mmcblk0p2/fogccc-tools/$f" -ChunkKB 4
+        -Src "$src\$f" -Dest "/run/media/USERDATA-mmcblk0p2/fogccc-tools/$f" -ChunkKB 4
 }
 ```
 
-在板上编译自研负载并刷盘：
+在板上编译自研负载并刷盘（`$T` 指上面的板端目录）：
 
 ```sh
 cd $T
@@ -103,15 +103,24 @@ tools/serial_pull_chunked.ps1（逐块 md5）。
 
 ### 4.3 自研负载
 
-启动脚本已带好全部环境变量（COLD + verify）：
+`selftest.sh` 跑全套负载，每步一行进度、结束时打印一张表：
 
 ```sh
-sh $T/run_1m.sh                 # G1M 1000000，3 次 System.gc()
-sh $T/run_1m.sh 500000          # 指定结点数
-sh $T/run_workload.sh 1000000 2 # 结点数 平均出边
+sh $T/selftest.sh            # G1M 1000000
+sh $T/selftest.sh 500000     # 指定结点数
 ```
 
-等价的完整命令，1M 对象、3 次 System.gc()、测 STW 与闭包：
+| 负载 | 侧 | 检查 |
+| --- | --- | --- |
+| G1M 1000000 | 硬件 / 原版 | 3 次 System.gc()，闭包与 STW |
+| FogcccWorkload 400000 | 硬件 | 可配置图，闭包校验 |
+| FogcccTree / Mutate / Threads | 硬件 | 宽前沿、运行中改引用、多线程分配 |
+| HelloWorld | 原版 | 冒烟（260 kB 堆低于接管门限） |
+
+表格列：test、side、result、e2e_ms、mark_ms、extra。`extra` 是
+`verify_extra`，必须为 0；`FALLBACK` 表示对象数超过 1,048,576 而回退 CPU。
+
+单条命令的等价写法（1M 对象、3 次 System.gc()、测 STW 与闭包）：
 
 ```sh
 env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
@@ -129,10 +138,10 @@ env FOGCCC_STW=1 $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m \
 其余自研负载（参数为 结点数 平均出边 链化比例）：
 
 ```sh
-# 可配置图，用于闭包校验
+# 可配置图，用于闭包校验（结点数上限 400000：每个结点约占 2 个对象）
 env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
     FOGCCC_TAKEOVER_DECIDE=0 FOGCCC_TAKEOVER_VERIFY=1 FOGCCC_STW=1 \
-    $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -cp $T FogcccWorkload 1000000 2
+    $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -cp $T FogcccWorkload 400000 2
 
 # 树、变更、线程、冒烟
 $J -XXaltjvm=jamvm-fogccc -Xmx256m -cp $T FogcccTree
@@ -165,12 +174,15 @@ env FOGCCC_STW=1 $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -verbosegc \
 ```
 
 可运行基准：avrora、luindex、lusearch、pmd、sunflow、xalan。
-日常回归（4 个基准，硬件 + 对照，约 75 秒，日志写到
+日常回归（4 个基准，硬件 + 对照，约 100 秒，日志写到
 `fogccc-logs/quick/`）：
 
 ```sh
-sh $T/dacapo_quick.sh
+sh $T/dacapo_bench.sh        # 每步一行进度，结束时一张表
 ```
+
+表格列：bench、hw、sw、e2e_hw、e2e_sw、mark_hw、mark_sw、ratio、extra。
+`ratio` 是纯 mark 的 原版/硬件 比值，`extra` 是硬件侧的 `verify_extra`。
 
 生产路径（不 verify）：去掉 FOGCCC_TAKEOVER_VERIFY 和 FOGCCC_TAKEOVER_COLD，
 第一次 GC 走影子轮，第二次起接管。用 128 MB 固定堆跑两次迭代：
