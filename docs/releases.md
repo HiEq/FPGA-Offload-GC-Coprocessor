@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v5.1 | 2026-11-08 | 板端自研负载与 DaCapo 回归脚本（进度条 + 汇总表）；镜像同 v5.0 | v5.1 |
 | v5.0 | 2026-11-08 | 1M 对象 / 64 MiB 位流 + JamVM 适配器；1M STW 256 vs 428 ms；6 个 DaCapo 基准 verify_extra=0 | v5.0 |
 | v4.14 | 2026-11-04 | C/DMA 建图验证（源码、脚本、卡上分发与证据日志），镜像同 v4.13 | v4.14 |
 | v4.13 | 2026-10-27 | 文档与测试脚本整理（重命名、自动日志、800 MHz 数据），镜像同 v4.12 | v4.13 |
@@ -24,7 +25,41 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-v5.0 为当前版本，GitHub Latest 指向 v5.0；v4.1–v4.13 标为 Pre-release 历史快照，仍可下载。
+v5.1 为当前版本，GitHub Latest 指向 v5.1；v4.1–v4.13 标为 Pre-release 历史快照，仍可下载。
+
+---
+
+## v5.1
+
+**变更内容**
+
+- 新增 `jvm-shadow/board/selftest.sh`：自研负载全套（G1M、FogcccWorkload、Tree、Mutate、Threads、Hello），每步一行进度，结束时一张表。
+- 新增 `jvm-shadow/board/dacapo_bench.sh`：luindex、pmd、xalan、lusearch 的硬件与对照，表格含 e2e、纯 mark、比值与 verify_extra；取代 v5.0 的 `tools/dacapo_quick.sh`。
+- `run_1m.sh` 与 `run_workload.sh` 并入 `selftest.sh`；`FogcccWorkload` 的结点数默认压到 400000（每个结点约占 2 个对象，避免越过 1,048,576 的 id 上限）。
+- 镜像与位流不变：四个发布资产与 v5.0 字节相同。
+
+**验证结果**
+
+- `sh selftest.sh`（921600 控制台）：7/7 通过，32 s；G1M 纯 mark 73.8 vs 353.5 ms，`verify_extra=0`；FogcccWorkload 400000 纯 mark 55.5 ms。
+- `sh dacapo_bench.sh`：8/8 通过，100 s；纯 mark 3.8 / 3.4 / 8.2 / 2.9 ms 对 73.0 / 69.6 / 81.4 / 67.5 ms（9.9–23.3×）；4 个基准 `verify_extra=0`。
+- 进度条与表格在串口 921600 下实测；脚本放在 USERDATA 的 `fogccc-tools/`，重启后仍在。
+
+**发布资产**
+
+与 v5.0 相同，哈希不变：
+
+| 资产 | 大小 | SHA256 |
+| --- | ---: | --- |
+| BOOT.BIN | 18,582,724 B | 2523e66e71bad79880ab14ed93a185e38834b58bb7487fd56c85e46127364139 |
+| image.ub | 47,759,016 B | 710564ad379b07d5f818ce248a8b59ae97b109caa4cd7959c9741ffaf9e0ca2e |
+| card-boot.zip | 5,920 B | efaa03ffef6e26bc8cc56bb9b7b9faadcad04b535dc4a67eb8a96f95a55d865b |
+| card-userdata.zip | 139,184 B | c7c9fceaa947990eb88e17f8dbcaed3c8386964bd6fa64f946d3f947a902eceb |
+
+**已知限制**
+
+- 脚本需放在 USERDATA 分区；`/tmp` 是 tmpfs，重启清空。
+- `selftest.sh` 里 HelloWorld 用原版 JVM 跑：260 kB 堆低于接管门限，强制接管属于超出契约的范围。
+- 单次运行超时 120 s（DaCapo）/ 600 s（自研负载），超时行记为 TIMEOUT。
 
 ---
 
@@ -35,7 +70,7 @@ v5.0 为当前版本，GitHub Latest 指向 v5.0；v4.1–v4.13 标为 Pre-relea
 - RTL：1M 对象 / 64 MiB 图区变体（位图地址 15 位、引用流成对合并、位图驻留 BRAM），寄存器映射不变。
 - 适配器：新增 `jvm-shadow/`（JamVM 补丁、`libjvm.so` 构建脚本、自研负载），标记阶段由 PL 接管。
 - 适配器内部：id 回收与空闲表、重建导出过滤、溢出仅回退当轮、每轮清脏位图、Class 对象登记为硬件根、STW 计时。
-- 文档：`README.md` 收敛为入口页；DaCapo、STW 与适配器细节见 `docs/jvm-adapter.md`；新增 `jvm-shadow/README.md`、`tools/dacapo_quick.sh`。
+- 文档：`README.md` 收敛为入口页；DaCapo、STW 与适配器细节见 `docs/jvm-adapter.md`；新增 `jvm-shadow/README.md`、`tools/dacapo_quick.sh`（v5.1 起由 `jvm-shadow/board/dacapo_bench.sh` 取代）。
 - 发布镜像：`BOOT.BIN` 由本版 RTL 以 bootgen 打包（150 MHz 位流）；`image.ub` 由 v4.14 内核/根文件系统与本版 64 MiB 设备树重新打包。
 
 **验证结果**
@@ -43,7 +78,7 @@ v5.0 为当前版本，GitHub Latest 指向 v5.0；v4.1–v4.13 标为 Pre-relea
 - 板上 1M：`pl_graph=64 MiB`、`fpga_manager=operating`，1,003,857 个对象连续 3 轮 `verify_extra=0`。
 - 1M STW（`G1M 1000000`，`-Xms700m -Xmx700m`）：纯 mark 73.9 vs 350 ms（4.7×）；稳态整次 GC 停顿 256 vs 428 ms（1.67×）；第一次重建轮 1000 ms。
 - DaCapo 9.12-MR1 `-s small`（COLD+verify，700 MB）：6/6 通过、6/6 `verify_extra=0`；纯 mark 2.9–8.3 vs 66.8–75.4 ms（9.6–23×）；端到端 91,682 / 2,542 / 16,958 / 1,618 / 51,148 / 15,441 ms（avrora / luindex / lusearch / pmd / sunflow / xalan）。
-- 日常回归 `tools/dacapo_quick.sh`（luindex、pmd、xalan、lusearch）：4/4 通过，约 75 s。
+- 日常回归（luindex、pmd、xalan、lusearch）：4/4 通过，约 75 s（脚本在 v5.1 移到 `jvm-shadow/board/dacapo_bench.sh`）。
 - 发布镜像：`dumpimage -l` 通过；设备树与 v4.14 的差异仅为 `pl_graph` 保留区 32 MiB → 64 MiB。
 
 **发布资产**

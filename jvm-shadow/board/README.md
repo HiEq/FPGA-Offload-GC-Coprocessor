@@ -1,14 +1,13 @@
-# FOGCCC 板端工具（USERDATA 持久目录）
+# FOGCCC 板端脚本（USERDATA 持久目录）
 
 安装位置：`/run/media/USERDATA-mmcblk0p2/fogccc-tools/`，在 TF 卡上，
 重启不丢。`/tmp` 是指向 `/var/volatile/tmp` 的 tmpfs，重启即清空。
 
 | 文件 | 用途 |
 | --- | --- |
-| run_1m.sh | 1M 结点 G1M（3 次 GC，COLD+verify） |
-| run_workload.sh | 可配置图 FogcccWorkload |
-| run_dacapo.sh | 单个 DaCapo 基准（hw/sw） |
-| dacapo_quick.sh | 4 个 DaCapo 基准的快速回归（约 75 秒） |
+| selftest.sh | 自研负载全套（G1M、FogcccWorkload、Tree、Mutate、Threads、Hello），结束时一张表 |
+| dacapo_bench.sh | 4 个 DaCapo 基准，硬件与对照，结束时一张表 |
+| run_dacapo.sh | 单个 DaCapo 基准（hw/sw），输出直接看终端 |
 | *.java / *.class | 自研负载源码与编译产物 |
 
 ## 安装
@@ -16,13 +15,14 @@
 PC 侧（仓库根目录）逐文件推送，每条都会比对 md5：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\serial_push_chunked.ps1 `
-    -Src jvm-shadow\board\run_1m.sh `
-    -Dest /run/media/USERDATA-mmcblk0p2/fogccc-tools/run_1m.sh -ChunkKB 4
+$src = 'jvm-shadow\board'
+foreach ($f in 'selftest.sh','dacapo_bench.sh','run_dacapo.sh','README.md') {
+    powershell -ExecutionPolicy Bypass -File tools\serial_push_chunked.ps1 `
+        -Src "$src\$f" -Dest "/run/media/USERDATA-mmcblk0p2/fogccc-tools/$f" -ChunkKB 4
+}
 ```
 
-`run_workload.sh`、`run_dacapo.sh`、`README.md`、`tools/dacapo_quick.sh`
-和 `jvm-shadow/test/*.java` 用同样的方式推送。然后在板上编译并刷盘：
+`jvm-shadow/test/*.java` 同样推送。然后在板上编译并刷盘：
 
 ```sh
 T=/run/media/USERDATA-mmcblk0p2/fogccc-tools
@@ -39,22 +39,32 @@ sync
 ```sh
 T=/run/media/USERDATA-mmcblk0p2/fogccc-tools
 
-sh $T/run_1m.sh                 # 1M 结点
-sh $T/run_1m.sh 500000          # 指定结点数
-sh $T/run_workload.sh 1000000 2 # 结点数 / 平均出边
-sh $T/run_dacapo.sh luindex     # 单个基准，硬件侧
-sh $T/run_dacapo.sh luindex sw  # 原版 JVM 对照
-sh $T/dacapo_quick.sh           # 4 个基准，硬件 + 对照，约 75 秒
+sh $T/selftest.sh              # 自研负载全套，约 35 秒
+sh $T/selftest.sh 500000       # 指定结点数
+sh $T/dacapo_bench.sh          # 4 个 DaCapo 基准，约 100 秒
+sh $T/run_dacapo.sh luindex    # 单个基准，硬件侧
+sh $T/run_dacapo.sh luindex sw # 单个基准，原版对照
 ```
 
-日志：单基准输出到当前终端；dacapo_quick.sh 写到
-/run/media/USERDATA-mmcblk0p2/fogccc-logs/quick/。
+两个脚本运行中每步打印一行进度（终端下是进度条 + 已用秒数），结束时
+打印一张表，退出码 0 表示全部通过。日志写到
+`/run/media/USERDATA-mmcblk0p2/fogccc-logs/{selftest,quick}/`。
 
 ## 判读
 
+| 列 | 含义 |
+| --- | --- |
+| result | PASS / FALLBACK / TIMEOUT / FAIL |
+| e2e_ms | 端到端毫秒（G1M 与 DaCapo 是 3 次 GC 或单次运行） |
+| mark_ms | 纯标记毫秒；硬件取 takeover 的中位数，原版取 GC Mark 的中位数 |
+| extra | 硬件侧 verify_extra，必须为 0 |
+| ratio | 仅 DaCapo 表：原版 mark / 硬件 mark |
+
+`FALLBACK` 表示对象数超过 1,048,576 的 id 上限，该轮回退 CPU 标记。
+
+## 重新编译
+
 ```sh
-grep 'PASSED in' 日志           # 端到端
-grep 'verify_extra' 日志        # 必须为 0
-grep 'takeover timing us' 日志  # mark / import / clear 分解
-grep 'stw:' 日志               # 每次 GC 的 STW 停顿
+cd /run/media/USERDATA-mmcblk0p2/fogccc-tools
+/run/media/USERDATA-mmcblk0p2/jvm/zulu8/bin/javac -d . *.java
 ```
