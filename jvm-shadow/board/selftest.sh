@@ -32,15 +32,15 @@ FAILS=0
 if [ -t 1 ]; then TTY=1; else TTY=0; fi
 
 bar() {
-    pct=$(( $1 * 100 / TOTAL ))
-    fill=$(( $1 * 20 / TOTAL ))
-    b=''
-    i=0
-    while [ $i -lt 20 ]; do
-        if [ $i -lt $fill ]; then b="$b#"; else b="$b-"; fi
-        i=$((i + 1))
+    _pct=$(( $1 * 100 / TOTAL ))
+    _fill=$(( $1 * 20 / TOTAL ))
+    _bar=''
+    _i=0
+    while [ $_i -lt 20 ]; do
+        if [ $_i -lt $_fill ]; then _bar="$_bar#"; else _bar="$_bar-"; fi
+        _i=$((_i + 1))
     done
-    printf '\r  [%s] %3d%%  %s\033[K' "$b" "$pct" "$2"
+    printf '\r  [%s] %3d%%  %s\033[K' "$_bar" "$_pct" "$2"
 }
 
 median() {
