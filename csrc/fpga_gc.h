@@ -17,7 +17,7 @@
 #define FPGA_BASE_ADDR   0x43C00000UL  // AXI-Lite GP0 基地址
 #define GRAPH_DDR_ADDR   0x1E000000UL  // 对象图存放的DDR物理地址
 #define MAP_SIZE         4096          // 寄存器映射大小 (4KB)
-#define GRAPH_MAP_SIZE   0x100000      // 对象图映射大小 (1MB)
+#define GRAPH_MAP_SIZE   0x4000000      // 对象图映射大小 (64MB, P1 1M)
 
 // ==================== 寄存器偏移 ====================
 #define REG_CTRL         0x00   // 控制
@@ -30,7 +30,7 @@
 #define REG_Q_TAIL       0x1C   // 队列尾指针 (只读)
 #define REG_ROOT_LIST    0x40   // 根集数组起始
 #define REG_STATUS       0x20   // [0]=queue overflow [1]=AXI read error [2]=ref desync [3]=bad header
-#define REG_BM_ADDR      0x24   // bitmap probe address (0..4095)
+#define REG_BM_ADDR      0x24   // bitmap probe word address (id>>5, 0..32767)
 #define REG_BM_DATA      0x28   // bitmap probe data  = mem[BM_ADDR]
 #define REG_MAGIC        0x30   // fixed 0x47434343 ("GCCC"): bitstream/software pairing
 #define REG_VERSION      0x34   // fixed 0x0004_0301 (v4.5: root read-back + command markers)
@@ -42,16 +42,21 @@
 #define REG_DIRTY_DRAINED  0x448  // ids consumed in the current epoch
 #define REG_DIRTY_PUSHED 0x44C  // ids accepted since the last flush
 #define REG_DIRTY_POPPED 0x450  // ids consumed since the last flush
+#define REG_Q_HWM        0x454  // peak BFS queue occupancy of the last run
+#define REG_Q_HI         0x458  // cycles with q_count >= 64 (wide frontier)
 #define FOGCCC_MAGIC     0x47434343u
-#define FOGCCC_VERSION   0x00040301u
+#define FOGCCC_VERSION   0x00070500u
 
 // STATUS bit masks
 #define STATUS_OVF       (1U << 0)   // queue full, object dropped
 #define STATUS_RDERR     (1U << 1)   // AXI read response error
 #define STATUS_REFDESYNC (1U << 2)   // consumed more refs than issued
-#define STATUS_HDR       (1U << 3)   // ref_count > 4096 (corrupt header)
+#define STATUS_HDR       (1U << 3)   // ref_count > 65536 (corrupt header)
 #define STATUS_IDLE      (1U << 4)   // engine FSM is in S_IDLE
 #define STATUS_FREEBUSY  (1U << 5)   // Phase 2 free-list scanner owns the bitmap
+#define STATUS_DUMP_BUSY (1U << 6)   // bitmap DMA is streaming to DDR
+#define STATUS_DUMP_DONE (1U << 7)   // a dump completed since the last start
+#define GRAPH_DUMP_OFFSET 0x03FE0000u  // 128 KiB at the end of the graph window
 
 // ==================== CTRL寄存器位定义 ====================
 #define CTRL_START       (1U << 0)   // 启动标记
@@ -64,7 +69,7 @@
 // Command writes must carry their destination in WDATA[31:20]: a mispaired
 // W beat (platform AW/W reorder) then fails the check and is dropped.
 #define GC_CTRL_MARK     0xA5000000u  // CTRL (0x000)
-#define GC_PUSH_MARK     0xA5400000u  // DIRTY_PUSH (0x440)
+#define GC_PUSH_MARK     0xA5000000u  // DIRTY_PUSH (0x440): [31:24] marker, [23:20] tag, [19:0] id
 
 // ==================== 对象图DDR格式 ====================
 //
@@ -99,6 +104,12 @@ typedef struct {
     // in python/fogccc.py stays byte-compatible.
     uint32_t           dirty_tag;       // next tag to use
     uint32_t           dirty_tag_valid; // 0 until the first push seeds it from 0x444
+    // Epoch statistics for the engine-selection decision.  Read at DONE
+    // (before the free-list wait) so a redelivered START cannot wipe them,
+    // and accumulated across the root batches of one epoch.
+    uint32_t           epoch_q_hwm;     // max queue occupancy over the epoch
+    uint32_t           epoch_q_hi;      // cycles with a wide frontier (q >= 64)
+    uint32_t           epoch_cycles;    // total engine cycles of the epoch
 } fpga_gc_t;
 
 // ==================== API函数 ====================
@@ -148,6 +159,12 @@ uint32_t fpga_gc_sw_mark_bits(fpga_gc_t *dev, uint32_t *roots, int n_roots, uint
 // 前置条件: 引擎 idle (STATUS[4]=1); 否则返回 0xFFFFFFFF
 uint32_t fpga_gc_read_mark(fpga_gc_t *dev, uint32_t obj_id);
 
+/* Read `nwords` consecutive bitmap words (word = object id >> 5).  One
+ * BM_ADDR write per word, one BM_DATA read; the address is verified every
+ * 256 words.  Returns 0 on success, -1 if the probe is unusable. */
+int fpga_gc_read_mark_words(fpga_gc_t *dev, uint32_t first_word,
+                            uint32_t *out, int nwords);
+
 // 队列尾指针 (只读), 用于 q_tail == marked 的不变量检查
 uint32_t fpga_gc_q_tail(fpga_gc_t *dev);
 
@@ -165,6 +182,16 @@ void fpga_gc_clear(fpga_gc_t *dev);
 
 // 打印硬件统计信息
 uint32_t fpga_gc_status(fpga_gc_t *dev);
+uint32_t fpga_gc_q_hwm(fpga_gc_t *dev);
+
+// Cycles with a wide frontier (q_count >= 64).  The ratio to CYCLES is robust
+// to root injection in any number of batches, unlike the peak.
+uint32_t fpga_gc_q_hi(fpga_gc_t *dev);
+int      fpga_gc_prefer_cpu(fpga_gc_t *dev);
+
+// Stream the mark bitmap to DDR (PL DMA) and copy it out.  Replaces the
+// AXI-Lite probe loop (~190 ms) with a ~1 ms memcpy.
+int fpga_gc_dump_bitmap(fpga_gc_t *dev, uint32_t *dst, int nwords);
 void fpga_gc_print_stats(fpga_gc_t *dev);
 
 #endif // FPGA_GC_H

@@ -62,7 +62,7 @@ R_RLIST = 0x40
 CTRL_START, CTRL_CLEAR_Q, CTRL_DONE = 1, 4, (1 << 31)
 CTRL_BM_KEEP, CTRL_DIRTY_FLUSH = (1 << 4), (1 << 5)
 CTRL_WR_MARK = 0xA5000000   # command writes carry their destination in WDATA[31:20]
-PUSH_WR_MARK = 0xA5400000
+PUSH_WR_MARK = 0xA5000000
 STATUS_FREEBUSY = 1 << 5
 BASE = C.GRAPH_BASE
 
@@ -87,7 +87,7 @@ def push(oid):
     if _push_tag is None:
         _push_tag = (rr(R_DSTAT) >> 16) & 0xF
     _push_tag = (_push_tag + 1) & 0xF
-    wr(R_DPUSH, PUSH_WR_MARK | (_push_tag << 12) | (oid & 0xFFF))
+    wr(R_DPUSH, PUSH_WR_MARK | (_push_tag << 20) | (oid & 0xFFFFF))
 
 
 def push_acked(oid):
@@ -139,18 +139,18 @@ def read_marks(n):
     """bitmap probe -> list of marked flags"""
     out = []
     for o in range(n):
-        wr(R_BMADDR, o)
+        wr(R_BMADDR, o >> 5)
         _ = rr(R_BMADDR)
         out.append((rr(R_BMDATA) >> (o & 31)) & 1)
     return out
 
 
 def main():
-    if rr(R_MAGIC) != 0x47434343 or rr(R_VERSION) != 0x00040301:
+    if rr(R_MAGIC) != 0x47434343 or rr(R_VERSION) != 0x00060000:
         print('FAIL magic/version 0x%08X/0x%08X (need the v4.2 bitstream)'
               % (rr(R_MAGIC), rr(R_VERSION)))
         return 1
-    print('magic/version OK: 0x%08X / 0x00040301' % rr(R_MAGIC))
+    print('magic/version OK: 0x%08X / 0x00060000' % rr(R_MAGIC))
 
     n = 64
     wr(R_BASE, BASE)                    # 0x04: reset value is 0, never inherit it
@@ -182,7 +182,7 @@ def main():
     ok = wait_done_and_idle()
     a_marked, a_drain, a_pop = rr(R_MARKED), rr(R_DDRAIN), rr(R_DPOPPED)
     fc = rr(R_FCOUNT)
-    ids = [rr(R_FDATA) & 0xFFF for _ in range(fc)]
+    ids = [rr(R_FDATA) & 0x3FFFF for _ in range(fc)]
     fset = set(ids)
     exp_marked = {0, 1, 2, 3, 40, 41}
     # This board's AXI-Lite write path delivers a store twice and the two copies
@@ -302,7 +302,7 @@ def main():
         marks = read_marks(N)
         marked = {i for i in range(N) if marks[i]}
         fc = rr(R_FCOUNT)
-        fids = set(rr(R_FDATA) & 0xFFF for _ in range(fc))
+        fids = set(rr(R_FDATA) & 0x3FFFF for _ in range(fc))
         return e1, e2, drain, pushed_c, marked, dirty, set(targets), fids
 
     live_seed = closure([list(r) for r in g['refs']], [g['root']])

@@ -229,7 +229,7 @@ module tb_regs_aww;
         repeat (2) @(negedge clk);
 
         // ---- P1: matched pairs do what they say -------------------------
-        aw_w(12'h440, 32'hA540_1028);           // DPUSH tag=1 id=0x028 (40)
+        aw_w(12'h440, 32'hA510_0028);           // DPUSH tag=1 id=0x028 (40)
         aw_w(12'h008, 32'd64);                  // OBJ_COUNT = 64
         p1_npush = npush;
         if (p1_npush != 1)      fail("P1: a matched DPUSH pair must fire exactly one push");
@@ -239,8 +239,8 @@ module tb_regs_aww;
                  p1_npush, last_id, reg_obj_count);
 
         // ---- P2: the platform's duplication is ignored by the tag rule --
-        aw_w(12'h440, 32'hA540_2029);           // new tag (2), id=41
-        aw_w(12'h440, 32'hA540_2029);           // the duplicate delivery
+        aw_w(12'h440, 32'hA520_0029);           // new tag (2), id=41
+        aw_w(12'h440, 32'hA520_0029);           // the duplicate delivery
         p2_npush = npush - p1_npush;
         if (p2_npush != 1)     fail("P2: the duplicate delivery of one store must not double the record");
         if (last_id != 12'd41) fail("P2: the accepted record must be the new one (41)");
@@ -260,7 +260,7 @@ module tb_regs_aww;
 
         // ---- P4: a foreign WDATA on DPUSH without the marker is DROPPED --
         aw(12'h440);
-        w(32'h0000_0040);                       // 64: a COUNT-shaped WDATA, no 0xA54 marker
+        w(32'h0000_0040);                       // 64: a COUNT-shaped WDATA, no 0xA5 marker
         resp;
         if (npush != p1_npush + p2_npush)
             fail("P4: a markerless W on 0x440 must not create a record");
@@ -275,7 +275,7 @@ module tb_regs_aww;
         $display("[AW-W] P4 markerless W on 0x440: pushes=%0d (unchanged)", npush);
 
         // ---- P5: the id-level ack reports what the FIFO accepted --------
-        aw_w(12'h440, 32'hA540_302A);               // tag 3, id 42
+        aw_w(12'h440, 32'hA530_002A);               // tag 3, id 42
         rd(12'h444);
         ack_tag = (rd_data >> 16) & 15;
         ack_id  = (rd_data >> 20) & 4095;
