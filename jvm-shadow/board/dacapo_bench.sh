@@ -28,15 +28,15 @@ FAILS=0
 if [ -t 1 ]; then TTY=1; else TTY=0; fi
 
 bar() {
-    pct=$(( $1 * 100 / TOTAL ))
-    fill=$(( $1 * 20 / TOTAL ))
-    b=''
-    i=0
-    while [ $i -lt 20 ]; do
-        if [ $i -lt $fill ]; then b="$b#"; else b="$b-"; fi
-        i=$((i + 1))
+    _pct=$(( $1 * 100 / TOTAL ))
+    _fill=$(( $1 * 20 / TOTAL ))
+    _bar=''
+    _i=0
+    while [ $_i -lt 20 ]; do
+        if [ $_i -lt $_fill ]; then _bar="$_bar#"; else _bar="$_bar-"; fi
+        _i=$((_i + 1))
     done
-    printf '\r  [%s] %3d%%  %s\033[K' "$b" "$pct" "$2"
+    printf '\r  [%s] %3d%%  %s\033[K' "$_bar" "$_pct" "$2"
 }
 
 e2e_of() {
@@ -125,17 +125,17 @@ run_stage() {
 echo "=== DaCapo 9.12-MR1 -s small: $BENCHES, heap $HEAP"
 echo "    logs: $LOG"
 
-for b in $BENCHES; do
-    run_stage "$b" hw \
+for bench in $BENCHES; do
+    run_stage "$bench" hw \
         env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
             FOGCCC_TAKEOVER_DECIDE=0 FOGCCC_TAKEOVER_VERIFY=1 FOGCCC_STW=1 \
             "$J" -XXaltjvm=jamvm-fogccc -Xms"$HEAP" -Xmx"$HEAP" \
-            -jar "$D" "$b" -s small --ignore-validation
+            -jar "$D" "$bench" -s small --ignore-validation
     hw_res=$R_RES; hw_e2e=$R_E2E; hw_mark=$R_MARK; hw_ex=$R_EX
 
-    run_stage "$b" sw \
+    run_stage "$bench" sw \
         env FOGCCC_STW=1 "$J" -XXaltjvm=jamvm-fogccc -Xms"$HEAP" -Xmx"$HEAP" \
-            -verbosegc -jar "$D" "$b" -s small --ignore-validation
+            -verbosegc -jar "$D" "$bench" -s small --ignore-validation
     sw_res=$R_RES; sw_e2e=$R_E2E; sw_mark=$R_MARK
 
     if [ "$hw_mark" = - ] || [ "$sw_mark" = - ]; then
@@ -144,7 +144,7 @@ for b in $BENCHES; do
         ratio=$(awk -v a="$sw_mark" -v b="$hw_mark" 'BEGIN{ if (b + 0 > 0) printf "%.1fx", a / b; else printf "-" }')
     fi
     printf '%-9s %-5s %-5s %8s %8s %8s %8s %6s %5s\n' \
-        "$b" "$hw_res" "$sw_res" "$hw_e2e" "$sw_e2e" "$hw_mark" "$sw_mark" "$ratio" "$hw_ex" >> "$ROWS"
+        "$bench" "$hw_res" "$sw_res" "$hw_e2e" "$sw_e2e" "$hw_mark" "$sw_mark" "$ratio" "$hw_ex" >> "$ROWS"
 done
 
 WALL=$(( $(date +%s) - T_START ))
