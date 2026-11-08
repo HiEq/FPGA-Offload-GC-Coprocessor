@@ -54,8 +54,11 @@ try {
     $dir = ''
     Send "`r"; Start-Sleep -Milliseconds 500; Drain; $rx.Clear() | Out-Null
 
-    # Echo off halves the traffic and removes the input backlog.
-    Send "stty -echo`r"
+    # Echo off halves the traffic and removes the input backlog.  XON/XOFF off
+    # too: the board's tty sends XOFF when its output buffer fills (the byobu
+    # status line redraws), and with Handshake.None the host ignores it, which
+    # stalls the transfer for minutes per chunk.
+    Send "stty -echo -ixon -ixoff`r"
     if (-not (WaitPrompt 8000)) { throw "shell did not answer 'stty -echo'" }
     Write-Host "echo off"
 
@@ -85,12 +88,20 @@ try {
             $rx.Clear() | Out-Null
             Send "cat > $dir/c$i.b64 <<'PEOF'`r"
             Start-Sleep -Milliseconds 80
+            # Batch the heredoc lines into ~2 KB writes: one USB transaction per
+            # line caps the transfer at ~13 KB/s, a 2 KB burst reaches line rate.
+            $payload = ''
             $n = 0
             foreach ($l in $lines) {
-                Send ($l + "`r"); $n++
-                if ($LineDelayMs -gt 0) { Start-Sleep -Milliseconds $LineDelayMs }
-                if (($n % 40) -eq 0) { Drain }
+                $payload += $l + "`r"
+                $n++
+                if ($payload.Length -ge 2048) {
+                    Send $payload
+                    $payload = ''
+                    Start-Sleep -Milliseconds 5
+                }
             }
+            if ($payload) { Send $payload }
             Send "PEOF`r"
             # Do not guess a fixed sleep: wait for the prompt.
             if (-not (WaitPrompt 240000)) { throw "chunk ${i}: no prompt after heredoc" }
@@ -129,7 +140,7 @@ try {
 finally {
     try {
         if ($dir) { Send "rm -rf $dir`r"; Start-Sleep -Milliseconds 300 }
-        Send "stty echo`r"; Start-Sleep -Milliseconds 300; Drain
+        Send "stty echo ixon`r"; Start-Sleep -Milliseconds 300; Drain
     } catch { }
     if ($sp.IsOpen) { $sp.Close() }
 }

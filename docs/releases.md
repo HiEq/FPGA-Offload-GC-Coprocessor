@@ -6,6 +6,7 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 | 版本 | 日期 | 摘要 | tag |
 |---|---|---|---|
+| v5.2 | 2026-11-08 | 串口全链路 921600（PS7 配置 / FSBL / U-Boot / 内核），开机不再出现替换字符 | v5.2 |
 | v5.1 | 2026-11-08 | 板端自研负载与 DaCapo 回归脚本（进度条 + 汇总表）；镜像同 v5.0 | v5.1 |
 | v5.0 | 2026-11-08 | 1M 对象 / 64 MiB 位流 + JamVM 适配器；1M STW 256 vs 428 ms；6 个 DaCapo 基准 verify_extra=0 | v5.0 |
 | v4.14 | 2026-11-04 | C/DMA 建图验证（源码、脚本、卡上分发与证据日志），镜像同 v4.13 | v4.14 |
@@ -25,7 +26,37 @@ Release 页面仅保留本页链接与资产哈希表；逐版本的变更内容
 
 tag 列记录该版本的发布提交；tag 指针可能比它晚一个仅含文档与日志的提交，权威值以 `git rev-parse <tag>` 为准。
 
-v5.1 为当前版本，GitHub Latest 指向 v5.1；v4.1–v4.13 标为 Pre-release 历史快照，仍可下载。
+v5.2 为当前版本，GitHub Latest 指向 v5.2；v4.1–v4.13 标为 Pre-release 历史快照，仍可下载。
+
+---
+
+## v5.2
+
+**变更内容**
+
+- 串口波特率从源头统一为 921600：`vivado/build.tcl` 的 `CONFIG.PCW_UART0_BAUD_RATE` 由 115200 改为 921600。
+- PetaLinux 串口选择由 `MANUAL` 改为 `PS7_UART_0`。`MANUAL` 让设备树生成器写出 `stdout-path = "serial0:notfoundn8"`，U-Boot 因此退回 `CONFIG_BAUDRATE`（115200），内核 earlycon 沿用 FSBL 留下的分频（115200）。
+- 按新配置重生成 XSA、FSBL、U-Boot 与设备树，重打 `image.ub` 与 `BOOT.BIN`；PL 位流未变。
+
+**验证结果**
+
+- 921600 重启（串口保持打开）：复位后第一行可读文本是 `U-Boot 2026.01 ...`，其后 `Starting kernel`、`Booting Linux` 全部正常；修复前同一位置是约 7 KB 替换字符。
+- 本版 FSBL 编译为静默（ELF 内没有 `Xilinx First Stage` 字符串），串口上不输出；其 UART 分频已改为 921600 档。
+- 换镜像后板端回归：`selftest.sh` 7/7（37 s），`dacapo_bench.sh` 8/8（130 s），硬件侧 `verify_extra=0`。
+
+**发布资产**
+
+| 资产 | 大小 | SHA256 |
+| --- | ---: | --- |
+| BOOT.BIN | 18,582,732 B | 5cf75eb0639bc0b91a1c1f78a32c090d22c3e3615485687f3cab2d227a84f1b8 |
+| image.ub | 47,664,995 B | 51566cdb9a9057f3a5bf7e93bfd7dbf2bc5246dffde2ac54737f3a4ffa40fba4 |
+| card-boot.zip | 5,955 B | da10fcea09f274dfa082eb0e1c4f202a384de69653da741a3ee621cac5b87376 |
+| card-userdata.zip | 139,184 B | c7c9fceaa947990eb88e17f8dbcaed3c8386964bd6fa64f946d3f947a902eceb |
+
+**已知限制**
+
+- FSBL 的 UART 分频按参考时钟 86.4 MHz 计算（BDIV 5、BAUDGEN 18 → 909,474，−1.3%）；用 Vivado 全量重建会得到等价分频。FSBL 本身不输出文本，该分频只影响它可能打印的错误行。
+- U-Boot 的控制设备树没有 `current-speed`，波特率取自 `CONFIG_BAUDRATE`（`bsp.cfg`），因此两处必须同时改。
 
 ---
 

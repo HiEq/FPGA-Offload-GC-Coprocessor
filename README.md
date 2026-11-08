@@ -6,7 +6,7 @@
   <a href="docs/build.md"><img src="https://img.shields.io/badge/Vivado-2026.1-orange" alt="Vivado"></a>
   <a href="#6-license"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License"></a>
   <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml"><img src="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v5.1"><img src="https://img.shields.io/badge/release-v5.1-blue" alt="Release"></a>
+  <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v5.2"><img src="https://img.shields.io/badge/release-v5.2-blue" alt="Release"></a>
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 </p>
 
 面向托管堆的 FPGA GC 协处理器：对象体留在 DDR，引用关系导出为连续旁表，
-标记由 PL 完成；建图、启动与回收决策由 PS 负责。当前版本 v5.1 支持
+标记由 PL 完成；建图、启动与回收决策由 PS 负责。当前版本 v5.2 支持
 1,048,576 个对象与 64 MiB 图区，并通过 JamVM 适配器接入真实 Java 负载。
 
 ---
@@ -115,20 +115,19 @@ CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、
 
 ## 5. 发布
 
-当前版本 v5.1（1M 对象 / 64 MiB 图区 / 150 MHz）。v5.1 只更新板端脚本
-（`jvm-shadow/board/selftest.sh`、`dacapo_bench.sh`）与文档，四个镜像资产
-与 v5.0 字节相同。BOOT.BIN 与 image.ub 不入库，随 Release 发布（再分发限制见
-[NOTICE](NOTICE)）；两个 zip 分别解压到 BOOT 与 USERDATA 根目录。各版本的
-变更与限制见 [docs/releases.md](docs/releases.md)。
+当前版本 v5.2（1M 对象 / 64 MiB 图区 / 150 MHz）。v5.2 修正串口波特率链路
+（PS7 配置、FSBL、U-Boot 与内核同为 921600），PL 位流未变。BOOT.BIN 与 image.ub
+不入库，随 Release 发布（再分发限制见 [NOTICE](NOTICE)）；两个 zip 分别解压到
+BOOT 与 USERDATA 根目录。各版本的变更与限制见 [docs/releases.md](docs/releases.md)。
 
 <details>
 <summary><b>SHA256（点击展开）</b></summary>
 
 | 资产 | 大小 | SHA256 |
 | --- | --- | --- |
-| BOOT.BIN | 18,582,724 B | 2523e66e71bad79880ab14ed93a185e38834b58bb7487fd56c85e46127364139 |
-| image.ub | 47,759,016 B | 710564ad379b07d5f818ce248a8b59ae97b109caa4cd7959c9741ffaf9e0ca2e |
-| card-boot.zip | 5,920 B | efaa03ffef6e26bc8cc56bb9b7b9faadcad04b535dc4a67eb8a96f95a55d865b |
+| BOOT.BIN | 18,582,732 B | 5cf75eb0639bc0b91a1c1f78a32c090d22c3e3615485687f3cab2d227a84f1b8 |
+| image.ub | 47,664,995 B | 51566cdb9a9057f3a5bf7e93bfd7dbf2bc5246dffde2ac54737f3a4ffa40fba4 |
+| card-boot.zip | 5,955 B | da10fcea09f274dfa082eb0e1c4f202a384de69653da741a3ee621cac5b87376 |
 | card-userdata.zip | 139,184 B | c7c9fceaa947990eb88e17f8dbcaed3c8386964bd6fa64f946d3f947a902eceb |
 
 </details>

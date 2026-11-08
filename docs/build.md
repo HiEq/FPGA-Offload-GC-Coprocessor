@@ -8,6 +8,7 @@
 | --- | --- |
 | FPGA | Xilinx Zynq-7000 XC7Z100FFG900-2 |
 | 开发板 | OpenSoc OS-ZYNQ7100 Lite（XC7Z100），1 GB DDR3，CH340 串口 |
+| 串口 | UART0（MIO 14–15）921600 8N1；PS7 配置、FSBL、U-Boot 与内核一致（v5.2 起） |
 | LUT / FF | 277,400 CLB LUT / 554,800 CLB FF |
 | BRAM / DSP | 755 × 36Kb / 2,020 slices |
 | PS | 2× ARM Cortex-A9 @ 800 MHz（v4.8 起；v4.7 及以前 666.67 MHz），DDR3 @ 533.33 MHz |
