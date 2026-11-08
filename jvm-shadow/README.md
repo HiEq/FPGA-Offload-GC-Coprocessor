@@ -34,4 +34,7 @@ FPGA 图区，标记由 PL 完成，结果按 id 位图导入 JVM 的标记位�
 `test/` 下的 `G1M.java`（100 万结点、3 次 `System.gc()`，用于 STW）与
 `FogcccWorkload.java`（可配置结点数、出边与链化比例，用于闭包校验）。
 
+启动脚本与安装步骤见 [`board/README.md`](board/README.md)：板端工具装在
+USERDATA 分区的 `fogccc-tools/`，重启不丢（`/tmp` 是 tmpfs）。
+
 完整设计、参数与实测结果见 [`../docs/jvm-adapter.md`](../docs/jvm-adapter.md)。
