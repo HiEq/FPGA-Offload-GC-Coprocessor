@@ -54,6 +54,7 @@
 6 magic tools/serial_login_verify.ps1
 1 path tools/serial_login_verify.ps1
 5 magic tools/serial_phase2.ps1
+8 magic tools/serial_pull_chunked.ps1
 7 magic tools/serial_push_chunked.ps1
 16 magic tools/serial_push_resume.ps1
 1 magic tools/vivado_affinity.ps1
