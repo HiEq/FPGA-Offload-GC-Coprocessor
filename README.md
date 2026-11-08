@@ -6,7 +6,7 @@
   <a href="docs/build.md"><img src="https://img.shields.io/badge/Vivado-2026.1-orange" alt="Vivado"></a>
   <a href="#6-license"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License"></a>
   <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml"><img src="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/actions/workflows/lint.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v5.0"><img src="https://img.shields.io/badge/release-v5.0-blue" alt="Release"></a>
+  <a href="https://github.com/HiEq/FPGA-Offload-GC-Coprocessor/releases/tag/v5.1"><img src="https://img.shields.io/badge/release-v5.1-blue" alt="Release"></a>
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 </p>
 
 面向托管堆的 FPGA GC 协处理器：对象体留在 DDR，引用关系导出为连续旁表，
-标记由 PL 完成；建图、启动与回收决策由 PS 负责。当前版本 v5.0 支持
+标记由 PL 完成；建图、启动与回收决策由 PS 负责。当前版本 v5.1 支持
 1,048,576 个对象与 64 MiB 图区，并通过 JamVM 适配器接入真实 Java 负载。
 
 ---
@@ -67,7 +67,7 @@ tag `v5.0`，`libjvm.so` md5 `d52939ee1d82b6cb0c2ec5b3120808bb`。DaCapo 6/6
 | 0x24 | BM_ADDR | R/W | 位图探针字地址（0–32767，引擎空闲时有效） |
 | 0x28 | BM_DATA | R | 位图探测数据（2 拍延迟；读后勿改 BM_ADDR）|
 | 0x30 | MAGIC | R | 固定 0x47434343（"GCCC"）|
-| 0x34 | VERSION | R | 固定 0x00070500（v5.0）|
+| 0x34 | VERSION | R | 固定 0x00070500（v5.0 起）|
 | 0x38 | FREE_COUNT | R | 未标记对象数（标记完成后扫描，扫描期 STATUS[5]=1）|
 | 0x3C | FREE_DATA | R | 读一次弹出一个 free 对象 ID |
 | 0x40+ | ROOT_LIST | R/W | 根集 ID 数组（0x40–0x43F，最多 256 个）；读回用于写后校验 |
@@ -115,10 +115,11 @@ CI 只做静态检查与定向仿真，**不做** Vivado 综合/实现、xsim、
 
 ## 5. 发布
 
-当前版本 v5.0（1M 对象 / 64 MiB 图区 / 150 MHz）。BOOT.BIN 与 image.ub
-不入库，随 Release 发布（再分发限制见 [NOTICE](NOTICE)）；两个 zip 分别
-解压到 BOOT 与 USERDATA 根目录。各版本的变更与限制见
-[docs/releases.md](docs/releases.md)。
+当前版本 v5.1（1M 对象 / 64 MiB 图区 / 150 MHz）。v5.1 只更新板端脚本
+（`jvm-shadow/board/selftest.sh`、`dacapo_bench.sh`）与文档，四个镜像资产
+与 v5.0 字节相同。BOOT.BIN 与 image.ub 不入库，随 Release 发布（再分发限制见
+[NOTICE](NOTICE)）；两个 zip 分别解压到 BOOT 与 USERDATA 根目录。各版本的
+变更与限制见 [docs/releases.md](docs/releases.md)。
 
 <details>
 <summary><b>SHA256（点击展开）</b></summary>
