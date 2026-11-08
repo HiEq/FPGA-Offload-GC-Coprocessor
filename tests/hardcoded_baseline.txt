@@ -10,6 +10,8 @@
 2 magic driver/fogccc_dma/fogccc_dma.c
 1 magic driver/fogccc_irq.c
 1 magic driver/plnx/fogccc-irq/files/fogccc-irq.c
+1 magic jvm-shadow/board/run_1m.sh
+1 magic jvm-shadow/board/run_workload.sh
 2 hostpath jvm-shadow/build_jamvm_fogccc.sh
 1 magic jvm-shadow/jamvm-patch/apply_addr_order.py
 23 magic jvm-shadow/jamvm-patch/apply_incr.py
@@ -55,7 +57,7 @@
 1 path tools/serial_login_verify.ps1
 5 magic tools/serial_phase2.ps1
 8 magic tools/serial_pull_chunked.ps1
-7 magic tools/serial_push_chunked.ps1
+8 magic tools/serial_push_chunked.ps1
 16 magic tools/serial_push_resume.ps1
 1 magic tools/vivado_affinity.ps1
 3 magic vivado/build.tcl

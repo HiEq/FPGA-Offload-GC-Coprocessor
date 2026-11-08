@@ -51,12 +51,20 @@ function WaitText([string]$pat, [int]$ms) {
 }
 
 try {
+    $dir = ''
     Send "`r"; Start-Sleep -Milliseconds 500; Drain; $rx.Clear() | Out-Null
 
     # Echo off halves the traffic and removes the input backlog.
     Send "stty -echo`r"
     if (-not (WaitPrompt 8000)) { throw "shell did not answer 'stty -echo'" }
     Write-Host "echo off"
+
+    # A private per-transfer directory: a flat glob like /tmp/p*.bin also
+    # matches /tmp/pullchunk.bin and silently concatenates it into the target.
+    $dir = '/tmp/fogccc-push-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+    Send "mkdir -p $dir; echo PUSHDIR_OK`r"
+    if (-not (WaitText 'PUSHDIR_OK' 8000)) { throw 'could not create the push directory' }
+    $rx.Clear() | Out-Null
 
     for ($i = 0; $i -lt $nChunks; $i++) {
         $off = $i * $chunkSize
@@ -75,7 +83,7 @@ try {
         $ok = $false
         for ($attempt = 1; $attempt -le 2 -and -not $ok; $attempt++) {
             $rx.Clear() | Out-Null
-            Send "cat > /tmp/p$i.b64 <<'PEOF'`r"
+            Send "cat > $dir/c$i.b64 <<'PEOF'`r"
             Start-Sleep -Milliseconds 80
             $n = 0
             foreach ($l in $lines) {
@@ -87,11 +95,11 @@ try {
             # Do not guess a fixed sleep: wait for the prompt.
             if (-not (WaitPrompt 240000)) { throw "chunk ${i}: no prompt after heredoc" }
             $rx.Clear() | Out-Null
-            Send "openssl base64 -d -in /tmp/p$i.b64 -out /tmp/p$i.bin; md5sum /tmp/p$i.bin`r"
-            [void](WaitText '([0-9a-f]{32})\s+/tmp/p' 120000)
+            Send "openssl base64 -d -in $dir/c$i.b64 -out $dir/c$i.bin; md5sum $dir/c$i.bin`r"
+            [void](WaitText '([0-9a-f]{32})\s+/tmp/fogccc-push-' 120000)
             Drain
             $t = $rx.ToString() -replace "`r", ''
-            $ms2 = [regex]::Matches($t, '([0-9a-f]{32})\s+/tmp/p\d+\.bin')
+            $ms2 = [regex]::Matches($t, '([0-9a-f]{32})\s+/tmp/fogccc-push-[0-9a-f]+/c\d+\.bin')
             $m = if ($ms2.Count -gt 0) { $ms2[$ms2.Count - 1] } else { $null }
             if ($m -and $m.Groups[1].Value -eq $b64Md5) {
                 $ok = $true
@@ -104,7 +112,7 @@ try {
     }
 
     $rx.Clear() | Out-Null
-    Send "cat /tmp/p*.bin > $Dest; md5sum $Dest; rm -f /tmp/p*.b64 /tmp/p*.bin`r"
+    Send "cat $dir/c*.bin > $Dest; md5sum $Dest; rm -rf $dir`r"
     [void](WaitText '([0-9a-f]{32})\s+' 180000)
     Drain
     $t = $rx.ToString() -replace "`r", ''
@@ -119,6 +127,9 @@ try {
     }
 }
 finally {
-    try { Send "stty echo`r"; Start-Sleep -Milliseconds 300; Drain } catch { }
+    try {
+        if ($dir) { Send "rm -rf $dir`r"; Start-Sleep -Milliseconds 300 }
+        Send "stty echo`r"; Start-Sleep -Milliseconds 300; Drain
+    } catch { }
     if ($sp.IsOpen) { $sp.Close() }
 }

@@ -50,47 +50,80 @@ configure 固定两个选项：
 
 ## 4. 板上运行
 
-板上的 JVM 与 DaCapo 路径：
+板上的 JVM、DaCapo 与工具目录：
 
 ```sh
 J=/run/media/USERDATA-mmcblk0p2/jvm/zulu8/bin/java
 D=/run/media/USERDATA-mmcblk0p2/dacapo-9.12-MR1-bach.jar
+T=/run/media/USERDATA-mmcblk0p2/fogccc-tools
 ```
 
-### 4.1 安装 libjvm
+### 4.1 持久化目录
+
+`/tmp` 是指向 `/var/volatile/tmp` 的 tmpfs，重启即清空。脚本、自研负载与
+日志放在 USERDATA 分区 `/run/media/USERDATA-mmcblk0p2/fogccc-tools/`，
+重启后仍在。该分区由 udev 挂载为 vfat（`rw,errors=remount-ro`）。
+
+从 PC 安装（仓库内 `jvm-shadow/board/` 与 `tools/dacapo_quick.sh`）：
+
+```powershell
+$T = 'jvm-shadow\board'
+foreach ($f in 'run_1m.sh','run_workload.sh','run_dacapo.sh','README.md') {
+    powershell -ExecutionPolicy Bypass -File tools\serial_push_chunked.ps1 `
+        -Src "$T\$f" -Dest "/run/media/USERDATA-mmcblk0p2/fogccc-tools/$f" -ChunkKB 4
+}
+```
+
+在板上编译自研负载并刷盘：
 
 ```sh
-cd /run/media/USERDATA-mmcblk0p2/jvm/zulu8/jre/lib/aarch32/jamvm-fogccc
-gunzip -c /tmp/libjvm-fogccc.so.gz > libjvm.so
-cp libjvm.so /run/media/USERDATA-mmcblk0p2/jvm/zulu8/jre/lib/arm/jamvm-fogccc/libjvm.so
+cd $T
+/run/media/USERDATA-mmcblk0p2/jvm/zulu8/bin/javac -d . *.java
+chmod +x $T/*.sh
+sync
+```
+
+安装后重启不影响使用；每次重刷脚本或 class 后都要 `sync`，否则断电可能留下
+损坏的 FAT 簇链。
+
+### 4.2 安装 libjvm
+
+`-XXaltjvm=jamvm-fogccc` 实际加载
+`.../jre/lib/arm/jamvm-fogccc/libjvm.so`（v5.0 的 md5
+d52939ee1d82b6cb0c2ec5b3120808bb）。把交叉编译出的压缩包放到持久目录再装：
+
+```sh
+gunzip -c $T/libjvm-fogccc.so.gz > $T/libjvm.so
+cp $T/libjvm.so /run/media/USERDATA-mmcblk0p2/jvm/zulu8/jre/lib/arm/jamvm-fogccc/libjvm.so
 sync
 ```
 
 PC 侧推送文件用 tools/serial_push_chunked.ps1，取回板上文件用
 tools/serial_pull_chunked.ps1（逐块 md5）。
 
-### 4.2 自研负载
+### 4.3 自研负载
 
-把 jvm-shadow/test 下的源文件推到板上并编译：
+启动脚本已带好全部环境变量（COLD + verify）：
 
 ```sh
-cd /tmp
-/run/media/USERDATA-mmcblk0p2/jvm/zulu8/bin/javac G1M.java FogcccWorkload.java
+sh $T/run_1m.sh                 # G1M 1000000，3 次 System.gc()
+sh $T/run_1m.sh 500000          # 指定结点数
+sh $T/run_workload.sh 1000000 2 # 结点数 平均出边
 ```
 
-1M 对象、3 次 System.gc()、测 STW 与闭包（COLD + verify）：
+等价的完整命令，1M 对象、3 次 System.gc()、测 STW 与闭包：
 
 ```sh
 env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
     FOGCCC_TAKEOVER_DECIDE=0 FOGCCC_TAKEOVER_VERIFY=1 FOGCCC_STW=1 \
-    $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -cp /tmp G1M 1000000
+    $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -cp $T G1M 1000000
 ```
 
 同一负载的原版 JVM 对照：
 
 ```sh
 env FOGCCC_STW=1 $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m \
-    -verbosegc -cp /tmp G1M 1000000
+    -verbosegc -cp $T G1M 1000000
 ```
 
 其余自研负载（参数为 结点数 平均出边 链化比例）：
@@ -99,38 +132,44 @@ env FOGCCC_STW=1 $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m \
 # 可配置图，用于闭包校验
 env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
     FOGCCC_TAKEOVER_DECIDE=0 FOGCCC_TAKEOVER_VERIFY=1 FOGCCC_STW=1 \
-    $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -cp /tmp FogcccWorkload 1000000 2
+    $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -cp $T FogcccWorkload 1000000 2
 
 # 树、变更、线程、冒烟
-$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp /tmp FogcccTree
-$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp /tmp FogcccMutate
-$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp /tmp FogcccThreads
-$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp /tmp HelloWorld
+$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp $T FogcccTree
+$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp $T FogcccMutate
+$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp $T FogcccThreads
+$J -XXaltjvm=jamvm-fogccc -Xmx256m -cp $T HelloWorld
 ```
 
-### 4.3 DaCapo
+### 4.4 DaCapo
 
-硬件侧（COLD + verify，第一次 GC 就接管）：
+单个基准，硬件侧（COLD + verify，第一次 GC 就接管）：
+
+```sh
+sh $T/run_dacapo.sh luindex        # 等价于下面的完整命令
+sh $T/run_dacapo.sh luindex sw     # 原版 JVM 对照
+```
 
 ```sh
 env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_COLD=1 \
     FOGCCC_TAKEOVER_DECIDE=0 FOGCCC_TAKEOVER_VERIFY=1 FOGCCC_STW=1 \
     $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m \
-    -jar $D <bench> -s small --ignore-validation
+    -jar $D luindex -s small --ignore-validation
 ```
 
 原版 JVM 对照（同一个 libjvm，不设 FOGCCC_SHADOW/TAKEOVER）：
 
 ```sh
 env FOGCCC_STW=1 $J -XXaltjvm=jamvm-fogccc -Xms700m -Xmx700m -verbosegc \
-    -jar $D <bench> -s small --ignore-validation
+    -jar $D luindex -s small --ignore-validation
 ```
 
 可运行基准：avrora、luindex、lusearch、pmd、sunflow、xalan。
-日常回归（4 个基准，约 75 秒）：
+日常回归（4 个基准，硬件 + 对照，约 75 秒，日志写到
+`fogccc-logs/quick/`）：
 
 ```sh
-sh tools/dacapo_quick.sh
+sh $T/dacapo_quick.sh
 ```
 
 生产路径（不 verify）：去掉 FOGCCC_TAKEOVER_VERIFY 和 FOGCCC_TAKEOVER_COLD，
@@ -142,7 +181,7 @@ env FOGCCC_SHADOW=1 FOGCCC_TAKEOVER=1 FOGCCC_TAKEOVER_DECIDE=0 FOGCCC_STW=1 \
     -jar $D luindex -s small --ignore-validation -n 2
 ```
 
-### 4.4 判读
+### 4.5 判读
 
 | 检查 | 命令 | 期望 |
 | --- | --- | --- |
